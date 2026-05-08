@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KVTM 2.0 — Cinematic Transformation Test</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1a2e;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  padding: 8px 0 20px;
+}
+
+/* Overlay bar */
+.dev-bar {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(0,0,0,0.7);
+  border: 1px solid #FFD700;
+  border-radius: 8px;
+  padding: 8px 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dev-bar .label {
+  color: #FFD700;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex: 1;
+  min-width: 160px;
+}
+.dev-bar .controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dev-btn {
+  background: #FFD700;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.1s;
+}
+.dev-btn:hover { transform: scale(1.05); }
+.dev-btn:active { transform: scale(0.97); }
+.speed-group {
+  display: flex;
+  border: 1px solid #FFD700;
+  border-radius: 20px;
+  overflow: hidden;
+}
+.speed-btn {
+  background: transparent;
+  color: #FFD700;
+  border: none;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.speed-btn.active { background: #FFD700; color: #1a1a2e; }
+.speed-btn:hover:not(.active) { background: rgba(255,215,0,0.15); }
+.phase-indicator {
+  color: #aaa;
+  font-size: 11px;
+  width: 100%;
+  margin-top: 4px;
+}
+.phase-indicator span { color: #FFD700; font-weight: 700; }
+
+/* Phone frame */
+.phone-frame {
+  width: 390px;
+  height: 844px;
+  background: #0d0d1a;
+  border-radius: 44px;
+  border: 3px solid #333;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 60px rgba(0,0,0,0.8), inset 0 0 0 1px #444;
+}
+.phone-notch {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 120px; height: 30px;
+  background: #0d0d1a;
+  border-radius: 0 0 20px 20px;
+  z-index: 100;
+}
+
+/* Game screen inside phone */
+.game-screen {
+  width: 100%; height: 100%;
+  background: #2a4a2a;
+  position: relative;
+  overflow: hidden;
+}
+
+/* --- TOP BAR --- */
+.top-bar {
+  position: absolute;
+  top: 32px; left: 0; right: 0;
+  height: 48px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  z-index: 50;
+}
+.star-counter {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 20px;
+  padding: 4px 12px;
+}
+.star-icon { font-size: 18px; }
+.star-count {
+  color: #FFD700;
+  font-size: 16px;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+}
+.map-title {
+  color: #FFF8E7;
+  font-size: 13px;
+  font-weight: 600;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+
+/* --- SCENE LAYERS --- */
+.scene-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+}
+
+/* Sky gradient */
+.sky {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 55%;
+  background: linear-gradient(180deg, #87CEEB 0%, #B8E0F7 40%, #D4EDD8 100%);
+}
+
+/* Garden ground */
+.ground {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, #4A7C3A 0%, #2d5a1a 100%);
+  border-radius: 60% 60% 0 0 / 10% 10% 0 0;
+}
+
+/* --- HOUSE / ESTATE --- */
+.estate {
+  position: absolute;
+  top: 80px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+
+/* --- GARDEN PATCH (transform zone) --- */
+.garden-patch {
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 310px;
+  height: 200px;
+  z-index: 10;
+}
+
+/* Patch dirt ground */
+.patch-dirt {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 70px;
+  background: linear-gradient(180deg, #8B6914 0%, #5a3d0a 100%);
+  border-radius: 50% 50% 20px 20px / 20px 20px 10px 10px;
+}
+
+/* BEFORE STATE */
+.before-state {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  transition: opacity 0.8s ease;
+}
+.after-state {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+/* Dead bush SVG wrappers */
+.bush-before {
+  position: absolute;
+  bottom: 50px;
+}
+.pot-before {
+  position: absolute;
+  bottom: 45px;
+  right: 40px;
+}
+.pot-after {
+  position: absolute;
+  bottom: 40px;
+  right: 35px;
+}
+.rose-cluster {
+  position: absolute;
+  bottom: 50px;
+}
+.hedge-after {
+  position: absolute;
+  bottom: 50px;
+}
+
+/* --- CHARACTERS --- */
+.character-mia {
+  position: absolute;
+  bottom: 115px;
+  left: -70px;
+  z-index: 20;
+  transition: left 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.character-leo {
+  position: absolute;
+  top: 160px;
+  right: 40px;
+  z-index: 8;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+/* Speech bubble */
+.speech-bubble {
+  position: absolute;
+  background: white;
+  border-radius: 16px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #333;
+  font-weight: 600;
+  max-width: 140px;
+  text-align: center;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 30;
+  top: 148px;
+  right: 30px;
+  pointer-events: none;
+}
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  right: 24px;
+  width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 9px solid white;
+}
+.speech-bubble.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* --- WIN POPUP --- */
+.win-popup {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.win-popup.visible { opacity: 1; pointer-events: all; }
+.win-card {
+  background: linear-gradient(145deg, #FFF8E7, #FFE0A0);
+  border-radius: 28px;
+  padding: 32px 40px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 3px #FFD700;
+  transform: scale(0.5);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.win-popup.visible .win-card { transform: scale(1); }
+.win-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #C8302E;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.1);
+  margin-bottom: 6px;
+}
+.win-sub {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 16px;
+}
+.win-stars {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.win-star {
+  font-size: 36px;
+  animation: starPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.win-star:nth-child(2) { animation-delay: 0.1s; }
+.win-star:nth-child(3) { animation-delay: 0.2s; }
+@keyframes starPop {
+  from { transform: scale(0) rotate(-30deg); opacity: 0; }
+  to { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* Flying star */
+.flying-star {
+  position: absolute;
+  font-size: 24px;
+  z-index: 70;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* --- AUTO-SPEND TOAST --- */
+.spend-toast {
+  position: absolute;
+  bottom: 340px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(46,95,153,0.95);
+  color: white;
+  border-radius: 24px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 55;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.spend-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* --- REWARD BADGE --- */
+.reward-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  background: linear-gradient(145deg, #C8302E, #e84040);
+  color: white;
+  border-radius: 20px;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 800;
+  z-index: 55;
+  text-align: center;
+  box-shadow: 0 6px 24px rgba(200,48,46,0.5), 0 0 0 3px #FFD700;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.reward-badge.visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Continue button */
+.continue-btn {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  background: linear-gradient(145deg, #FFD700, #FFA000);
+  color: #1a1a2e;
+  border: none;
+  border-radius: 28px;
+  padding: 14px 48px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  z-index: 55;
+  opacity: 0;
+  transition: opacity 0.4s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s;
+  box-shadow: 0 4px 20px rgba(255,215,0,0.4);
+  white-space: nowrap;
+}
+.continue-btn.visible {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+.continue-btn:hover { transform: translateX(-50%) scale(1.05); }
+.continue-btn:active { transform: translateX(-50%) scale(0.97); }
+
+/* Canvas for particles */
+canvas#particles {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 25;
+}
+
+/* Camera zoom effect */
+.scene-zoom {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 0;
+  transition: transform 0.6s ease-in-out;
+  transform-origin: center 60%;
+}
+
+/* Shimmer sweep */
+.shimmer-sweep {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 80px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+  left: -100px;
+  z-index: 22;
+  pointer-events: none;
+  display: none;
+}
+
+/* Heart particle */
+.heart-float {
+  position: absolute;
+  font-size: 20px;
+  z-index: 35;
+  pointer-events: none;
+  animation: floatUp 1.5s ease-out forwards;
+}
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-80px) scale(0.5); }
+}
+
+/* Butterfly */
+.butterfly {
+  position: absolute;
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 23;
+  opacity: 0;
+}
+
+/* Phase fade overlay */
+.phase-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: white;
+  z-index: 58;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+/* Mia walking animation */
+@keyframes miaBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.mia-walking { animation: miaBob 0.4s ease-in-out infinite; }
+
+/* ========= COUNTER ANIM ========= */
+@keyframes counterBump {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); color: #ff4444; }
+  100% { transform: scale(1); }
+}
+.count-anim { animation: counterBump 0.4s ease; }
+
+/* ========= PATCH ZOOM ========= */
+@keyframes patchZoom {
+  0% { transform: translateX(-50%) scale(1); }
+  40% { transform: translateX(-50%) scale(1.08); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+.do-zoom { animation: patchZoom 1.2s ease-in-out; }
+
+</style>
+</head>
+<body>
+
+<!-- DEV OVERLAY BAR -->
+<div class="dev-bar">
+  <div>
+    <div class="label">PROTOTYPE — Cinematic Transformation Test · KVTM 2.0</div>
+    <div class="phase-indicator">Phase: <span id="phaseLabel">Ready</span></div>
+  </div>
+  <div class="controls">
+    <div class="speed-group">
+      <button class="speed-btn" onclick="setSpeed(0.5)">0.5x</button>
+      <button class="speed-btn active" onclick="setSpeed(1)" id="spd1">1x</button>
+      <button class="speed-btn" onclick="setSpeed(2)">2x</button>
+    </div>
+    <button class="dev-btn" onclick="replayDemo()">&#9654; Replay</button>
+  </div>
+</div>
+
+<!-- PHONE FRAME -->
+<div class="phone-frame">
+  <div class="phone-notch"></div>
+
+  <!-- GAME SCREEN -->
+  <div class="game-screen" id="gameScreen">
+
+    <!-- Phase flash overlay -->
+    <div class="phase-overlay" id="phaseOverlay"></div>
+
+    <!-- Zoom wrapper -->
+    <div class="scene-zoom" id="sceneZoom">
+
+      <!-- SKY -->
+      <div class="sky"></div>
+
+      <!-- ESTATE BUILDING -->
+      <div class="estate">
+        <svg width="260" height="160" viewBox="0 0 260 160">
+          <!-- Main building -->
+          <rect x="30" y="60" width="200" height="100" rx="4" fill="#F5E6C8" stroke="#C4A870" stroke-width="2"/>
+          <!-- Roof -->
+          <polygon points="20,65 130,10 240,65" fill="#C8302E" stroke="#8B1E1E" stroke-width="2"/>
+          <!-- Roof trim -->
+          <rect x="20" y="60" width="220" height="8" rx="2" fill="#E8C87C"/>
+          <!-- Windows -->
+          <rect x="55" y="80" width="35" height="28" rx="4" fill="#87CEEB" stroke="#C4A870" stroke-width="1.5"/>
+          <line x1="72" y1="80" x2="72" y2="108" stroke="#C4A870" stroke-width="1"/>
+          <line x1="55" y1="94" x2="90" y2="94" stroke="#C4A870" stroke-width="1"/>
+          <rect x="170" y="80" width="35" height="28" rx="4" fill="#87CEEB" stroke="#C4A870" stroke-width="1.5"/>
+          <line x1="187" y1="80" x2="187" y2="108" stroke="#C4A870" stroke-width="1"/>
+          <line x1="170" y1="94" x2="205" y2="94" stroke="#C4A870" stroke-width="1"/>
+          <!-- Door -->
+          <rect x="108" y="110" width="44" height="50" rx="8" fill="#8B5E2C" stroke="#5a3a10" stroke-width="2"/>
+          <circle cx="146" cy="136" r="4" fill="#FFD700"/>
+          <!-- Balcony (right side) -->
+          <rect x="195" y="70" width="50" height="5" rx="2" fill="#C4A870"/>
+          <rect x="198" y="55" width="2" height="18" fill="#C4A870"/>
+          <rect x="208" y="55" width="2" height="18" fill="#C4A870"/>
+          <rect x="218" y="55" width="2" height="18" fill="#C4A870"/>
+          <rect x="228" y="55" width="2" height="18" fill="#C4A870"/>
+          <rect x="238" y="55" width="2" height="18" fill="#C4A870"/>
+        </svg>
+      </div>
+
+      <!-- GROUND -->
+      <div class="ground"></div>
+
+      <!-- GARDEN PATCH -->
+      <div class="garden-patch" id="gardenPatch">
+        <!-- Dirt base -->
+        <div class="patch-dirt"></div>
+
+        <!-- ======= BEFORE STATE ======= -->
+        <div class="before-state" id="beforeState">
+          <!-- Dead bush left -->
+          <div class="bush-before" style="left: 20px;">
+            <svg width="70" height="90" viewBox="0 0 70 90">
+              <line x1="35" y1="85" x2="35" y2="50" stroke="#5a3a10" stroke-width="4"/>
+              <line x1="35" y1="65" x2="15" y2="40" stroke="#5a3a10" stroke-width="3"/>
+              <line x1="35" y1="60" x2="55" y2="35" stroke="#5a3a10" stroke-width="3"/>
+              <line x1="35" y1="55" x2="20" y2="25" stroke="#5a3a10" stroke-width="2"/>
+              <line x1="35" y1="55" x2="50" y2="20" stroke="#5a3a10" stroke-width="2"/>
+              <line x1="15" y1="40" x2="5" y2="30" stroke="#5a3a10" stroke-width="2"/>
+              <line x1="55" y1="35" x2="65" y2="22" stroke="#5a3a10" stroke-width="2"/>
+              <!-- dead leaves, brown -->
+              <ellipse cx="10" cy="27" rx="8" ry="4" fill="#8B6914" transform="rotate(-30 10 27)" opacity="0.7"/>
+              <ellipse cx="65" cy="18" rx="7" ry="3" fill="#8B6914" transform="rotate(20 65 18)" opacity="0.7"/>
+              <ellipse cx="48" cy="16" rx="7" ry="3" fill="#7a5c10" transform="rotate(-10 48 16)" opacity="0.7"/>
+            </svg>
+          </div>
+          <!-- Dead bush center -->
+          <div class="bush-before" style="left: 110px;">
+            <svg width="65" height="80" viewBox="0 0 65 80">
+              <line x1="32" y1="78" x2="32" y2="45" stroke="#5a3a10" stroke-width="4"/>
+              <line x1="32" y1="58" x2="12" y2="35" stroke="#5a3a10" stroke-width="3"/>
+              <line x1="32" y1="52" x2="52" y2="28" stroke="#5a3a10" stroke-width="3"/>
+              <line x1="12" y1="35" x2="4" y2="20" stroke="#5a3a10" stroke-width="2"/>
+              <line x1="52" y1="28" x2="62" y2="14" stroke="#5a3a10" stroke-width="2"/>
+              <ellipse cx="4" cy="17" rx="7" ry="3" fill="#8B6914" opacity="0.6"/>
+              <ellipse cx="62" cy="11" rx="6" ry="3" fill="#7a5c10" opacity="0.6"/>
+            </svg>
+          </div>
+          <!-- Broken pot -->
+          <div class="pot-before">
+            <svg width="55" height="65" viewBox="0 0 55 65">
+              <!-- cracked pot body -->
+              <path d="M10,20 Q5,40 8,58 L47,58 Q50,40 45,20 Z" fill="#C87040" stroke="#8B4010" stroke-width="2"/>
+              <!-- crack lines -->
+              <line x1="25" y1="25" x2="20" y2="50" stroke="#8B4010" stroke-width="1.5"/>
+              <line x1="20" y1="38" x2="15" y2="45" stroke="#8B4010" stroke-width="1"/>
+              <!-- broken chip top left -->
+              <path d="M10,20 L15,15 L20,22" fill="#C87040" stroke="#8B4010" stroke-width="1.5"/>
+              <!-- rim -->
+              <rect x="6" y="16" width="43" height="8" rx="4" fill="#D4884A" stroke="#8B4010" stroke-width="1.5"/>
+              <!-- dirt inside -->
+              <ellipse cx="27" cy="18" rx="17" ry="5" fill="#5a3a10"/>
+              <!-- dead twig -->
+              <line x1="27" y1="18" x2="24" y2="2" stroke="#5a3a10" stroke-width="2"/>
+              <line x1="24" y1="8" x2="18" y2="1" stroke="#5a3a10" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <!-- Weeds -->
+          <div style="position:absolute; bottom:55px; left:195px;">
+            <svg width="50" height="50" viewBox="0 0 50 50">
+              <line x1="10" y1="48" x2="10" y2="20" stroke="#6B8B3A" stroke-width="2"/>
+              <ellipse cx="10" cy="16" rx="5" ry="8" fill="#6B8B3A" opacity="0.6"/>
+              <line x1="25" y1="48" x2="25" y2="15" stroke="#6B8B3A" stroke-width="2"/>
+              <ellipse cx="25" cy="10" rx="4" ry="7" fill="#8B9B3A" opacity="0.6"/>
+              <line x1="38" y1="48" x2="38" y2="22" stroke="#5a7a2A" stroke-width="2"/>
+              <ellipse cx="38" cy="18" rx="5" ry="7" fill="#6B8B3A" opacity="0.7"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- ======= AFTER STATE ======= -->
+        <div class="after-state" id="afterState">
+          <!-- Left rose cluster -->
+          <div class="rose-cluster" style="left: 8px;" id="roseLeft">
+            <svg width="90" height="100" viewBox="0 0 90 100">
+              <!-- Stems -->
+              <line x1="25" y1="98" x2="25" y2="40" stroke="#3a7a1a" stroke-width="3"/>
+              <line x1="45" y1="98" x2="45" y2="30" stroke="#3a7a1a" stroke-width="3"/>
+              <line x1="65" y1="98" x2="65" y2="45" stroke="#3a7a1a" stroke-width="3"/>
+              <!-- Leaves -->
+              <ellipse cx="15" cy="65" rx="12" ry="6" fill="#4A7C3A" transform="rotate(-30 15 65)"/>
+              <ellipse cx="55" cy="55" rx="11" ry="5" fill="#4A7C3A" transform="rotate(25 55 55)"/>
+              <ellipse cx="75" cy="70" rx="10" ry="5" fill="#4A7C3A" transform="rotate(-20 75 70)"/>
+              <!-- Rose 1 (left) -->
+              <circle cx="25" cy="35" r="14" fill="#C8302E"/>
+              <circle cx="25" cy="35" r="10" fill="#D94040"/>
+              <circle cx="25" cy="35" r="6" fill="#E85050"/>
+              <circle cx="25" cy="35" r="3" fill="#FF7070"/>
+              <!-- Rose 2 (center, bigger) -->
+              <circle cx="45" cy="25" r="16" fill="#B81E1E"/>
+              <circle cx="45" cy="25" r="12" fill="#C8302E"/>
+              <circle cx="45" cy="25" r="7" fill="#D94040"/>
+              <circle cx="45" cy="25" r="3.5" fill="#FF6060"/>
+              <!-- Rose 3 (right) -->
+              <circle cx="65" cy="40" r="13" fill="#C8302E"/>
+              <circle cx="65" cy="40" r="9" fill="#D94040"/>
+              <circle cx="65" cy="40" r="5" fill="#E85050"/>
+              <circle cx="65" cy="40" r="2.5" fill="#FF7070"/>
+            </svg>
+          </div>
+
+          <!-- Center hedge -->
+          <div class="hedge-after" style="left:95px;" id="hedgeCenter">
+            <svg width="80" height="85" viewBox="0 0 80 85">
+              <rect x="5" y="35" width="70" height="48" rx="8" fill="#3a7a1a"/>
+              <ellipse cx="40" cy="38" rx="36" ry="22" fill="#4A7C3A"/>
+              <!-- Mini roses on hedge -->
+              <circle cx="20" cy="28" r="7" fill="#C8302E"/>
+              <circle cx="20" cy="28" r="4" fill="#E04040"/>
+              <circle cx="40" cy="22" r="8" fill="#B81E1E"/>
+              <circle cx="40" cy="22" r="5" fill="#D04040"/>
+              <circle cx="60" cy="28" r="7" fill="#C8302E"/>
+              <circle cx="60" cy="28" r="4" fill="#E04040"/>
+              <!-- Leaves highlight -->
+              <ellipse cx="30" cy="40" rx="9" ry="5" fill="#5A9040" opacity="0.6"/>
+              <ellipse cx="52" cy="42" rx="8" ry="4" fill="#5A9040" opacity="0.6"/>
+            </svg>
+          </div>
+
+          <!-- Fixed pot (right) -->
+          <div class="pot-after" id="potAfter">
+            <svg width="60" height="72" viewBox="0 0 60 72">
+              <!-- Pot body -->
+              <path d="M12,22 Q7,44 10,62 L50,62 Q53,44 48,22 Z" fill="#D4884A" stroke="#8B4010" stroke-width="2"/>
+              <!-- Decorative band -->
+              <path d="M14,38 Q8,42 10,48 L50,48 Q52,42 46,38 Z" fill="#C87040" stroke="#8B4010" stroke-width="1"/>
+              <!-- Rim -->
+              <rect x="8" y="18" width="44" height="8" rx="4" fill="#E09858" stroke="#8B4010" stroke-width="1.5"/>
+              <!-- Soil -->
+              <ellipse cx="30" cy="21" rx="18" ry="5" fill="#5a3a10"/>
+              <!-- Small rose plant in pot -->
+              <line x1="30" y1="21" x2="30" y2="4" stroke="#3a7a1a" stroke-width="2.5"/>
+              <line x1="30" y1="12" x2="22" y2="6" stroke="#3a7a1a" stroke-width="1.5"/>
+              <circle cx="30" cy="2" r="7" fill="#C8302E"/>
+              <circle cx="30" cy="2" r="4" fill="#E04040"/>
+              <circle cx="22" cy="4" r="5" fill="#C8302E"/>
+              <circle cx="22" cy="4" r="3" fill="#E04040"/>
+              <!-- Leaf -->
+              <ellipse cx="38" cy="10" rx="8" ry="4" fill="#4A7C3A" transform="rotate(20 38 10)"/>
+            </svg>
+          </div>
+
+          <!-- Right mini hedge -->
+          <div class="hedge-after" style="right:0px;" id="hedgeRight">
+            <svg width="60" height="75" viewBox="0 0 60 75">
+              <rect x="3" y="30" width="54" height="44" rx="8" fill="#3a7a1a"/>
+              <ellipse cx="30" cy="33" rx="28" ry="18" fill="#4A7C3A"/>
+              <circle cx="15" cy="24" r="7" fill="#C8302E"/>
+              <circle cx="15" cy="24" r="4" fill="#E04040"/>
+              <circle cx="30" cy="19" r="8" fill="#D94040"/>
+              <circle cx="30" cy="19" r="5" fill="#F05050"/>
+              <circle cx="45" cy="24" r="6" fill="#C8302E"/>
+              <circle cx="45" cy="24" r="3.5" fill="#E04040"/>
+            </svg>
+          </div>
+        </div>
+      </div><!-- /garden-patch -->
+
+      <!-- CHARACTER: LEO (on balcony) -->
+      <div class="character-leo" id="charLeo">
+        <svg width="36" height="60" viewBox="0 0 36 60">
+          <!-- Body -->
+          <rect x="10" y="28" width="16" height="22" rx="6" fill="#2E5F99"/>
+          <!-- Head -->
+          <circle cx="18" cy="20" r="12" fill="#F5C5A0"/>
+          <!-- Hair fringe -->
+          <path d="M6,16 Q10,6 18,8 Q26,6 30,16" fill="#3a2a10" stroke="#3a2a10" stroke-width="1"/>
+          <path d="M6,16 Q7,10 12,13" fill="#3a2a10"/>
+          <!-- Eyes -->
+          <circle cx="14" cy="20" r="2" fill="#2a1a0a"/>
+          <circle cx="22" cy="20" r="2" fill="#2a1a0a"/>
+          <circle cx="14.7" cy="19.3" r="0.6" fill="white"/>
+          <circle cx="22.7" cy="19.3" r="0.6" fill="white"/>
+          <!-- Smile -->
+          <path d="M13,25 Q18,29 23,25" stroke="#8B4010" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <!-- Arms (leaning on railing) -->
+          <line x1="10" y1="35" x2="2" y2="44" stroke="#F5C5A0" stroke-width="4" stroke-linecap="round"/>
+          <line x1="26" y1="35" x2="34" y2="44" stroke="#F5C5A0" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <!-- SPEECH BUBBLE -->
+      <div class="speech-bubble" id="speechBubble">
+        "Vườn này... đẹp hơn anh tưởng." 💙
+      </div>
+
+    </div><!-- /scene-zoom -->
+
+    <!-- SHIMMER SWEEP -->
+    <div class="shimmer-sweep" id="shimmerSweep"></div>
+
+    <!-- PARTICLES CANVAS -->
+    <canvas id="particles" width="390" height="844"></canvas>
+
+    <!-- CHARACTER: MIA (outside zoom so it's above) -->
+    <div class="character-mia" id="charMia">
+      <svg width="56" height="88" viewBox="0 0 56 88" class="mia-char">
+        <!-- Dress -->
+        <path d="M16,42 Q10,60 12,80 L44,80 Q46,60 40,42 Z" fill="#FFA0C0"/>
+        <path d="M16,42 Q10,60 12,80 L28,80 L28,42 Z" fill="#FF8AAE"/>
+        <!-- Apron -->
+        <path d="M20,45 Q18,62 20,76 L36,76 Q38,62 36,45 Z" fill="white" opacity="0.7"/>
+        <!-- Body torso -->
+        <rect x="18" y="28" width="20" height="16" rx="5" fill="#FFA0C0"/>
+        <!-- Head -->
+        <circle cx="28" cy="18" r="14" fill="#F5C5A0"/>
+        <!-- Ponytail -->
+        <path d="M28,8 Q38,4 42,14 Q40,20 36,16 Q38,10 30,10 Z" fill="#8B5010"/>
+        <ellipse cx="40" cy="14" rx="5" ry="7" fill="#8B5010" transform="rotate(20 40 14)"/>
+        <!-- Hair -->
+        <path d="M14,14 Q12,6 20,6 Q18,10 16,14 Z" fill="#8B5010"/>
+        <ellipse cx="16" cy="10" rx="6" ry="5" fill="#8B5010"/>
+        <!-- Eyes -->
+        <circle cx="24" cy="18" r="2.2" fill="#2a1a0a"/>
+        <circle cx="32" cy="18" r="2.2" fill="#2a1a0a"/>
+        <circle cx="24.7" cy="17.3" r="0.8" fill="white"/>
+        <circle cx="32.7" cy="17.3" r="0.8" fill="white"/>
+        <!-- Smile -->
+        <path d="M23,23 Q28,27 33,23" stroke="#C87040" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <!-- Rosy cheeks -->
+        <circle cx="20" cy="22" r="4" fill="#FF8888" opacity="0.3"/>
+        <circle cx="36" cy="22" r="4" fill="#FF8888" opacity="0.3"/>
+        <!-- Arms -->
+        <line x1="18" y1="34" x2="8" y2="50" stroke="#F5C5A0" stroke-width="5" stroke-linecap="round"/>
+        <line x1="38" y1="34" x2="48" y2="48" stroke="#F5C5A0" stroke-width="5" stroke-linecap="round"/>
+        <!-- Tool/trowel in hand -->
+        <line x1="8" y1="50" x2="2" y2="62" stroke="#8B6914" stroke-width="3" stroke-linecap="round"/>
+        <ellipse cx="0" cy="64" rx="4" ry="7" fill="#C8B050" transform="rotate(-20 0 64)"/>
+        <!-- Legs -->
+        <rect x="20" y="78" width="7" height="10" rx="3" fill="#FFA0C0"/>
+        <rect x="29" y="78" width="7" height="10" rx="3" fill="#FFA0C0"/>
+        <!-- Shoes -->
+        <ellipse cx="23" cy="88" rx="6" ry="3" fill="#C8302E"/>
+        <ellipse cx="32" cy="88" rx="6" ry="3" fill="#C8302E"/>
+      </svg>
+    </div>
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+      <div class="star-counter">
+        <span class="star-icon">⭐</span>
+        <span class="star-count" id="starCount">3</span>
+      </div>
+      <div class="map-title">Vườn Hoa Hồng · Map 1</div>
+      <div style="width:60px;"></div>
+    </div>
+
+    <!-- WIN POPUP -->
+    <div class="win-popup" id="winPopup">
+      <div class="win-card">
+        <div class="win-title">🎉 Level 12</div>
+        <div class="win-sub">Hoàn Thành!</div>
+        <div class="win-stars">
+          <div class="win-star">⭐</div>
+          <div class="win-star">⭐</div>
+          <div class="win-star">⭐</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FLYING STAR (for animation) -->
+    <div class="flying-star" id="flyingStar">⭐</div>
+
+    <!-- AUTO-SPEND TOAST -->
+    <div class="spend-toast" id="spendToast">
+      <span>⭐</span>
+      <span>Mia đang tỉa hoa hồng...</span>
+    </div>
+
+    <!-- REWARD BADGE -->
+    <div class="reward-badge" id="rewardBadge">
+      ✨ Câu chuyện mới!
+    </div>
+
+    <!-- CONTINUE BUTTON -->
+    <button class="continue-btn" id="continueBtn" onclick="replayDemo()">
+      ▶ Tiếp Tục
+    </button>
+
+  </div><!-- /game-screen -->
+</div><!-- /phone-frame -->
+
+<script>
+// ======= STATE & CONFIG =======
+let speedMult = 1;
+let animRunning = false;
+let activeTimeouts = [];
+let activeRAF = null;
+let particleCtx = null;
+let particles = [];
+let butterflies = [];
+
+const PHASE_NAMES = [
+  'Ready',
+  'Win Popup',
+  'Hub Return',
+  'Auto-Spend',
+  'Transformation',
+  'Mia Walks',
+  'Sparkle Sweep',
+  'Cross-Fade',
+  'Story Beat',
+  'Reward'
+];
+
+// ======= SPEED CONTROL =======
+function setSpeed(s) {
+  speedMult = s;
+  document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+  if (s === 0.5) document.querySelectorAll('.speed-btn')[0].classList.add('active');
+  if (s === 1)   document.querySelectorAll('.speed-btn')[1].classList.add('active');
+  if (s === 2)   document.querySelectorAll('.speed-btn')[2].classList.add('active');
+}
+
+function t(ms) { return ms / speedMult; }
+
+function delay(ms) {
+  return new Promise(resolve => {
+    const id = setTimeout(resolve, t(ms));
+    activeTimeouts.push(id);
+  });
+}
+
+function setPhase(name) {
+  document.getElementById('phaseLabel').textContent = name;
+}
+
+// ======= CLEANUP =======
+function clearAll() {
+  activeTimeouts.forEach(clearTimeout);
+  activeTimeouts = [];
+  if (activeRAF) cancelAnimationFrame(activeRAF);
+  activeRAF = null;
+  particles = [];
+  butterflies = [];
+  document.querySelectorAll('.heart-float, .butterfly').forEach(el => el.remove());
+}
+
+// ======= RESET SCENE =======
+function resetScene() {
+  clearAll();
+  animRunning = false;
+
+  // star count
+  document.getElementById('starCount').textContent = '3';
+
+  // win popup
+  const wp = document.getElementById('winPopup');
+  wp.classList.remove('visible');
+
+  // flying star
+  const fs = document.getElementById('flyingStar');
+  fs.style.opacity = '0';
+
+  // toast
+  document.getElementById('spendToast').classList.remove('visible');
+
+  // before/after
+  document.getElementById('beforeState').style.opacity = '1';
+  document.getElementById('afterState').style.opacity = '0';
+
+  // Mia off screen left
+  const mia = document.getElementById('charMia');
+  mia.style.transition = 'none';
+  mia.style.left = '-70px';
+  mia.querySelector('.mia-char').classList.remove('mia-walking');
+
+  // Leo hidden
+  document.getElementById('charLeo').style.opacity = '0';
+
+  // speech bubble
+  const sb = document.getElementById('speechBubble');
+  sb.classList.remove('visible');
+
+  // reward
+  document.getElementById('rewardBadge').classList.remove('visible');
+  document.getElementById('continueBtn').classList.remove('visible');
+
+  // shimmer
+  const shimmer = document.getElementById('shimmerSweep');
+  shimmer.style.display = 'none';
+  shimmer.style.left = '-100px';
+
+  // zoom
+  const zoom = document.getElementById('sceneZoom');
+  zoom.style.transform = 'scale(1)';
+
+  // garden patch
+  const gp = document.getElementById('gardenPatch');
+  gp.classList.remove('do-zoom');
+  gp.style.transform = 'translateX(-50%)';
+
+  // phase overlay
+  document.getElementById('phaseOverlay').style.opacity = '0';
+
+  // canvas clear
+  if (particleCtx) {
+    particleCtx.clearRect(0, 0, 390, 844);
+  }
+
+  setPhase('Ready');
+}
+
+// ======= PARTICLE SYSTEM =======
+function initParticles() {
+  const canvas = document.getElementById('particles');
+  particleCtx = canvas.getContext('2d');
+}
+
+function spawnSparkles(count, originX, originY, spread) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      type: 'sparkle',
+      x: originX + (Math.random() - 0.5) * spread,
+      y: originY + (Math.random() - 0.5) * spread * 0.5,
+      vx: (Math.random() - 0.5) * 2,
+      vy: -Math.random() * 3 - 1,
+      life: 1,
+      decay: Math.random() * 0.02 + 0.015,
+      size: Math.random() * 6 + 3,
+      color: Math.random() > 0.5 ? '#FFD700' : '#FF88CC',
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.2
+    });
+  }
+}
+
+function spawnSweepParticles(x, startY, endY) {
+  const count = 6;
+  for (let i = 0; i < count; i++) {
+    const y = startY + (endY - startY) * (i / count);
+    particles.push({
+      type: 'sparkle',
+      x: x + (Math.random() - 0.5) * 20,
+      y: y,
+      vx: Math.random() * 1.5 + 0.5,
+      vy: (Math.random() - 0.5) * 1.5,
+      life: 1,
+      decay: 0.025,
+      size: Math.random() * 5 + 2,
+      color: Math.random() > 0.4 ? '#FFD700' : (Math.random() > 0.5 ? '#FF88CC' : 'white'),
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.15
+    });
+  }
+}
+
+function spawnButterflies() {
+  const gs = document.getElementById('gameScreen');
+  for (let i = 0; i < 4; i++) {
+    const bf = document.createElement('div');
+    bf.className = 'butterfly';
+    bf.textContent = '🦋';
+    bf.style.left = (80 + Math.random() * 200) + 'px';
+    bf.style.top = (550 + Math.random() * 100) + 'px';
+    gs.appendChild(bf);
+    butterflies.push({ el: bf, life: 0 });
+    const delay_ms = i * 300;
+    setTimeout(() => {
+      bf.style.transition = `opacity 0.5s ease, left ${(1 + Math.random()) / speedMult}s ease, top ${(0.8 + Math.random()) / speedMult}s ease`;
+      bf.style.opacity = '1';
+      setTimeout(() => {
+        bf.style.left = (parseInt(bf.style.left) + 40 + Math.random() * 60) + 'px';
+        bf.style.top = (parseInt(bf.style.top) - 30 - Math.random() * 40) + 'px';
+      }, 200);
+    }, delay_ms);
+    setTimeout(() => {
+      bf.style.opacity = '0';
+      setTimeout(() => bf.remove(), 500);
+    }, delay_ms + t(2000));
+  }
+}
+
+function spawnHeart(x, y) {
+  const gs = document.getElementById('gameScreen');
+  const h = document.createElement('div');
+  h.className = 'heart-float';
+  h.textContent = '💙';
+  h.style.left = x + 'px';
+  h.style.top = y + 'px';
+  h.style.animationDuration = t(1500) + 'ms';
+  gs.appendChild(h);
+  setTimeout(() => h.remove(), t(1600));
+}
+
+function drawParticles() {
+  if (!particleCtx) return;
+  particleCtx.clearRect(0, 0, 390, 844);
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.05; // gravity
+    p.life -= p.decay;
+    p.rot += p.rotSpeed;
+
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+
+    particleCtx.save();
+    particleCtx.globalAlpha = p.life;
+    particleCtx.translate(p.x, p.y);
+    particleCtx.rotate(p.rot);
+    particleCtx.fillStyle = p.color;
+
+    // 4-point star
+    const s = p.size;
+    particleCtx.beginPath();
+    for (let k = 0; k < 8; k++) {
+      const angle = (k * Math.PI) / 4;
+      const r2 = k % 2 === 0 ? s : s * 0.4;
+      const px = Math.cos(angle) * r2;
+      const py = Math.sin(angle) * r2;
+      if (k === 0) particleCtx.moveTo(px, py);
+      else particleCtx.lineTo(px, py);
+    }
+    particleCtx.closePath();
+    particleCtx.fill();
+    particleCtx.restore();
+  }
+
+  activeRAF = requestAnimationFrame(drawParticles);
+}
+
+// ======= SHIMMER SWEEP =======
+function runShimmerSweep() {
+  return new Promise(resolve => {
+    const shimmer = document.getElementById('shimmerSweep');
+    shimmer.style.display = 'block';
+    shimmer.style.transition = 'none';
+    shimmer.style.left = '-100px';
+
+    // Spawn particles along the sweep
+    let sweepX = -100;
+    const sweepDuration = t(900);
+    const start = performance.now();
+
+    function sweep(now) {
+      const progress = (now - start) / sweepDuration;
+      if (progress >= 1) {
+        shimmer.style.display = 'none';
+        resolve();
+        return;
+      }
+      sweepX = -100 + progress * 490;
+      shimmer.style.left = sweepX + 'px';
+
+      // Spawn sparkles along the patch area (bottom ~600-800)
+      if (Math.random() > 0.4) {
+        spawnSweepParticles(sweepX + 40, 580, 760);
+      }
+
+      requestAnimationFrame(sweep);
+    }
+    requestAnimationFrame(sweep);
+  });
+}
+
+// ======= FLYING STAR ANIMATION =======
+async function flyStarToCounter() {
+  const fs = document.getElementById('flyingStar');
+  // Start from center of win popup
+  fs.style.left = '150px';
+  fs.style.top = '380px';
+  fs.style.opacity = '1';
+  fs.style.transform = 'scale(1.5)';
+  fs.style.transition = 'none';
+
+  await delay(50);
+  fs.style.transition = `left ${t(600)}ms ease-in, top ${t(600)}ms ease-in, transform ${t(600)}ms ease, opacity ${t(600)}ms ease`;
+  fs.style.left = '26px';
+  fs.style.top = '44px';
+  fs.style.transform = 'scale(0.6)';
+
+  await delay(650);
+  fs.style.opacity = '0';
+
+  // Bump star count
+  const sc = document.getElementById('starCount');
+  sc.textContent = '4';
+  sc.classList.remove('count-anim');
+  void sc.offsetWidth;
+  sc.classList.add('count-anim');
+
+  await delay(500);
+}
+
+// ======= MAIN DEMO SEQUENCE =======
+async function runDemo() {
+  if (animRunning) return;
+  animRunning = true;
+  setPhase('Starting...');
+
+  // Start particle loop
+  drawParticles();
+
+  // ===== PHASE 1: WIN POPUP =====
+  setPhase('Win Popup');
+  await delay(300);
+  document.getElementById('winPopup').classList.add('visible');
+  await delay(800);
+
+  // Fly star to top bar
+  await flyStarToCounter();
+  await delay(200);
+
+  // Hide win popup
+  document.getElementById('winPopup').classList.remove('visible');
+  await delay(400);
+
+  // ===== PHASE 2: HUB RETURN =====
+  setPhase('Hub Return');
+  // Scene is already showing "before" state
+  // Brief moment to show it
+  await delay(500);
+
+  // ===== PHASE 3: AUTO-SPEND PROMPT =====
+  setPhase('Auto-Spend');
+  document.getElementById('spendToast').classList.add('visible');
+
+  // Decrement star counter
+  await delay(400);
+  const sc = document.getElementById('starCount');
+  sc.textContent = '3';
+  sc.classList.remove('count-anim');
+  void sc.offsetWidth;
+  sc.classList.add('count-anim');
+
+  await delay(600);
+  document.getElementById('spendToast').classList.remove('visible');
+  await delay(200);
+
+  // ===== PHASE 4: TRANSFORMATION =====
+  setPhase('Transformation');
+
+  // 4a: Mia walks in
+  setPhase('Mia walks in');
+  const mia = document.getElementById('charMia');
+  mia.querySelector('.mia-char').classList.add('mia-walking');
+  mia.style.transition = `left ${t(800)}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+  mia.style.left = '60px';
+  await delay(900);
+
+  // Stop walking
+  mia.querySelector('.mia-char').classList.remove('mia-walking');
+  await delay(200);
+
+  // 4b: Sparkle sweep (left→right across patch)
+  setPhase('Sparkle sweep');
+  // Also spawn initial burst
+  spawnSparkles(20, 130, 680, 100);
+  await runShimmerSweep();
+  await delay(100);
+
+  // More sparkles at peak
+  spawnSparkles(30, 200, 660, 150);
+  await delay(100);
+  spawnSparkles(20, 280, 680, 120);
+
+  // 4c: Camera zoom in
+  setPhase('Camera zoom');
+  const zoom = document.getElementById('sceneZoom');
+  zoom.style.transition = `transform ${t(600)}ms ease-in`;
+  zoom.style.transform = 'scale(1.07)';
+  await delay(400);
+
+  // 4d: Cross-fade before→after
+  setPhase('Cross-fade reveal');
+  document.getElementById('beforeState').style.transition = `opacity ${t(800)}ms ease`;
+  document.getElementById('afterState').style.transition = `opacity ${t(800)}ms ease`;
+  document.getElementById('beforeState').style.opacity = '0';
+  document.getElementById('afterState').style.opacity = '1';
+
+  // Patch zoom bounce
+  const gp = document.getElementById('gardenPatch');
+  setTimeout(() => {
+    gp.style.transition = `transform ${t(300)}ms cubic-bezier(0.34, 1.56, 0.64, 1)`;
+    gp.style.transform = 'translateX(-50%) scale(1.05)';
+    setTimeout(() => {
+      gp.style.transform = 'translateX(-50%) scale(1)';
+    }, t(300));
+  }, t(200));
+
+  // Sparkles on after reveal
+  spawnSparkles(40, 195, 660, 180);
+
+  await delay(900);
+
+  // Camera zoom back out
+  zoom.style.transition = `transform ${t(700)}ms ease-out`;
+  zoom.style.transform = 'scale(1)';
+
+  // Butterflies!
+  spawnButterflies();
+
+  await delay(600);
+
+  // Mia happy pose (move slightly right)
+  mia.style.transition = `left ${t(300)}ms ease`;
+  mia.style.left = '50px';
+  await delay(200);
+
+  // ===== PHASE 5: STORY BEAT =====
+  setPhase('Story Beat');
+  // Show Leo
+  document.getElementById('charLeo').style.opacity = '1';
+  await delay(500);
+
+  // Show speech bubble
+  document.getElementById('speechBubble').classList.add('visible');
+
+  // Hearts
+  await delay(400);
+  spawnHeart(285, 170);
+  await delay(300);
+  spawnHeart(270, 155);
+  await delay(300);
+  spawnHeart(295, 160);
+
+  // More sparkles (celebration burst)
+  spawnSparkles(25, 195, 500, 200);
+
+  await delay(1200);
+
+  // ===== PHASE 6: REWARD FEEDBACK =====
+  setPhase('Reward');
+  document.getElementById('rewardBadge').classList.add('visible');
+  await delay(200);
+  spawnSparkles(30, 195, 422, 160);
+
+  await delay(600);
+  document.getElementById('continueBtn').classList.add('visible');
+
+  setPhase('Complete — press Replay to restart');
+  animRunning = false;
+}
+
+// ======= REPLAY =======
+function replayDemo() {
+  resetScene();
+  setTimeout(() => runDemo(), 100);
+}
+
+// ======= INIT =======
+initParticles();
+// Auto-start after short delay
+setTimeout(() => runDemo(), 600);
+</script>
+</body>
+</html>

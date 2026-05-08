@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KVTM Rework Quick Fix — Spec Doc v1.2 | Khu Vườn Trên Mây</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-base: #0a0e1a;
+    --bg-card: #171b28;
+    --bg-card-hi: #262a37;
+    --bg-card-lo: #12172a;
+    --border: rgba(255,255,255,.06);
+    --border-hi: rgba(195,192,255,.2);
+    --text: #dfe2f3;
+    --text-muted: #8b94b0;
+    --text-dim: #5a637a;
+    --primary: #c3c0ff;
+    --primary-strong: #4f46e5;
+    --gold: #fbbf24;
+    --green: #6ee7b7;
+    --pink: #f472b6;
+    --red: #f87171;
+    --orange: #fb923c;
+    --blue: #60a5fa;
+  }
+  body { font-family: 'Be Vietnam Pro', sans-serif; background: var(--bg-base); color: var(--text); line-height: 1.65; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400; vertical-align: middle; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; }
+  .card-hi { background: var(--bg-card-hi); }
+  .gradient-spotlight { background: linear-gradient(135deg, rgba(195,192,255,.12) 0%, rgba(79,70,229,.04) 100%); border: 1px solid rgba(195,192,255,.2); }
+  .gradient-gold { background: linear-gradient(135deg, rgba(251,191,36,.12) 0%, rgba(251,191,36,.02) 100%); border: 1px solid rgba(251,191,36,.25); }
+  .gradient-green { background: linear-gradient(135deg, rgba(110,231,183,.1) 0%, rgba(110,231,183,.02) 100%); border: 1px solid rgba(110,231,183,.2); }
+  .gradient-red { background: linear-gradient(135deg, rgba(248,113,113,.1) 0%, rgba(248,113,113,.02) 100%); border: 1px solid rgba(248,113,113,.2); }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] > summary .chevron { transform: rotate(90deg); }
+  .chevron { transition: transform .2s; }
+  table.data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  table.data-table th { background: var(--bg-card-lo); color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 10px; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  table.data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.data-table tbody tr:hover { background: rgba(195,192,255,.03); }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+  .tag-primary { background: rgba(195,192,255,.12); color: var(--primary); }
+  .tag-gold { background: rgba(251,191,36,.12); color: var(--gold); }
+  .tag-green { background: rgba(110,231,183,.12); color: var(--green); }
+  .tag-pink { background: rgba(244,114,182,.12); color: var(--pink); }
+  .tag-orange { background: rgba(251,146,60,.12); color: var(--orange); }
+  .tag-red { background: rgba(248,113,113,.12); color: var(--red); }
+  .tag-blue { background: rgba(96,165,250,.12); color: var(--blue); }
+  .tag-dim { background: rgba(255,255,255,.04); color: var(--text-dim); }
+  .section-num { display: inline-flex; width: 32px; height: 32px; border-radius: 8px; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 14px; background: var(--primary-strong); color: white; }
+  .stat-num { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 24px; line-height: 1; }
+  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); font-weight: 700; margin-top: 6px; }
+  .toc { position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; }
+  .toc::-webkit-scrollbar { width: 4px; }
+  .toc::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .toc a { display: block; padding: 8px 12px; font-size: 12px; color: var(--text-muted); border-radius: 6px; transition: all .15s; border-left: 2px solid transparent; }
+  .toc a:hover { background: var(--bg-card-hi); color: var(--text); }
+  .toc a.active { background: rgba(195,192,255,.08); color: var(--primary); border-left-color: var(--primary); }
+  .ascii-box { font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.5; color: var(--text-muted); background: var(--bg-card-lo); padding: 14px 16px; border-radius: 8px; border: 1px solid var(--border); white-space: pre; overflow-x: auto; }
+  .problem-card { padding: 18px; border-left: 4px solid var(--red); background: linear-gradient(90deg, rgba(248,113,113,.06), transparent); border-radius: 0 12px 12px 0; }
+  .solution-card { padding: 18px; border-left: 4px solid var(--green); background: linear-gradient(90deg, rgba(110,231,183,.06), transparent); border-radius: 0 12px 12px 0; }
+  .week-pill { display: inline-block; padding: 4px 10px; border-radius: 6px; background: var(--primary-strong); color: white; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; }
+  .arrow-down { display: inline-block; color: var(--primary); font-size: 18px; margin: 4px 0; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- HEADER -->
+<header class="border-b border-white/5 bg-[#0a0e1a]/95 backdrop-blur sticky top-0 z-40">
+  <div class="max-w-[1400px] mx-auto px-8 py-5 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, var(--primary-strong), var(--primary));">
+        <span class="material-symbols-outlined" style="color: white; font-size: 22px;">build</span>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-widest mono font-bold" style="color: var(--text-muted);">Khu Vườn Trên Mây · Rework Spec</div>
+        <div class="text-base font-extrabold tracking-tight">KVTM REWORK QUICK FIX v1.2</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 text-xs mono" style="color: var(--text-muted);">
+      <span class="tag tag-pink">v1.2</span>
+      <span class="tag tag-gold">DRAFT</span>
+      <span>2026-05-04</span>
+    </div>
+  </div>
+</header>
+
+<div class="max-w-[1400px] mx-auto px-8 py-12 grid grid-cols-12 gap-8">
+
+  <!-- TOC -->
+  <aside class="col-span-12 lg:col-span-3">
+    <nav class="toc">
+      <div class="text-xs uppercase tracking-widest mono font-bold mb-3 px-3" style="color: var(--text-muted);">Mục lục</div>
+      <a href="#sec-0" class="active">0. Tổng quan</a>
+      <a href="#sec-1">1. Executive Summary</a>
+      <a href="#sec-2">2. Cấu trúc KVTM hiện tại</a>
+      <a href="#sec-2b">2B. Player Value Proposition 🌟</a>
+      <a href="#sec-3">3. 6 Vấn đề chính</a>
+      <a href="#sec-4">4. 6 Solution chi tiết</a>
+      <a href="#sec-5">5. Reference Research</a>
+      <a href="#sec-6">6. Roadmap 8 tuần</a>
+      <a href="#sec-7">7. KPI Target</a>
+      <a href="#sec-8">8. Risk &amp; Migration</a>
+      <a href="#sec-9">9. Strip &amp; Rebuild Strategy 🔧</a>
+      <a href="#sec-10">10. ASMR Deep Dive 🎵</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="col-span-12 lg:col-span-9 space-y-16">
+
+    <!-- SECTION 0 -->
+    <section id="sec-0">
+      <div class="card p-10 gradient-spotlight">
+        <div class="text-xs uppercase tracking-widest mono font-bold mb-3" style="color: var(--primary);">Quick Fix · 1-2 Tháng · Giữ 100% Userbase</div>
+        <h1 class="text-5xl font-black tracking-tight mb-4" style="letter-spacing: -.02em;">
+          REWORK KVTM
+          <span class="block text-2xl font-bold mt-2" style="color: var(--text-muted); letter-spacing: 0;">Hướng A — Quick Fix · Fix 6 vấn đề · Apply 7 trend 2026</span>
+        </h1>
+        <p class="text-base mb-6">
+          Spec rework KVTM theo hướng <strong style="color: var(--green);">Quick Fix 1-2 tháng</strong> — không động core gameplay (10 tầng × 6 chậu × 1 máy giữ nguyên) · focus fix UX onboarding · add challenge layer · refresh visual coding · không cần migration save data.
+        </p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="card-hi rounded-lg p-4">
+            <div class="stat-num" style="color: var(--primary);">8</div>
+            <div class="stat-label">Solution (6+2 NEW)</div>
+          </div>
+          <div class="card-hi rounded-lg p-4">
+            <div class="stat-num" style="color: var(--gold);">8</div>
+            <div class="stat-label">Tuần dev</div>
+          </div>
+          <div class="card-hi rounded-lg p-4">
+            <div class="stat-num" style="color: var(--green);">+5<span class="text-base">pp</span></div>
+            <div class="stat-label">RR1 target</div>
+          </div>
+          <div class="card-hi rounded-lg p-4">
+            <div class="stat-num" style="color: var(--pink);">-72<span class="text-base">%</span></div>
+            <div class="stat-label">Tutorial step</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: EXEC SUMMARY -->
+    <section id="sec-1">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">01</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Executive Summary</h2>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4 mb-6">
+        <div class="card p-6">
+          <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--text-muted);">Why rework now?</div>
+          <ul class="space-y-2 text-sm">
+            <li>📉 RR1 newbie chỉ 29.9% — <strong>dưới chuẩn top puzzle/casual 35%</strong> (industry 2025)</li>
+            <li>📊 Whale 3% payer = 39.5% revenue — risk tập trung</li>
+            <li>🔄 Pay#1→Pay#2 dropout 50% — newbie pack repeat 46%</li>
+            <li>🎨 Visual identity 2D flat — gen Z không bite</li>
+            <li>⚠️ Tutorial 18 step → drop nhiều</li>
+            <li>🧭 Navigation friction — scroll dọc 11 layer</li>
+          </ul>
+        </div>
+        <div class="card p-6">
+          <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--text-muted);">Why Quick Fix (Hướng A)?</div>
+          <ul class="space-y-2 text-sm">
+            <li>✅ <strong>Không động core gameplay</strong> — giữ 100% userbase quen game</li>
+            <li>✅ <strong>1-2 tháng dev</strong> — ship nhanh, đo kết quả sớm</li>
+            <li>✅ <strong>Không cần migration save</strong> — user cũ tiếp chơi từ trạng thái hiện tại</li>
+            <li>✅ <strong>Risk thấp</strong> — fix UX layer ngoài, không break logic</li>
+            <li>✅ <strong>Parallel với Garden Coloring</strong> — không chiếm dev resource Game 1</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--text-muted);">Strategy diagram</div>
+        <div class="ascii-box">
+PROBLEM/PRACTICE          SOLUTION                    OUTCOME
+═════════════════         ════════                    ═══════
+A. Tuyến tính           → Daily Challenge + Streak   → Engagement +30%
+B. Khó gần             → Khăn Đỏ NPC buddy           → Warm onboarding
+C. Khó hiểu            → Auto-suggest từ order       → CV0 +0.3pp
+D. Tutorial dài        → 18 step → 5 step            → Tutorial complete +40%
+E. Không trực quan     → Color coding + animation    → Click-through +25%
+F. Navigation friction → Mini-map + quick jump       → Time-to-floor 10 -90%
+G. (NEW) Push notif    → Personalized + frequency    → Re-engagement +15-30%
+H. (NEW) Live ops      → Daily/Weekly/Monthly cadence→ Retention D30+ momentum
+
+         ↓
+   8 TUẦN DEV (W1-W6 solution + W7 QA + W8 soft-launch)
+         ↓
+   SOFT-LAUNCH 5% → A/B TEST → FULL ROLLOUT</div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: CẤU TRÚC HIỆN TẠI -->
+    <section id="sec-2">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">02</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Cấu trúc KVTM Hiện Tại</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Layout 11 layer · Navigation scroll dọc</div>
+        <div class="ascii-box">
+   ☁️ TẦNG 10 (highest, end-game)    🏭 máy 10 + 6 chậu
+   ☁️ TẦNG 9                         🏭 máy 9 + 6 chậu
+   ☁️ TẦNG 8                         🏭 máy 8 + 6 chậu
+   ☁️ TẦNG 7                         🏭 máy 7 + 6 chậu
+   ☁️ TẦNG 6                         🏭 máy 6 + 6 chậu
+   ☁️ TẦNG 5                         🏭 máy 5 + 6 chậu
+   ☁️ TẦNG 4                         🏭 máy 4 + 6 chậu
+   ☁️ TẦNG 3                         🏭 máy 3 + 6 chậu
+   ☁️ TẦNG 2                         🏭 máy 2 + 6 chậu
+   ☁️ TẦNG 1 (starter)               🏭 máy 1 + 6 chậu
+   ─────────────────────────────────────────────────
+   🌍 MẶT ĐẤT (hub features)
+       ├─ 🏪 Shop / Market
+       ├─ 👥 Social / Friend
+       ├─ 🎁 Event / Sự kiện
+       ├─ 🦉 Đơn hàng Cú (dễ)
+       ├─ 🐂 Đơn hàng Xe Bò (trung bình)
+       └─ 🎈 Đơn hàng Khinh khí cầu (khó)
+
+   Total: 60 chậu (6 × 10) · 10 máy chế biến · N công trình hub · 3 loại order</div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--green);">UNLOCK 10 TẦNG</div>
+          <div class="text-sm">Theo level player + yêu cầu tài nguyên (vàng/KC/item)</div>
+        </div>
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--gold);">CHẬU NÂNG CẤP</div>
+          <div class="text-sm">Chậu cao cấp = đẹp hơn + giảm thời gian trồng (KC sink chính)</div>
+        </div>
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--blue);">MÁY CHẾ BIẾN</div>
+          <div class="text-sm">Mỗi tầng 1 loại máy · 1 lúc 1 item · queue · 10 máy = 10 công thức khác</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2B: PLAYER VALUE PROPOSITION -->
+    <section id="sec-2b">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--pink);">2B</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Player Value Proposition · 12 Giá trị</h2>
+      </div>
+
+      <div class="card p-6 mb-6 gradient-spotlight">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--primary);">Triết lý design</div>
+        <p class="text-sm">Mọi feature trong KVTM phải phục vụ ít nhất 1 trong 12 giá trị bên dưới. Khi brainstorm feature mới, đặt câu hỏi: <em>"Feature này phục vụ value gì?"</em> Nếu không phục vụ value nào — cut. Framework backed by <strong>Self-Determination Theory</strong> (Autonomy · Competence · Relatedness) + <strong>Quantic Foundry</strong> (game motivation taxonomy).</p>
+      </div>
+
+      <!-- Tier 1 -->
+      <div class="card p-6 mb-4">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--green);">Tier 1 · Core Values · Female 25-45 KVTM target (must-have)</div>
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Giá trị</th><th>Cảm xúc</th><th>KVTM hiện tại</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag tag-green">1</span></td><td><strong>🧘 Thư giãn</strong> · Relaxation</td><td>Calm · stress relief</td><td><span class="tag tag-green">✅ Strong</span></td></tr>
+            <tr><td><span class="tag tag-green">2</span></td><td><strong>🎨 Thẩm mỹ</strong> · Aesthetic Pleasure</td><td>Beauty · pretty visual</td><td><span class="tag tag-orange">🟡 Trung</span></td></tr>
+            <tr><td><span class="tag tag-green">3</span></td><td><strong>🤲 Chăm sóc</strong> · Caregiving</td><td>Nurture · maternal</td><td><span class="tag tag-green">✅ Strong</span></td></tr>
+            <tr><td><span class="tag tag-green">4</span></td><td><strong>🏆 Thành tựu</strong> · Achievement</td><td>Accomplishment · pride</td><td><span class="tag tag-green">✅ Strong</span></td></tr>
+            <tr><td><span class="tag tag-green">5</span></td><td><strong>📦 Sưu tầm</strong> · Collection</td><td>Completion · gotta-catch-em-all</td><td><span class="tag tag-red">⚠️ Yếu</span></td></tr>
+            <tr><td><span class="tag tag-green">6</span></td><td><strong>💎 Tài sản</strong> · Virtual Wealth</td><td>Ownership · investment</td><td><span class="tag tag-green">✅ Strong</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Tier 2 -->
+      <div class="card p-6 mb-4">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--gold);">Tier 2 · Strong Values (engagement boost)</div>
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Giá trị</th><th>Cảm xúc</th><th>KVTM hiện tại</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag tag-gold">7</span></td><td><strong>🔍 Khám phá</strong> · Discovery / Surprise</td><td>Curiosity · "what's next"</td><td><span class="tag tag-orange">🟡 Yếu (predictable)</span></td></tr>
+            <tr><td><span class="tag tag-gold">8</span></td><td><strong>📈 Tiến bộ</strong> · Mastery / Progression</td><td>Growth · skill improve</td><td><span class="tag tag-green">✅ Strong</span></td></tr>
+            <tr><td><span class="tag tag-gold">9</span></td><td><strong>📖 Câu chuyện</strong> · Story / Narrative</td><td>Emotional journey</td><td><span class="tag tag-red">❌ Thiếu hẳn</span></td></tr>
+            <tr><td><span class="tag tag-gold">10</span></td><td><strong>👥 Kết nối</strong> · Social Connection</td><td>Friend · community</td><td><span class="tag tag-orange">🟡 Yếu</span></td></tr>
+            <tr><td><span class="tag tag-gold">11</span></td><td><strong>🌌 Mộng tưởng</strong> · Escapism / Fantasy</td><td>Escape reality · vườn trên mây</td><td><span class="tag tag-green">✅ Strong</span></td></tr>
+            <tr><td><span class="tag tag-gold">12</span></td><td><strong>🎮 Trải nghiệm</strong> · Experience / Gameplay</td><td>Engagement · satisfying</td><td><span class="tag tag-green">✅ Strong</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Tier 3 -->
+      <details class="card mb-6">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="text-xs mono uppercase tracking-widest font-bold" style="color: var(--text-muted);">Tier 3 · Optional Values (niche · nice-to-have)</div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5">
+          <div class="grid md:grid-cols-2 gap-3 text-xs">
+            <div><strong>13. 🌟 Show-off / Status</strong> — Flex assets · pride · jealousy</div>
+            <div><strong>14. ⚔️ Competition</strong> — Leaderboard · ranking</div>
+            <div><strong>15. 💭 Nostalgia</strong> — Memory · childhood · grandma's farm</div>
+            <div><strong>16. 📚 Learning / Skill</strong> — Edutainment (gardening tips real)</div>
+            <div><strong>17. ✨ Creativity / Self-expression</strong> — Design freedom · custom decor · photo mode</div>
+          </div>
+        </div>
+      </details>
+
+      <!-- SDT + Quantic Foundry -->
+      <div class="grid md:grid-cols-2 gap-4 mb-6">
+        <div class="card p-5">
+          <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--blue);">Self-Determination Theory · 3 nhu cầu cơ bản</div>
+          <ul class="text-sm space-y-2">
+            <li>🆎 <strong>Autonomy</strong> — Tự chọn (loại cây, decor) → KVTM ✅</li>
+            <li>💪 <strong>Competence</strong> — Cảm giác giỏi (level up, optimize) → KVTM ✅</li>
+            <li>🤝 <strong>Relatedness</strong> — Kết nối (friend, gift, social) → KVTM ⚠️</li>
+          </ul>
+        </div>
+        <div class="card p-5">
+          <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--blue);">Quantic Foundry · 6 cluster motivation</div>
+          <ul class="text-sm space-y-2">
+            <li>🌌 <strong>Immersion</strong> (Fantasy + Story + Aesthetic) → KVTM 60% (thiếu Story)</li>
+            <li>✨ <strong>Creativity</strong> (Design + Discovery) → KVTM 50%</li>
+            <li>🏆 <strong>Achievement</strong> (Completion + Power) → KVTM 80%</li>
+            <li>👥 <strong>Social</strong> (Community + Competition) → KVTM 30% ⚠️</li>
+            <li>🧠 <strong>Mastery</strong> (Strategy · chain optimization) → KVTM 70%</li>
+            <li>⚡ <strong>Action</strong> (Excitement) → KVTM 20% (farm sim cố ý low)</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 4 Value mới em đề xuất -->
+      <div class="card p-6 mb-6 gradient-pink">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--pink);">4 Value mới đề xuất add vào KVTM Rework</div>
+        <table class="data-table">
+          <thead><tr><th>Value</th><th>Cách add</th><th>Tác dụng</th></tr></thead>
+          <tbody>
+            <tr><td><strong>🎨 Self-expression / Creativity</strong></td><td>Layout decor tự do · custom skin chậu/nhà · photo mode share Facebook</td><td>Differentiation · viral hook</td></tr>
+            <tr><td><strong>📖 Storytelling / Emotional Journey</strong></td><td>Khăn Đỏ event recurring · NPC có life arc · cutscene mỗi unlock cây mới</td><td>Emotional retention</td></tr>
+            <tr><td><strong>🐾 Companionship / Pet</strong></td><td>Thú nuôi nhỏ trên vườn (mèo · gà · chó) — pet companion (KHÔNG phải chăn nuôi)</td><td>Caregiving deeper · cute factor</td></tr>
+            <tr><td><strong>🌍 Sense of Place / World</strong></td><td>4 zone theme Việt (Mansion · Phố cổ · Biệt phủ · Cung đình) từ Khăn Đỏ event</td><td>Immersion · cultural pride VN</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bảng tổng -->
+      <div class="card p-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Coverage hiện tại vs sau Rework Quick Fix</div>
+        <table class="data-table">
+          <thead><tr><th>Value</th><th>KVTM hiện tại</th><th>Sau Rework</th><th>Solution liên quan</th></tr></thead>
+          <tbody>
+            <tr><td>🧘 Thư giãn</td><td><span class="tag tag-green">Strong</span></td><td><span class="tag tag-green">Strong</span></td><td>Giữ — ASMR feedback</td></tr>
+            <tr><td>🎨 Thẩm mỹ</td><td><span class="tag tag-orange">Trung</span></td><td><span class="tag tag-green">Strong</span></td><td>E (color coding) + Game Juice</td></tr>
+            <tr><td>🤲 Chăm sóc</td><td><span class="tag tag-green">Strong</span></td><td><span class="tag tag-green">Strong</span></td><td>B (Khăn Đỏ NPC chăm sóc)</td></tr>
+            <tr><td>🏆 Thành tựu</td><td><span class="tag tag-green">Strong</span></td><td><span class="tag tag-green">Strong</span></td><td>A (streak · leaderboard)</td></tr>
+            <tr><td>📦 Sưu tầm</td><td><span class="tag tag-red">Yếu</span></td><td><span class="tag tag-orange">Trung</span></td><td>Cần add Collection Book</td></tr>
+            <tr><td>💎 Tài sản</td><td><span class="tag tag-green">Strong</span></td><td><span class="tag tag-green">Strong</span></td><td>Giữ</td></tr>
+            <tr><td>🔍 Khám phá</td><td><span class="tag tag-red">Yếu</span></td><td><span class="tag tag-orange">Trung</span></td><td>Variable reward 5% bonus</td></tr>
+            <tr><td>📈 Tiến bộ</td><td><span class="tag tag-green">Strong</span></td><td><span class="tag tag-green">Strong</span></td><td>F (mini-map progress)</td></tr>
+            <tr><td>📖 Câu chuyện</td><td><span class="tag tag-red">Thiếu</span></td><td><span class="tag tag-green">Strong</span></td><td>Khăn Đỏ event recurring (parallel project)</td></tr>
+            <tr><td>👥 Kết nối</td><td><span class="tag tag-red">Yếu</span></td><td><span class="tag tag-orange">Trung</span></td><td>G.4 (push notif friend visit)</td></tr>
+            <tr><td>🌌 Mộng tưởng</td><td><span class="tag tag-green">Strong</span></td><td><span class="tag tag-green">Strong</span></td><td>Giữ</td></tr>
+            <tr><td>🎮 Trải nghiệm</td><td><span class="tag tag-green">Strong</span></td><td><span class="tag tag-green">Strong</span></td><td>Game Juice + ASMR layer</td></tr>
+          </tbody>
+        </table>
+        <div class="mt-4 grid grid-cols-3 gap-3">
+          <div class="card-hi p-3 rounded-lg text-center">
+            <div class="stat-num" style="color: var(--green);">9/12</div>
+            <div class="stat-label">Strong sau rework</div>
+          </div>
+          <div class="card-hi p-3 rounded-lg text-center">
+            <div class="stat-num" style="color: var(--orange);">3/12</div>
+            <div class="stat-label">Trung sau rework</div>
+          </div>
+          <div class="card-hi p-3 rounded-lg text-center">
+            <div class="stat-num" style="color: var(--red);">0/12</div>
+            <div class="stat-label">Yếu/Thiếu sau rework</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: 6 VẤN ĐỀ -->
+    <section id="sec-3">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">03</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">6 Vấn đề chính KVTM</h2>
+      </div>
+
+      <div class="space-y-4">
+        <div class="problem-card">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex items-start gap-4 flex-1">
+              <span class="tag tag-red flex-shrink-0">A</span>
+              <div>
+                <div class="font-bold text-base mb-1">Tuyến tính · Không challenge · Không giữ chân</div>
+                <div class="text-sm" style="color: var(--text-muted);">Game chỉ có flow "trồng → đợi → thu → giao đơn" lặp lại. Không có challenge tạo tension. Không có hook quay lại daily. User chơi xong tầng 5 thấy "đã hết thử thách" → drop.</div>
+                <div class="text-xs mt-2 mono" style="color: var(--red);">Hệ quả: RR1 29.9% (dưới top puzzle 35%) · session/user 5.77 plateau</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="flex items-start gap-4">
+            <span class="tag tag-red flex-shrink-0">B</span>
+            <div>
+              <div class="font-bold text-base mb-1">Không thân thiện · Newbie sợ</div>
+              <div class="text-sm" style="color: var(--text-muted);">UX cứng nhắc, không có nhân vật chào hỏi, không có voice line warm tone. Newbie cảm thấy "đơn độc" trong game.</div>
+              <div class="text-xs mt-2 mono" style="color: var(--red);">Hệ quả: First impression nghèo · CV0 chỉ 2.28% (worst trong 4 events)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="flex items-start gap-4">
+            <span class="tag tag-red flex-shrink-0">C</span>
+            <div>
+              <div class="font-bold text-base mb-1">Khó hiểu trồng hoa trồng chậu</div>
+              <div class="text-sm" style="color: var(--text-muted);">Newbie không biết: <em>"Trồng cái gì? Trồng vào đâu? Trồng để làm gì?"</em>. Loại cây = chung tất cả tầng, user manual chọn → bối rối, không có guidance.</div>
+              <div class="text-xs mt-2 mono" style="color: var(--red);">Hệ quả: User abandon ở tutorial step 3-5</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="flex items-start gap-4">
+            <span class="tag tag-red flex-shrink-0">D</span>
+            <div>
+              <div class="font-bold text-base mb-1">Tutorial dài · Phải hướng dẫn nhiều</div>
+              <div class="text-sm" style="color: var(--text-muted);">Tutorial flow 3 có <strong>10 step lớn + 8 substep</strong> — total <strong>18 step</strong>. User phải đọc text, click qua nhiều màn → mệt → drop trước khi xong tutorial.</div>
+              <div class="text-xs mt-2 mono" style="color: var(--red);">Hệ quả: Tutorial completion thấp · CV0 dưới benchmark</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="flex items-start gap-4">
+            <span class="tag tag-red flex-shrink-0">E</span>
+            <div>
+              <div class="font-bold text-base mb-1">Không trực quan · Phải đọc text</div>
+              <div class="text-sm" style="color: var(--text-muted);">Visual không tự explain — không biết chậu nào sẵn sàng thu, máy nào đang chạy, queue đầy hay trống. User phải đọc text/tooltip → friction.</div>
+              <div class="text-xs mt-2 mono" style="color: var(--red);">Hệ quả: Click-through rate thấp · session length giảm</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="flex items-start gap-4">
+            <span class="tag tag-red flex-shrink-0">F</span>
+            <div>
+              <div class="font-bold text-base mb-1">Navigation friction · Scroll dọc 11 layer</div>
+              <div class="text-sm" style="color: var(--text-muted);">Để đi từ mặt đất lên tầng 10 phải scroll qua 11 layer · không có map view · không có quick jump. Đặc biệt mệt khi đơn hàng yêu cầu sản phẩm từ nhiều tầng cùng lúc.</div>
+              <div class="text-xs mt-2 mono" style="color: var(--red);">Hệ quả: User chỉ chơi 2-3 tầng đầu · không khai thác hết 10 tầng</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: 6 SOLUTION -->
+    <section id="sec-4">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">04</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">6 Solution Chi Tiết</h2>
+      </div>
+
+      <details open class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="tag tag-green">A</span>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Add Challenge Layer</div>
+              <div class="text-xs" style="color: var(--text-muted);">Fix vấn đề: Tuyến tính · Không giữ chân</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5">
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">A.1 · Daily Challenge Widget</div>
+              <div class="text-xs" style="color: var(--text-muted);">Mặt đất hub có widget "Hôm nay" — gợi ý 3 task ngày: 1 trồng + 1 giao đơn + 1 thử thách</div>
+              <div class="text-xs mt-2 mono" style="color: var(--green);">Vd: "Trồng 50 hoa hồng + Giao 3 đơn cú + Nâng cấp 1 chậu" → reward 500 KC + 1 decor rare</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">A.2 · Tận dụng 4 Mini Event xoay tua hiện có</div>
+              <div class="text-xs" style="color: var(--text-muted);">KVTM đã có sẵn <strong>4 mini event xoay tua 7 ngày</strong>: Mùa hè sôi động · Vào hạ · Chăn nuôi (→ rework Khăn Đỏ event) · Sói chăm cây. Add layer challenge mới vào event hiện có:<br>· Daily mission trong event (3 task/ngày refresh)<br>· Streak combo trong cycle (7 ngày liên tiếp = quà big)<br>· Leaderboard top 100 cho mỗi mini event</div>
+              <div class="text-xs mt-2 mono" style="color: var(--green);">Không build event mới · chỉ bổ sung challenge layer vào loop có sẵn</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">A.3 · Streak Combo</div>
+              <div class="text-xs" style="color: var(--text-muted);">Hoàn thành 5 đơn liên tiếp = bonus x2 reward · 10 đơn = x3 · 20 đơn = x5 + skin badge</div>
+              <div class="text-xs mt-2 mono" style="color: var(--green);">Streak break nếu bỏ lỡ 24h → tạo FOMO mở app daily</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">A.4 · Speed Run Mode</div>
+              <div class="text-xs" style="color: var(--text-muted);">Optional challenge: hoàn thành đơn cú trong 60s (skip timer máy bằng KC) → trophy + cosmetic</div>
+              <div class="text-xs mt-2 mono" style="color: var(--green);">Hút máu KC sink mạnh + dopamine moment</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="tag tag-green">B</span>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Character Buddy (Khăn Đỏ NPC)</div>
+              <div class="text-xs" style="color: var(--text-muted);">Fix vấn đề: Không thân thiện</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5">
+          <div class="grid md:grid-cols-3 gap-4">
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">B.1 · Greet on App Open</div>
+              <div class="text-xs" style="color: var(--text-muted);">Khăn Đỏ pop-up bubble: <em>"Chào mừng quay lại! Hôm nay vườn xanh ghê!"</em></div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">B.2 · Voice Lines</div>
+              <div class="text-xs" style="color: var(--text-muted);">Ngắn 1-2s warm tone:<br>· "Trời đẹp quá!"<br>· "Cây này đẹp ghê!"<br>· "Khách hài lòng lắm!"</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">B.3 · Reaction Animation</div>
+              <div class="text-xs" style="color: var(--text-muted);">Vui (giao đơn) · ngạc nhiên (rare drop) · buồn (cây héo do quên thu)</div>
+            </div>
+          </div>
+          <div class="mt-4 gradient-gold p-4 rounded-lg">
+            <div class="text-xs" style="color: var(--text);"><strong style="color: var(--gold);">📚 Reference:</strong> Hay Day Supercell tuyên bố "no forced tutorial, no missions or quests" — let player explore. Khăn Đỏ NPC chỉ là <em>warm presence</em>, không ép task.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="tag tag-green">C</span>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Contextual Hint từ Order</div>
+              <div class="text-xs" style="color: var(--text-muted);">Fix vấn đề: Khó hiểu trồng hoa trồng chậu</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5">
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">C.1 · Auto-Highlight Chậu</div>
+              <div class="text-xs" style="color: var(--text-muted);">Click đơn cú "cần 5 cà chua" → game tự highlight chậu trống bằng vòng sáng nhấp nháy + arrow pointer "trồng cà chua đây!"</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">C.2 · Tag Cây Trên Chậu</div>
+              <div class="text-xs" style="color: var(--text-muted);">Sau khi trồng, hiện icon cây nhỏ trên chậu (vd: 🍅 cà chua · 🌹 hoa hồng) — xác định nhanh không cần tap</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">C.3 · Smart Suggest "Trồng tiếp?"</div>
+              <div class="text-xs" style="color: var(--text-muted);">Sau khi thu hoạch chậu, hiện popup "Trồng tiếp cà chua? (đơn xe bò sắp đến cần 10 cà chua)" — 1-tap accept</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">C.4 · Recipe Book Sticky</div>
+              <div class="text-xs" style="color: var(--text-muted);">Sidebar nhỏ luôn-on hiển thị "công thức cây phổ biến" + thời gian trồng — newbie không cần memorize</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="tag tag-green">D</span>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Cut Tutorial 18 → 5 Step</div>
+              <div class="text-xs" style="color: var(--text-muted);">Fix vấn đề: Tutorial dài</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5">
+          <div class="ascii-box mb-4">
+TUTORIAL 5 STEP MỚI (target ≤30s)
+═════════════════════════════════
+[1] Tap chậu sáng → trồng cà chua             (5s)
+[2] Skip animation đợi (free skip step 1)     (3s)
+[3] Tap cà chua chín → thu hoạch              (5s)
+[4] Tap đơn cú → giao 1 cà chua               (8s)
+[5] Reward popup + "Lên level 2!"             (5s)
+                                               ───
+                                  TOTAL: ~26s ✓
+
+CUT TỪ 18 STEP CŨ:
+✗ Bỏ intro cinematic 60s
+✗ Bỏ step "tour mặt đất" (visit shop, social, event)
+✗ Bỏ step "introduce 10 tầng"
+✗ Bỏ step "explain 3 loại đơn hàng"
+✗ Bỏ step "explain máy chế biến"
+→ Tất cả các thứ này LET USER DISCOVER tự nhiên sau khi vào game</div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">D.1 · Skippable cho user cũ</div>
+              <div class="text-xs" style="color: var(--text-muted);">Nếu detect save data có (user cũ migration) → "Đã chơi rồi? Skip tutorial?" 1-tap skip</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">D.2 · Hands-on từ giây 0</div>
+              <div class="text-xs" style="color: var(--text-muted);">Vào game = đã ở tầng 1 với 1 chậu sẵn sàng nhấp nháy. Không màn intro · không loading screen text</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="tag tag-green">E</span>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Visual Overhaul · Color Coding</div>
+              <div class="text-xs" style="color: var(--text-muted);">Fix vấn đề: Không trực quan</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5">
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">E.1 · Iconography rõ ràng</div>
+              <div class="text-xs" style="color: var(--text-muted);">· Chậu trống = dấu <strong style="color: var(--gold);">+</strong> nhấp nháy<br>· Máy đang chạy = animation khói<br>· Queue full = stack icon đỏ<br>· Cây ready = sparkle vàng</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">E.2 · Color Coding</div>
+              <div class="text-xs" style="color: var(--text-muted);">· <strong style="color: var(--gold);">Vàng</strong> = ready harvest (ưu tiên cao)<br>· <strong style="color: var(--green);">Xanh</strong> = đang lớn (đợi)<br>· <strong style="color: var(--red);">Đỏ flash</strong> = chậu đầy/máy busy<br>· <strong style="color: var(--blue);">Xanh dương</strong> = lock (chưa unlock)</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">E.3 · Empty State Hint</div>
+              <div class="text-xs" style="color: var(--text-muted);">Chậu trống có text overlay nhỏ "Tap để trồng" · máy trống có "Tap để chế biến" — newbie không cần đoán</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">E.4 · Haptic Feedback</div>
+              <div class="text-xs" style="color: var(--text-muted);">Mỗi tap (trồng / thu / giao đơn) có rung nhẹ — pattern Royal Match. Tactile reinforcement → satisfying immediate</div>
+            </div>
+          </div>
+          <div class="gradient-gold p-4 rounded-lg">
+            <div class="text-xs"><strong style="color: var(--gold);">📚 Reference:</strong> Royal Match dùng "high contrast primary colors" + "haptic feedback every interaction" → reduce cognitive load + tactile satisfaction.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="tag tag-green">F</span>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Map View + Quick Jump</div>
+              <div class="text-xs" style="color: var(--text-muted);">Fix vấn đề: Navigation friction</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5">
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">F.1 · Mini-map góc phải</div>
+              <div class="text-xs" style="color: var(--text-muted);">Thumbnail 11 layer dạng vertical strip · highlight tầng hiện tại · indicator badge trên tầng có cây ready · tap layer = jump trực tiếp</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">F.2 · Floating Order Badge</div>
+              <div class="text-xs" style="color: var(--text-muted);">Khi đơn cần sản phẩm tầng X → icon đơn float trên tầng X · tap = scroll smooth tới tầng đó</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">F.3 · Smart Next Floor Button</div>
+              <div class="text-xs" style="color: var(--text-muted);">Nút "↑ Tầng 5 (1 đơn cú đang chờ)" — context-aware suggest tầng cần đi tiếp</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">F.4 · Tap-to-elevator</div>
+              <div class="text-xs" style="color: var(--text-muted);">Long-press scroll bar → list 11 tầng popup · tap chọn tầng = jump (alternative cho mini-map)</div>
+            </div>
+          </div>
+          <div class="ascii-box">
+TIME-TO-FLOOR-10 COMPARISON
+═══════════════════════════
+TRƯỚC: scroll dọc qua 11 layer ≈ 5 giây drag
+SAU:   tap mini-map layer 10  ≈ 0.5 giây
+       → -90% time, -100% friction</div>
+        </div>
+      </details>
+
+      <details class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="tag tag-green">G</span>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Push Notification Strategy <span class="tag tag-pink ml-2">NEW v1.2</span></div>
+              <div class="text-xs" style="color: var(--text-muted);">Cover Best Practice #4 · Re-engagement không spam</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5">
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">G.1 · Cây ready harvest</div>
+              <div class="text-xs" style="color: var(--text-muted);">Trigger: 5 phút sau khi cây sẵn sàng thu mà user chưa mở app · Message: <em>"🌹 Hoa hồng nhà bạn đã chín! Khách đang đợi đó!"</em></div>
+              <div class="text-xs mt-2 mono" style="color: var(--green);">Frequency cap: max 2 lần/ngày</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">G.2 · Streak warning</div>
+              <div class="text-xs" style="color: var(--text-muted);">Trigger: 22h cùng ngày nếu user chưa login · Message: <em>"⚡ Streak 5 ngày sắp mất! Mở app 1 phút thôi để giữ x2 reward!"</em></div>
+              <div class="text-xs mt-2 mono" style="color: var(--green);">Chỉ trigger nếu user có streak ≥ 3 ngày</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">G.3 · Milestone celebration</div>
+              <div class="text-xs" style="color: var(--text-muted);">Trigger: User đạt milestone (level up · unlock tầng mới · 100 đơn) · Message: <em>"🎉 Chúc mừng đạt Tầng 5! Khăn Đỏ có quà chờ bạn"</em></div>
+              <div class="text-xs mt-2 mono" style="color: var(--green);">In-app + push notif kết hợp</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">G.4 · Friend visit / gift</div>
+              <div class="text-xs" style="color: var(--text-muted);">Trigger: Bạn bè ghé thăm vườn / gửi quà · Message: <em>"💝 Linh đã ghé thăm vườn bạn và để lại quà!"</em></div>
+              <div class="text-xs mt-2 mono" style="color: var(--green);">Social hook · drive re-engagement</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">G.5 · Mini Event xoay tua mới</div>
+              <div class="text-xs" style="color: var(--text-muted);">Trigger: Mini event mới bắt đầu (T2 hàng tuần) · Message: <em>"🌱 Event Mùa Hè Sôi Động đã bắt đầu! Reward big chờ bạn — chỉ 7 ngày"</em></div>
+              <div class="text-xs mt-2 mono" style="color: var(--green);">FOMO + leverage event xoay tua đã có</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">G.6 · Frequency safeguard</div>
+              <div class="text-xs" style="color: var(--text-muted);">· Total max 3 push/ngày<br>· Quiet hours 22h-7h (trừ G.2 streak warning)<br>· Settings có toggle on/off từng loại notif<br>· A/B test message variants 2 tuần/lần</div>
+              <div class="text-xs mt-2 mono" style="color: var(--green);">Tránh spammy → không bị disable hệ thống</div>
+            </div>
+          </div>
+          <div class="gradient-gold p-4 rounded-lg">
+            <div class="text-xs"><strong style="color: var(--gold);">📚 Reference:</strong> Push notif personalized + relevant + careful frequency = retention lift +15-30% (industry data 2025).</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <span class="tag tag-green">H</span>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Live Ops Content Cadence <span class="tag tag-pink ml-2">NEW v1.2</span></div>
+              <div class="text-xs" style="color: var(--text-muted);">Cover Best Practice #5 · Maintain momentum D7 → D30+</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5">
+          <div class="ascii-box mb-4">
+LIVE OPS CADENCE — POST-LAUNCH
+══════════════════════════════
+DAILY    : Daily Challenge widget refresh (3 task mới)
+           + Cú/Bò/Khinh khí cầu rotate
+
+WEEKLY   : Mini event xoay tua 7 ngày (Mùa hè sôi động · Vào hạ ·
+           Khăn Đỏ event · Sói chăm cây) — leverage hệ thống có sẵn
+           + Streak combo reset (FOMO)
+           + 1 cây/máy unlock special (limited 7 ngày)
+
+BI-WEEKLY: Khăn Đỏ story chapter mới (1 cutscene 30s)
+           + Limited decor pack (Tết/Trung Thu/Noel theme)
+
+MONTHLY  : Mini event xoay tua (event Chăn Nuôi cũ → rework Khăn Đỏ event)
+           + Leaderboard reset top 100
+
+QUARTERLY: New tầng (mỗi quý mở 1 tầng cao mới — nếu user max level)
+           + Major content drop (vd: máy chế biến mới + 5 cây mới)</div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">H.1 · Content drop schedule</div>
+              <div class="text-xs" style="color: var(--text-muted);">Quy định nhịp ra content rõ ràng — team biết khi nào ship cái gì · user biết khi nào có gì mới</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">H.2 · Seasonal theme</div>
+              <div class="text-xs" style="color: var(--text-muted);">Tết · Trung Thu · Noel · Hè — apply theme vào decor, đơn hàng, NPC outfit, BGM</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">H.3 · Community feedback loop</div>
+              <div class="text-xs" style="color: var(--text-muted);">Discord/FB group · monthly survey · top 3 request → priority next sprint · user feel "tiếng nói được nghe"</div>
+            </div>
+            <div class="solution-card">
+              <div class="font-bold text-sm mb-2">H.4 · Limited-time exclusive</div>
+              <div class="text-xs" style="color: var(--text-muted);">Mỗi cycle 7 ngày có 1 item exclusive (skin chậu vàng · cây rare · NPC outfit) → FOMO collection · drive whale spend</div>
+            </div>
+          </div>
+          <div class="mt-4 gradient-gold p-4 rounded-lg">
+            <div class="text-xs"><strong style="color: var(--gold);">📊 Industry insight:</strong> Live ops cadence regular là yếu tố #1 giữ retention D30+ trong farm sim — Hay Day update mỗi 2 tuần · Township event monthly · Royal Match daily challenge.</div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- SECTION 5: REFERENCE RESEARCH -->
+    <section id="sec-5">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">05</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Reference Research</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Industry Benchmark 2025 (GameAnalytics)</div>
+        <table class="data-table">
+          <thead><tr><th>KPI</th><th>Avg mobile</th><th>Top puzzle/casual</th><th>KVTM hiện tại</th><th>Gap</th></tr></thead>
+          <tbody>
+            <tr><td><strong>RR1 (Day 1)</strong></td><td class="mono">26%</td><td class="mono" style="color: var(--green);">35%+</td><td class="mono" style="color: var(--orange);">29.9%</td><td><span class="tag tag-red">-5pp dưới top</span></td></tr>
+            <tr><td><strong>RR7 (Day 7)</strong></td><td class="mono">10%</td><td class="mono" style="color: var(--green);">12%+</td><td class="mono" style="color: var(--orange);">12.1%</td><td><span class="tag tag-orange">≈ benchmark</span></td></tr>
+            <tr><td><strong>RR30 (Day 30)</strong></td><td class="mono">4%</td><td class="mono" style="color: var(--green);">6%+</td><td class="mono">5.4-5.8%</td><td><span class="tag tag-green">≈ benchmark</span></td></tr>
+          </tbody>
+        </table>
+        <div class="text-xs mt-3" style="color: var(--text-muted);">→ KVTM <strong>tốt ở RR7/RR30</strong> (user đã cam kết → giữ tốt). Nhưng <strong>RR1 dưới top</strong> → onboarding leak.</div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Pattern từ game thành công</div>
+        <table class="data-table">
+          <thead><tr><th>Game</th><th>UX Pattern</th><th>Áp dụng KVTM rework</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Hay Day</strong> (Supercell)</td>
+              <td>"No forced tutorial, no missions or quests" — animated GIFs hint, let player explore</td>
+              <td>Cut tutorial 18→5 step + Khăn Đỏ NPC chỉ là warm presence</td>
+            </tr>
+            <tr>
+              <td><strong>Royal Match</strong> ($3B+)</td>
+              <td>High contrast colors · No animation friction · Haptic feedback every tap · Social incentives</td>
+              <td>Color coding chậu/máy · Haptic mỗi tap · Empty state hint</td>
+            </tr>
+            <tr>
+              <td><strong>Township</strong> (Playrix)</td>
+              <td>Map view zoom out · Optimization-based gameplay · Production chain</td>
+              <td>Mini-map + quick jump 11 layer</td>
+            </tr>
+            <tr>
+              <td><strong>Wylde Flowers</strong></td>
+              <td>Voice-acted story farming · Differentiation mạnh</td>
+              <td>Khăn Đỏ voice lines warm tone (1-2s clips)</td>
+            </tr>
+            <tr>
+              <td><strong>Block Blast</strong> (300M+ DL)</td>
+              <td>Hyper-casual short session · 30s onboarding</td>
+              <td>First action ≤30s · Hands-on từ giây 0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card p-6 gradient-gold">
+        <div class="flex gap-3 items-start">
+          <span class="material-symbols-outlined" style="color: var(--gold); font-size: 24px;">lightbulb</span>
+          <div>
+            <div class="font-bold text-sm mb-2" style="color: var(--gold);">Insight tổng hợp</div>
+            <p class="text-sm">
+              KVTM <strong>không thua về core gameplay</strong> (RR7/RR30 ngang benchmark) — vấn đề là <strong>onboarding layer</strong> (RR1 thấp · CV0 thấp · tutorial dài). Quick Fix focus chỉ vào <strong>UX layer outer</strong> (animation + color coding + auto-suggest + mini-map) sẽ pull KVTM từ "average" lên "top tier" mà không cần đụng core.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5 Industry Best Practices -->
+      <div class="card p-6 mt-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">5 Industry Best Practices for Retention (anh Tommy confirm)</div>
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Practice</th><th>Mô tả</th><th>KVTM rework cover</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="tag tag-primary">1</span></td>
+              <td><strong>Tutorial minimal + interactive</strong></td>
+              <td class="text-xs">Keep tutorials minimal and interactive, grab interest từ phút đầu tiên. Players should immediately understand how gameplay works.</td>
+              <td><span class="tag tag-green">✓ Solution D + E + C</span></td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-primary">2</span></td>
+              <td><strong>Difficulty &amp; pacing balance</strong></td>
+              <td class="text-xs">Không quá dễ (boring) hay quá khó (frustrate). Challenging enough to keep hooked.</td>
+              <td><span class="tag tag-orange">⚠ Solution A một phần</span></td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-primary">3</span></td>
+              <td><strong>Reward systems</strong></td>
+              <td class="text-xs">Login bonuses, achievement tracking, timely incentives — give players reason to return daily.</td>
+              <td><span class="tag tag-green">✓ Solution A</span></td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-primary">4</span></td>
+              <td><strong>Push notifications</strong></td>
+              <td class="text-xs">Personalized reminders · milestone celebrations · relevant tips. Careful frequency — không spammy.</td>
+              <td><span class="tag tag-red">❌ MISS — add Solution G</span></td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-primary">5</span></td>
+              <td><strong>Expand content / Live ops</strong></td>
+              <td class="text-xs">Continue testing, iterating, expanding. Live ops, updates, fresh gameplay maintain momentum D7 → D30+.</td>
+              <td><span class="tag tag-red">❌ MISS — add Solution H</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="mt-3 gradient-red p-4 rounded-lg">
+          <div class="text-xs"><strong style="color: var(--red);">⚠️ Gap analysis:</strong> Doc v1.2 cover 3/5 practice. Add <strong>Solution G (Push notif)</strong> + <strong>Solution H (Live ops cadence)</strong> để đầy đủ 5/5.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 6: ROADMAP -->
+    <section id="sec-6">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">06</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Roadmap 8 Tuần Dev</h2>
+      </div>
+
+      <div class="card p-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Sprint plan</div>
+        <div class="space-y-3">
+          <div class="flex gap-4 items-start card-hi p-4 rounded-lg">
+            <span class="week-pill">W1</span>
+            <div class="flex-1">
+              <div class="font-bold text-sm mb-1" style="color: var(--blue);">Solution E — Visual Overhaul + Iconography</div>
+              <div class="text-xs" style="color: var(--text-muted);">Icon nhấp nháy chậu trống · color coding 4 trạng thái · empty state text · haptic feedback. Output: design spec + asset list cho art team.</div>
+            </div>
+          </div>
+          <div class="flex gap-4 items-start card-hi p-4 rounded-lg">
+            <span class="week-pill">W2</span>
+            <div class="flex-1">
+              <div class="font-bold text-sm mb-1" style="color: var(--green);">Solution D — Tutorial 18 → 5 Step + Hands-on</div>
+              <div class="text-xs" style="color: var(--text-muted);">Refactor tutorial flow · skippable detection · vào game = đã ở tầng 1 sẵn sàng. Output: new flow chart + script content.</div>
+            </div>
+          </div>
+          <div class="flex gap-4 items-start card-hi p-4 rounded-lg">
+            <span class="week-pill">W3</span>
+            <div class="flex-1">
+              <div class="font-bold text-sm mb-1" style="color: var(--pink);">Solution B — Khăn Đỏ NPC Buddy</div>
+              <div class="text-xs" style="color: var(--text-muted);">Character sprite + 20 voice lines + 5 reaction animation · greet on app open. Output: character art, voice recording, anim list.</div>
+            </div>
+          </div>
+          <div class="flex gap-4 items-start card-hi p-4 rounded-lg">
+            <span class="week-pill">W4</span>
+            <div class="flex-1">
+              <div class="font-bold text-sm mb-1" style="color: var(--gold);">Solution C — Auto-suggest từ Order</div>
+              <div class="text-xs" style="color: var(--text-muted);">Click đơn → highlight chậu cần trồng · tag cây trên chậu · smart "trồng tiếp?" prompt · recipe book sticky.</div>
+            </div>
+          </div>
+          <div class="flex gap-4 items-start card-hi p-4 rounded-lg">
+            <span class="week-pill">W5</span>
+            <div class="flex-1">
+              <div class="font-bold text-sm mb-1" style="color: var(--orange);">Solution F — Map View + Quick Jump</div>
+              <div class="text-xs" style="color: var(--text-muted);">Mini-map vertical strip · floating order badge · smart next-floor button · tap-to-elevator. Output: nav UI redesign.</div>
+            </div>
+          </div>
+          <div class="flex gap-4 items-start card-hi p-4 rounded-lg">
+            <span class="week-pill">W6</span>
+            <div class="flex-1">
+              <div class="font-bold text-sm mb-1" style="color: var(--primary);">Solution A — Daily Challenge + Streak</div>
+              <div class="text-xs" style="color: var(--text-muted);">Widget "Hôm nay" mặt đất hub · streak counter · challenge layer add vào 4 mini event xoay tua có sẵn · speed run mode. Output: challenge config + reward economy.</div>
+            </div>
+          </div>
+          <div class="flex gap-4 items-start card-hi p-4 rounded-lg">
+            <span class="week-pill">W7</span>
+            <div class="flex-1">
+              <div class="font-bold text-sm mb-1" style="color: var(--text);">QA · Internal Test · Balance Tuning</div>
+              <div class="text-xs" style="color: var(--text-muted);">Internal play test 1 tuần · đo tutorial complete time · A/B test color coding · fine-tune voice line frequency.</div>
+            </div>
+          </div>
+          <div class="flex gap-4 items-start card-hi p-4 rounded-lg">
+            <span class="week-pill">W8</span>
+            <div class="flex-1">
+              <div class="font-bold text-sm mb-1" style="color: var(--green);">Soft-launch 5% user · A/B test · Rollout</div>
+              <div class="text-xs" style="color: var(--text-muted);">Release cho 5% user random · so sánh KPI vs control · nếu RR1 lift +3pp+ → full rollout · nếu không → iterate.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 7: KPI -->
+    <section id="sec-7">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">07</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">KPI Target</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Sau 8 tuần Quick Fix · so với baseline</div>
+        <table class="data-table">
+          <thead><tr><th>KPI</th><th>Baseline</th><th>Target</th><th>Lift</th><th>Solution liên quan</th></tr></thead>
+          <tbody>
+            <tr><td><strong>RR1 newbie</strong></td><td class="mono">29.9%</td><td class="mono" style="color: var(--green);">35%+</td><td><span class="tag tag-green">+5pp</span></td><td>D + B + C + E</td></tr>
+            <tr><td><strong>RR7</strong></td><td class="mono">12.1%</td><td class="mono" style="color: var(--green);">14%+</td><td><span class="tag tag-green">+2pp</span></td><td>A (Streak)</td></tr>
+            <tr><td><strong>CV0 newbie</strong></td><td class="mono">2.28%</td><td class="mono" style="color: var(--green);">2.6%+</td><td><span class="tag tag-green">+0.3pp</span></td><td>D + B</td></tr>
+            <tr><td><strong>Tutorial complete</strong></td><td>~50% (estimate)</td><td class="mono" style="color: var(--green);">85%+</td><td><span class="tag tag-green">+35pp</span></td><td>D (cut 18→5 step)</td></tr>
+            <tr><td><strong>Tutorial step count</strong></td><td class="mono">18 step</td><td class="mono" style="color: var(--green);">5 step</td><td><span class="tag tag-green">-72%</span></td><td>D</td></tr>
+            <tr><td><strong>Time to floor 10</strong></td><td>~5s scroll</td><td class="mono" style="color: var(--green);">≤0.5s tap</td><td><span class="tag tag-green">-90%</span></td><td>F (Mini-map)</td></tr>
+            <tr><td><strong>Daily session/user</strong></td><td class="mono">5.77</td><td class="mono" style="color: var(--green);">6.5+</td><td><span class="tag tag-green">+13%</span></td><td>A (Daily Challenge) + F (jump)</td></tr>
+            <tr><td><strong>ARPDAU</strong></td><td class="mono">~3,100₫</td><td class="mono" style="color: var(--green);">3,400₫+</td><td><span class="tag tag-green">+10%</span></td><td>A (Streak hút máu) + Speed Run</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card p-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">A/B test plan (W8 soft-launch 5% user)</div>
+        <div class="ascii-box">
+GROUP A (control):  KVTM original · 50% của 5% = 2.5% userbase
+GROUP B (rework):   KVTM rework  · 50% của 5% = 2.5% userbase
+
+ĐO 14 NGÀY:
+─────────────
+- RR1 / RR3 / RR7 (cohort daily)
+- CV0 / CV1 / CV3 (conversion)
+- Tutorial complete rate
+- Avg session per user
+- Avg session duration
+- ARPDAU
+- Newbie pack repeat rate
+
+GO/NO-GO CRITERIA:
+- RR1 lift ≥ +3pp                              → ✓ rollout
+- Tutorial complete lift ≥ +20pp               → ✓ rollout
+- ARPDAU không drop > -5%                      → ✓ rollout
+- Crash rate không tăng > +50% vs control      → ✓ rollout
+
+NẾU FAIL:
+- Iterate solution thấp impact trước (E, F)
+- Re-test 2 tuần sau</div>
+      </div>
+    </section>
+
+    <!-- SECTION 8: RISK -->
+    <section id="sec-8">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">08</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Risk &amp; Migration</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Risk register</div>
+        <table class="data-table">
+          <thead><tr><th>Risk</th><th>Impact</th><th>Probability</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>User cũ phản đối UI thay đổi</strong> (color coding mới, layout khác)</td>
+              <td><span class="tag tag-orange">Trung</span></td>
+              <td><span class="tag tag-orange">Medium</span></td>
+              <td>Cho user cũ option "classic UI" 2 tuần đầu · soft transition · tutorial tooltip "có gì mới" tại các điểm thay đổi</td>
+            </tr>
+            <tr>
+              <td><strong>Voice line Khăn Đỏ annoying nếu lặp nhiều</strong></td>
+              <td><span class="tag tag-orange">Trung</span></td>
+              <td><span class="tag tag-orange">Medium</span></td>
+              <td>20 voice line khác nhau · chỉ trigger 1 lần / 5 phút · option mute trong settings</td>
+            </tr>
+            <tr>
+              <td><strong>Daily Challenge cho user veteran (đã level 50+) cảm thấy easy</strong></td>
+              <td><span class="tag tag-blue">Thấp</span></td>
+              <td><span class="tag tag-orange">Medium</span></td>
+              <td>Challenge scale theo level player · vet user gets harder challenge với reward cao hơn</td>
+            </tr>
+            <tr>
+              <td><strong>Mini-map che màn chính</strong> (mobile small screen)</td>
+              <td><span class="tag tag-blue">Thấp</span></td>
+              <td><span class="tag tag-blue">Low</span></td>
+              <td>Mini-map collapsible · default thu gọn icon, tap để expand</td>
+            </tr>
+            <tr>
+              <td><strong>Tutorial 5 step không đủ cho non-gamer mới</strong></td>
+              <td><span class="tag tag-orange">Trung</span></td>
+              <td><span class="tag tag-blue">Low</span></td>
+              <td>Contextual hints xuất hiện sau tutorial cho 7 ngày đầu · safety net · không ép</td>
+            </tr>
+            <tr>
+              <td><strong>Build/QA trượt timeline 8 tuần</strong></td>
+              <td><span class="tag tag-orange">Trung</span></td>
+              <td><span class="tag tag-orange">Medium</span></td>
+              <td>Cut Solution D + E làm trước (low effort high impact) · Solution A + F có thể defer sang phase 2</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card p-6 gradient-green">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--green);">Migration: KHÔNG cần</div>
+        <p class="text-sm">
+          Hướng A Quick Fix <strong>không động core gameplay</strong>: 10 tầng · 6 chậu · 1 máy · 3 loại đơn · save data — tất cả giữ nguyên. User cũ login → vẫn thấy farm cũ + UI mới (color coding, mini-map, daily challenge widget).
+        </p>
+        <ul class="text-sm mt-3 space-y-1" style="color: var(--text);">
+          <li>✓ Save game tương thích 100%</li>
+          <li>✓ Inventory + level + tài nguyên = giữ nguyên</li>
+          <li>✓ Tutorial mới chỉ apply cho new install · user cũ skip auto</li>
+          <li>✓ Khăn Đỏ NPC pop-up có option "đã hiểu, không hiện nữa"</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 9: STRIP & REBUILD STRATEGY -->
+    <section id="sec-9">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--orange);">09</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Strip &amp; Rebuild Strategy</h2>
+      </div>
+
+      <div class="card p-6 mb-6 gradient-spotlight">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--primary);">Triết lý "Make Core Fun First"</div>
+        <p class="text-sm">Tắt hết feature outer · giữ lại 5 core action. Test true engagement trước khi layer feature. Pattern proven: Stardew Valley · Vampire Survivors · Cookie Clicker — đều strip xuống core trước → addictive tự thân không cần FOMO.</p>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--green);">5 Core Actions giữ lại</div>
+        <div class="grid md:grid-cols-5 gap-3">
+          <div class="card-hi p-4 rounded-xl text-center">
+            <div class="text-3xl mb-2">🌱</div>
+            <div class="font-bold text-sm">1. Trồng cây</div>
+            <div class="text-xs mt-1" style="color: var(--text-muted);">Tap chậu trống</div>
+          </div>
+          <div class="card-hi p-4 rounded-xl text-center">
+            <div class="text-3xl mb-2">🌾</div>
+            <div class="font-bold text-sm">2. Thu hoạch</div>
+            <div class="text-xs mt-1" style="color: var(--text-muted);">Tap cây chín</div>
+          </div>
+          <div class="card-hi p-4 rounded-xl text-center">
+            <div class="text-3xl mb-2">📦</div>
+            <div class="font-bold text-sm">3. Trả đơn</div>
+            <div class="text-xs mt-1" style="color: var(--text-muted);">Trồng → Máy → Giao</div>
+          </div>
+          <div class="card-hi p-4 rounded-xl text-center">
+            <div class="text-3xl mb-2">⬆️</div>
+            <div class="font-bold text-sm">4. Up chậu</div>
+            <div class="text-xs mt-1" style="color: var(--text-muted);">Nâng cấp chậu</div>
+          </div>
+          <div class="card-hi p-4 rounded-xl text-center">
+            <div class="text-3xl mb-2">🔓</div>
+            <div class="font-bold text-sm">5. Unlock tầng</div>
+            <div class="text-xs mt-1" style="color: var(--text-muted);">Mở tầng mới</div>
+          </div>
+        </div>
+        <div class="mt-4 gradient-gold p-3 rounded-lg">
+          <div class="text-xs"><strong style="color: var(--gold);">📌 Lưu ý:</strong> Máy chế biến <strong>GIỮ</strong> trong "Trả đơn" flow nhưng sẽ <strong>REDESIGN</strong> ở Section 10 (Frame-by-frame ASMR).</div>
+        </div>
+      </div>
+
+      <div class="card p-6 mb-6 gradient-red">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--red);">15 Feature OFF tạm thời (toggle config, không xoá code)</div>
+        <div class="grid md:grid-cols-3 gap-2 text-xs">
+          <div>🚫 Shop / Market</div>
+          <div>🚫 Social / Friend</div>
+          <div>🚫 Mini Event xoay tua</div>
+          <div>🚫 Nạp Rồng (T2-T5)</div>
+          <div>🚫 Phượng Hoàng (T6-CN)</div>
+          <div>🚫 Battle Pass</div>
+          <div>🚫 Daily login bonus</div>
+          <div>🚫 Push notification</div>
+          <div>🚫 Leaderboard</div>
+          <div>🚫 Khăn Đỏ NPC story</div>
+          <div>🚫 Side mini-game</div>
+          <div>🚫 Decoration mode</div>
+          <div>🚫 Pet companion</div>
+          <div>🚫 Photo mode</div>
+          <div>🚫 Achievement system</div>
+        </div>
+      </div>
+
+      <div class="card p-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Phase Plan</div>
+        <div class="ascii-box">
+PHASE 0 — STRIP + CORE REWORK (4-6 TUẦN)
+═════════════════════════════════════════
+W1 : OFF feature outer (toggle config)
+W2 : Visual Overhaul + Color Coding (Solution E)
+W3 : Tutorial 18 → 3 step + Hands-on
+W4 : ASMR + Game Juice cho 5 core action (Section 10)
+W5 : Smart default + Batch action (multi-select)
+W6 : Internal QA + soft-launch 5%
+
+PHASE 1 — RE-INTRODUCE THEO PRIORITY (2-4 TUẦN)
+════════════════════════════════════════════════
+Nếu Phase 0 KPI lift ✅ → re-add từ giá trị cao xuống thấp:
+[1] Daily Challenge widget    (Solution A.1)
+[2] Streak combo              (Solution A.3)
+[3] Push notif cây ready      (Solution G.1)
+[4] Mini Event xoay tua       (re-add với Khăn Đỏ event)
+[5] Friend / Social light     (re-add cuối)
+[6] Battle Pass + Nạp Rồng    (re-add khi monetize cần)
+
+A/B TEST mỗi feature re-add · không add 1 lần nhiều cái
+
+NẾU PHASE 0 KPI KHÔNG LIFT
+══════════════════════════
+→ Vấn đề ở core gameplay sâu hơn
+→ Cần rework deeper (đụng cơ chế tầng/máy/đơn)
+→ Hoặc pivot sang Garden Coloring (Game 1)</div>
+      </div>
+    </section>
+
+    <!-- SECTION 10: ASMR DEEP DIVE -->
+    <section id="sec-10">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--pink);">10</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">ASMR Deep Dive · 5 Core Action × Frame-by-Frame</h2>
+      </div>
+
+      <div class="card p-6 mb-6 gradient-pink">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--pink);">Triết lý ASMR The Best</div>
+        <p class="text-sm">Mỗi tap = 4-layer feedback (Visual + Audio + Haptic + Variable Reward) · Timeline ms-precise · Audio asset spec rõ · Reference proven game. Mục tiêu: user lặp 200+ lần/ngày mà KHÔNG MỆT — cảm giác meditative satisfying như PowerWash Simulator + Hay Day.</p>
+      </div>
+
+      <!-- ACTION 1: TRỒNG CÂY -->
+      <details open class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="text-3xl">🌱</div>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Action 1 · TRỒNG CÂY</div>
+              <div class="text-xs" style="color: var(--text-muted);">Lặp 60-200 lần/ngày · Highest priority ASMR</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5 space-y-4">
+
+          <div class="ascii-box">
+TIMELINE FRAME-BY-FRAME (total: 600ms)
+═══════════════════════════════════════
+Frame  Time   Layer       Action
+─────  ─────  ──────      ─────────────────────────────────────────
+F1     0ms    INPUT       Tap chậu trống
+F2     50ms   VISUAL      Chậu pulse outline (UI feedback "đã nhận tap")
+F3     50ms   AUDIO       SFX_seed_pickup.wav (200ms · pitch 1.0)
+F4     50ms   HAPTIC      iOS: UIImpactFeedbackLight (Android: 30ms vibrate)
+F5     100ms  VISUAL      Hạt giống 3D appear above chậu (drop animation start)
+F6     100→300ms VISUAL   Hạt rơi theo arc cong · ease-out cubic · 200ms
+F7     300ms  VISUAL      Hạt chạm đất → 5 particle bụi đất tung 360° · 150ms
+F8     300ms  AUDIO       SFX_soil_impact.wav (100ms · pitch random ±10%)
+F9     300ms  HAPTIC      Light pulse #2 (touchdown feedback)
+F10    400ms  VISUAL      Chậu squash 90% height (10px down) · ease-in 50ms
+F11    450ms  VISUAL      Chậu stretch 105% height (bounce up) · ease-out 100ms
+F12    550ms  VISUAL      Chậu return 100% · settle
+F13    550ms  VISUAL      Mầm xanh 🌱 nhú lên from soil center · scale 0→1 · 100ms
+F14    550ms  AUDIO       SFX_sprout_emerge.wav (100ms · chime cao C5)
+F15    650ms  STATE       Cây = "đang lớn stage 1" · timer countdown bắt đầu
+─────  ─────  ──────      ─────────────────────────────────────────
+
+→ TỔNG: 650ms cảm giác "đầy đặn" mà ngắn không gây mệt</div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="card-hi p-4 rounded-lg">
+              <div class="font-bold text-xs mb-2" style="color: var(--blue);">📐 ASSET CHECKLIST</div>
+              <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+                <li>• Sprite chậu trống · pulse outline · 2 frame</li>
+                <li>• Sprite hạt giống · 16×16px · 6 màu (cây phổ biến)</li>
+                <li>• Particle preset: dust_burst (5 particle · gravity 0.5)</li>
+                <li>• Sprite mầm cây · scale animation · 4 frame</li>
+                <li>• SFX_seed_pickup.wav · 200ms</li>
+                <li>• SFX_soil_impact.wav · 100ms · pitch variation ±10%</li>
+                <li>• SFX_sprout_emerge.wav · 100ms · chime C5</li>
+              </ul>
+            </div>
+            <div class="card-hi p-4 rounded-lg">
+              <div class="font-bold text-xs mb-2" style="color: var(--gold);">🎲 VARIABLE REWARD</div>
+              <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+                <li>• <strong>5%</strong> chance: hạt rơi → particle vàng → "✨ mầm vàng" · sound đặc biệt · cây grow x1.5 yield</li>
+                <li>• <strong>1%</strong> chance: "🌈 mầm cầu vồng" · particle rainbow · yield x2 + bonus rare item</li>
+                <li>• Variable reward = dopamine compulsion (Candy Crush pattern)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="gradient-gold p-4 rounded-lg">
+            <div class="text-xs"><strong style="color: var(--gold);">📚 Reference:</strong> Hay Day "ching" sound khi harvest · PowerWash Simulator immediate visual progress · Satiszone tap → ASMR sound + vibration mỗi action.</div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ACTION 2: THU HOẠCH -->
+      <details class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="text-3xl">🌾</div>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Action 2 · THU HOẠCH</div>
+              <div class="text-xs" style="color: var(--text-muted);">Lặp 30-60 lần/ngày · Combo system quan trọng</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5 space-y-4">
+
+          <div class="ascii-box">
+TIMELINE SINGLE HARVEST (total: 500ms)
+═══════════════════════════════════════
+F1   0ms    INPUT     Tap cây chín
+F2   30ms   VISUAL    Cây glow outline gold (selection feedback)
+F3   30ms   AUDIO     SFX_harvest_ching.wav (250ms · pitch theo combo)
+F4   30ms   HAPTIC    Medium pulse 60ms
+F5   50ms   VISUAL    Cây nhảy lên 20px · squash · 100ms
+F6   150ms  VISUAL    Cây vỡ thành 10 particle hoa/lá · spread 360° · gravity
+F7   150ms  VISUAL    Floating "+10 cà chua" text appear at cây position
+F8   150→400ms VISUAL Floating text rise 30px + fade out · 250ms
+F9   200ms  VISUAL    Sản phẩm 🍅 nhỏ bay theo arc to top bar inventory · 200ms
+F10  400ms  VISUAL    Top bar inventory icon pulse + count update
+F11  400ms  AUDIO     SFX_inventory_drop.wav (100ms · pitch up)
+F12  500ms  STATE     Chậu trở về trạng thái trống (sẵn sàng trồng tiếp)
+
+COMBO BONUS (streak 5+)
+═══════════════════════
+- Pitch tăng theo combo: cây 1=C5, cây 2=D5, cây 3=E5... up đến G6
+- Streak 5 = trigger fanfare 500ms + screen flash gold 200ms
+- Streak 10 = "🔥 COMBO x10!" text big + particle storm
+- Streak 20 = "🌟 PERFECT!" + slow-mo 0.5s + camera shake nhẹ
+
+BATCH "TAP-TO-REAP-ALL" (1 nút thu 60 chậu)
+═══════════════════════════════════════════
+F1   0ms     INPUT     Tap nút "Thu Hết Tầng"
+F2   0ms     AUDIO     SFX_batch_start.wav (whoosh 200ms)
+F3   0→1500ms VISUAL   60 chậu thu lần lượt theo wave (25ms/chậu)
+F4   0→1500ms AUDIO    Arpeggio chime tăng dần (60 note · piano scale)
+F5   1500ms  VISUAL    Total floating "+250 cà chua · +180 hoa hồng..."
+F6   1500ms  AUDIO     SFX_batch_complete.wav (fanfare 1s)
+F7   1500ms  HAPTIC    Long pulse 200ms
+
+→ Cảm giác fireworks 1.5s nhưng đầy thoả mãn</div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="card-hi p-4 rounded-lg">
+              <div class="font-bold text-xs mb-2" style="color: var(--blue);">📐 ASSET CHECKLIST</div>
+              <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+                <li>• Sprite cây chín · glow outline animation · 3 frame</li>
+                <li>• Particle preset: harvest_burst (10 particle · 360°)</li>
+                <li>• Sprite floating number · font Be Vietnam Pro Bold 20px</li>
+                <li>• Sprite trail animation cho sản phẩm bay top bar</li>
+                <li>• SFX_harvest_ching.wav · 250ms · 12 pitch variation</li>
+                <li>• SFX_inventory_drop.wav · 100ms</li>
+                <li>• SFX_combo_fanfare_5.wav · 500ms</li>
+                <li>• SFX_combo_perfect_20.wav · 1s + slowmo</li>
+                <li>• SFX_batch_arpeggio_60notes.wav · 1.5s</li>
+              </ul>
+            </div>
+            <div class="card-hi p-4 rounded-lg">
+              <div class="font-bold text-xs mb-2" style="color: var(--gold);">🎲 VARIABLE REWARD</div>
+              <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+                <li>• <strong>5%</strong> chance: "✨ Bội thu!" · double crop · particle gold storm · sound đặc biệt 800ms</li>
+                <li>• <strong>1%</strong> chance: "🎁 Quà bí mật" · drop rare item ngẫu nhiên (KC vụn, decor item)</li>
+                <li>• Combo streak chính nó là variable: lúc nào streak break không biết trước</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ACTION 3: TRẢ ĐƠN -->
+      <details class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="text-3xl">📦</div>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Action 3 · TRẢ ĐƠN HÀNG</div>
+              <div class="text-xs" style="color: var(--text-muted);">Lặp 5-15 lần/ngày · Đỉnh dopamine · 3 tier reward sound</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5 space-y-4">
+
+          <div class="ascii-box">
+TIMELINE TRẢ ĐƠN CÚ (đơn dễ · 800ms)
+═════════════════════════════════════
+F1   0ms     INPUT     Tap đơn cú hiện ở mặt đất hub
+F2   30ms    VISUAL    Đơn card glow blue · "Bạn có đủ — Trả đơn?"
+F3   30ms    AUDIO     SFX_owl_hoot.wav (200ms · soft)
+F4   500ms   USER      Tap "Trả đơn" button
+F5   500ms   VISUAL    Sản phẩm icons từ kho fly to đơn cú · arc trail · 250ms
+F6   500ms   AUDIO     SFX_items_fly.wav (250ms · whoosh)
+F7   750ms   VISUAL    Đơn cú "ăn no" animation · particle wing flap
+F8   750ms   AUDIO     SFX_owl_satisfied.wav + cling vàng 300ms
+F9   800ms   VISUAL    Reward popup: "+200 KC · +50 EXP" với sparkle
+F10  800ms   HAPTIC    Medium pulse 80ms
+
+TIMELINE TRẢ ĐƠN XE BÒ (trung bình · 1.2s)
+═══════════════════════════════════════════
+- Như cú nhưng:
+- F3: SFX_cow_moo.wav (300ms · low pitch) + bell tinkle
+- F8: Multi cling vàng (3 cling pitch up) · 500ms
+- F9: "+800 KC · +200 EXP" + bigger sparkle
+- F10: Strong pulse 120ms
+
+TIMELINE TRẢ ĐƠN KHINH KHÍ CẦU (khó · 2.5s)
+════════════════════════════════════════════
+- F1-F4: Như cú/bò
+- F5: Sản phẩm fly với trail rainbow · 500ms
+- F6: SFX_balloon_lift.wav (whoosh 800ms)
+- F7: Khinh khí cầu chở đầy hàng · animation lift up sky · 1s
+- F8: SFX_fanfare_big.wav (1.5s · cinematic) + golden cling cluster
+- F9: Reward popup BIG: "+5,000 KC · +1,000 EXP · Skin chậu vàng!" · particle storm
+- F10: Heavy pulse 200ms + screen flash gold
+
+→ 3 tier reward = 3 mức dopamine → user nhớ "khinh khí cầu = đỉnh"</div>
+
+          <div class="grid md:grid-cols-3 gap-3">
+            <div class="card-hi p-4 rounded-lg" style="border-left: 3px solid var(--blue);">
+              <div class="font-bold text-xs mb-2" style="color: var(--blue);">🦉 CÚ (Easy)</div>
+              <div class="text-xs" style="color: var(--text-muted);">Total 800ms · 1 cling vàng · light pulse · "+200 KC"</div>
+            </div>
+            <div class="card-hi p-4 rounded-lg" style="border-left: 3px solid var(--gold);">
+              <div class="font-bold text-xs mb-2" style="color: var(--gold);">🐂 XE BÒ (Mid)</div>
+              <div class="text-xs" style="color: var(--text-muted);">Total 1.2s · 3 cling pitch up · medium pulse · "+800 KC"</div>
+            </div>
+            <div class="card-hi p-4 rounded-lg" style="border-left: 3px solid var(--pink);">
+              <div class="font-bold text-xs mb-2" style="color: var(--pink);">🎈 KHINH KHÍ CẦU (Hard)</div>
+              <div class="text-xs" style="color: var(--text-muted);">Total 2.5s · cinematic + fanfare big + screen flash · "+5,000 KC"</div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ACTION 4: UP CHẬU -->
+      <details class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="text-3xl">⬆️</div>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Action 4 · UP CHẬU (Nâng cấp)</div>
+              <div class="text-xs" style="color: var(--text-muted);">Lặp 1-3 lần/ngày · Cinematic moment · KC sink chính</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5 space-y-4">
+
+          <div class="ascii-box">
+TIMELINE UP CHẬU (total: 2.5s — cinematic)
+══════════════════════════════════════════
+F1   0ms     INPUT     Long-press chậu (500ms hold detect)
+F2   500ms   VISUAL    Chậu glow gold + menu xuất hiện
+F3   500ms   AUDIO     SFX_menu_pop.wav (100ms)
+F4   500ms   HAPTIC    Light pulse (long-press confirm)
+F5   500ms   VISUAL    Preview side-by-side: chậu hiện tại vs chậu nâng cấp
+                       · Cost rõ: "500 KC · giảm 30% time"
+F6   ~800ms  USER      Tap "Confirm Nâng cấp"
+F7   800ms   AUDIO     SFX_kc_deduct.wav (coin clink 300ms)
+F8   800ms   VISUAL    Chậu hiện tại fade out (200ms)
+F9   1000ms  VISUAL    Particle gold burst 360° · 50 particle
+F10  1000ms  AUDIO     SFX_evolution_chime.wav (500ms · ascending arpeggio)
+F11  1000ms  HAPTIC    Heavy pulse 150ms
+F12  1200ms  VISUAL    Chậu mới appear · scale 0→1.2→1.0 (overshoot bounce)
+F13  1200ms  AUDIO     SFX_pot_appear.wav (chime ting 200ms)
+F14  1500ms  VISUAL    Floating text "Time -30%" rise + fade · gold color · 500ms
+F15  1500ms  VISUAL    Light beam lan tỏa từ chậu (radial glow · 300ms)
+F16  2000ms  AUDIO     SFX_glory_short.wav (fanfare ngắn 500ms)
+F17  2500ms  STATE     Settle · ready dùng
+
+OPTIONAL: Khi up chậu cuối cùng (max tier)
+══════════════════════════════════════════
+- Camera zoom in chậu (500ms)
+- Slow-mo evolution 1.5s
+- Title appear: "MAX TIER · GIẢM 70% TIME"
+- Reward bonus 1,000 KC popup
+- Total: 4s cinematic</div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="card-hi p-4 rounded-lg">
+              <div class="font-bold text-xs mb-2" style="color: var(--blue);">📐 ASSET CHECKLIST</div>
+              <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+                <li>• Chậu sprite × 5 tier (basic → gold → diamond)</li>
+                <li>• Menu UI long-press · slide-up animation</li>
+                <li>• Particle preset: gold_burst_50</li>
+                <li>• Light beam radial · 300ms</li>
+                <li>• SFX_evolution_chime.wav (ascending arpeggio C-E-G-C5)</li>
+                <li>• SFX_kc_deduct.wav (coin clink)</li>
+                <li>• SFX_pot_appear.wav (chime ting)</li>
+                <li>• SFX_glory_short.wav (fanfare 500ms)</li>
+              </ul>
+            </div>
+            <div class="card-hi p-4 rounded-lg">
+              <div class="font-bold text-xs mb-2" style="color: var(--gold);">💰 KC SINK INSIGHT</div>
+              <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+                <li>• Up chậu = KC sink chính (đẹp + giảm time)</li>
+                <li>• Cinematic 2.5s = "tiền không mất uổng" feeling</li>
+                <li>• Visual preview cost-benefit rõ trước commit</li>
+                <li>• Max tier = whale flex moment</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ACTION 5: UNLOCK TẦNG -->
+      <details class="card mb-4">
+        <summary class="p-6 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="text-3xl">🔓</div>
+            <div>
+              <div class="text-xl font-extrabold tracking-tight">Action 5 · UNLOCK TẦNG</div>
+              <div class="text-xs" style="color: var(--text-muted);">Lặp ~10 lần/lifetime · MEGA cinematic · Special moment</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined chevron" style="color: var(--text-muted);">chevron_right</span>
+        </summary>
+        <div class="px-6 pb-6 border-t border-white/5 pt-5 space-y-4">
+
+          <div class="ascii-box">
+TIMELINE UNLOCK TẦNG (total: 4s — MEGA cinematic)
+═════════════════════════════════════════════════
+F1   0ms     INPUT     Tap tầng locked (icon khoá vàng)
+F2   30ms    VISUAL    Khoá vàng pulse · "Cần Lv 15 + 10K vàng + 50 KC"
+F3   30ms    AUDIO     SFX_lock_check.wav (200ms)
+F4   ~500ms  USER      Tap "Mở Tầng" (nếu đủ điều kiện)
+F5   500ms   VISUAL    Khoá vàng quay tròn · phá vỡ thành particle
+F6   500ms   AUDIO     SFX_lock_break.wav (crunch 400ms)
+F7   500ms   HAPTIC    Heavy pulse 200ms
+F8   900ms   VISUAL    Đám mây trắng tách ra · reveal tầng mới · 1s cinematic
+F9   900ms   AUDIO     SFX_clouds_part.wav (whoosh 800ms · stereo wide)
+F10  900ms   VISUAL    Camera pan up smooth ease-out · 1.5s
+F11  1900ms  VISUAL    Tầng mới fully visible · sparkle stars khắp tầng · 500ms
+F12  1900ms  AUDIO     SFX_unlock_fanfare.wav (cinematic 2s · orchestra brass)
+F13  2400ms  VISUAL    Khăn Đỏ NPC fade in (Phase 1 only) · welcome speech
+                       · "Tầng Mây 5 — Hãy khám phá!"
+F14  2400ms  AUDIO     SFX_voice_kd_welcome.wav (voice line 1.5s)
+F15  3900ms  VISUAL    Reward chest appear at center · open animation
+F16  3900ms  AUDIO     SFX_chest_open.wav (chime cluster 500ms)
+F17  4000ms  VISUAL    Reward popup: "Tầng 5 unlock! +100 KC + Máy mới"
+F18  4000ms  HAPTIC    Long heavy pulse 300ms
+F19  4000ms  STATE     User now ở tầng mới · auto-pan camera
+
+UNLOCK TẦNG 10 (FINAL — ULTRA MEGA)
+═══════════════════════════════════
+- Total 6s cinematic
+- Slow-mo zoom 1s
+- Title: "BẠN ĐÃ LÊN TẦNG MÂY THƯỢNG ĐỈNH!"
+- Particle storm rainbow
+- Title screen takeover · "VƯỜN HOÀN HẢO" achievement
+- Reward: 5,000 KC + Skin "Bậc Thầy Vườn Mây"
+- Trophy hiện trên profile</div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="card-hi p-4 rounded-lg">
+              <div class="font-bold text-xs mb-2" style="color: var(--blue);">📐 ASSET CHECKLIST</div>
+              <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+                <li>• Khoá vàng 3D · spin + break animation</li>
+                <li>• Cloud parting effect · 2D layered · 1s</li>
+                <li>• Camera cinematic ease-out 1.5s</li>
+                <li>• Sparkle stars · particle preset · 100 particle</li>
+                <li>• Reward chest sprite · open animation 4 frame</li>
+                <li>• SFX_lock_break.wav · crunch 400ms</li>
+                <li>• SFX_clouds_part.wav · whoosh 800ms stereo</li>
+                <li>• SFX_unlock_fanfare.wav · orchestra 2s</li>
+                <li>• SFX_chest_open.wav · chime cluster</li>
+              </ul>
+            </div>
+            <div class="card-hi p-4 rounded-lg">
+              <div class="font-bold text-xs mb-2" style="color: var(--pink);">🌟 EMOTIONAL HOOK</div>
+              <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+                <li>• Unlock tầng = milestone moment · user nhớ mãi</li>
+                <li>• 4-6s cinematic = "tự hào" feeling</li>
+                <li>• Tầng 10 = end-game flex · social share auto template</li>
+                <li>• Reward chest = surprise (variable reward)</li>
+                <li>• Khăn Đỏ welcome = warm + emotional bridge</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- AUDIO LIBRARY TỔNG -->
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">📚 Audio Library tổng cho 5 Core Action</div>
+        <table class="data-table">
+          <thead><tr><th>SFX</th><th>Duration</th><th>Action dùng</th><th>Vibe</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">SFX_seed_pickup.wav</td><td>200ms</td><td>Trồng cây</td><td>Soft pickup</td></tr>
+            <tr><td class="mono">SFX_soil_impact.wav</td><td>100ms</td><td>Trồng cây</td><td>Earthy thud</td></tr>
+            <tr><td class="mono">SFX_sprout_emerge.wav</td><td>100ms</td><td>Trồng cây</td><td>Chime C5</td></tr>
+            <tr><td class="mono">SFX_harvest_ching.wav</td><td>250ms</td><td>Thu hoạch</td><td>Reward ching · 12 pitch</td></tr>
+            <tr><td class="mono">SFX_inventory_drop.wav</td><td>100ms</td><td>Thu hoạch</td><td>Tactile drop</td></tr>
+            <tr><td class="mono">SFX_combo_fanfare_5.wav</td><td>500ms</td><td>Thu hoạch combo</td><td>Build energy</td></tr>
+            <tr><td class="mono">SFX_combo_perfect_20.wav</td><td>1s</td><td>Thu hoạch streak max</td><td>Glory + slowmo</td></tr>
+            <tr><td class="mono">SFX_batch_arpeggio_60notes.wav</td><td>1.5s</td><td>Thu hoạch all</td><td>Piano scale up</td></tr>
+            <tr><td class="mono">SFX_owl_hoot.wav</td><td>200ms</td><td>Trả đơn cú</td><td>Soft warm</td></tr>
+            <tr><td class="mono">SFX_cow_moo.wav</td><td>300ms</td><td>Trả đơn xe bò</td><td>Low warm</td></tr>
+            <tr><td class="mono">SFX_balloon_lift.wav</td><td>800ms</td><td>Trả đơn khinh khí cầu</td><td>Cinematic lift</td></tr>
+            <tr><td class="mono">SFX_items_fly.wav</td><td>250ms</td><td>Trả đơn flight</td><td>Whoosh</td></tr>
+            <tr><td class="mono">SFX_fanfare_big.wav</td><td>1.5s</td><td>Trả đơn KKC reward</td><td>Orchestra cinematic</td></tr>
+            <tr><td class="mono">SFX_kc_deduct.wav</td><td>300ms</td><td>Up chậu</td><td>Coin clink</td></tr>
+            <tr><td class="mono">SFX_evolution_chime.wav</td><td>500ms</td><td>Up chậu</td><td>Ascending arpeggio</td></tr>
+            <tr><td class="mono">SFX_pot_appear.wav</td><td>200ms</td><td>Up chậu</td><td>Chime ting</td></tr>
+            <tr><td class="mono">SFX_glory_short.wav</td><td>500ms</td><td>Up chậu / Trả đơn</td><td>Fanfare ngắn</td></tr>
+            <tr><td class="mono">SFX_lock_break.wav</td><td>400ms</td><td>Unlock tầng</td><td>Crunch</td></tr>
+            <tr><td class="mono">SFX_clouds_part.wav</td><td>800ms</td><td>Unlock tầng</td><td>Stereo whoosh</td></tr>
+            <tr><td class="mono">SFX_unlock_fanfare.wav</td><td>2s</td><td>Unlock tầng</td><td>Orchestra brass cinematic</td></tr>
+            <tr><td class="mono">SFX_chest_open.wav</td><td>500ms</td><td>Unlock tầng reward</td><td>Chime cluster</td></tr>
+          </tbody>
+        </table>
+        <div class="mt-3 text-xs" style="color: var(--text-muted);"><strong>Total: 21 SFX asset</strong> · ~10s total audio · production cost trung bình (có thể license stock + custom record)</div>
+      </div>
+
+      <!-- ANTI-OVER-JUICE -->
+      <div class="card p-6 gradient-red">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--red);">⚠️ Cảnh báo Anti-Over-Juice</div>
+        <p class="text-sm mb-3">Research cảnh báo: <em>"Heightened feedback có thể trick user · risk mistake surface excitement với genuine engagement"</em>. Em recommend balance:</p>
+        <ul class="text-sm space-y-2">
+          <li>✓ <strong>Tap đầu mỗi session</strong>: full ASMR layer</li>
+          <li>✓ <strong>Tap thứ 30+</strong> trong session: giảm 50% intensity (animation ngắn hơn 70% · sound nhỏ hơn 30%)</li>
+          <li>✓ <strong>Settings có toggle</strong>: "Reduce visual effects" cho user thích simple</li>
+          <li>✓ <strong>Variable reward sparingly</strong>: 5% chance bonus là sweet spot · trên 10% sẽ inflate</li>
+          <li>✓ <strong>Cinematic chỉ cho moments lớn</strong>: Up chậu max + Unlock tầng — không spam</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-white/5 pt-8 mt-16">
+      <div class="flex items-center justify-between text-xs mono" style="color: var(--text-muted);">
+        <div>
+          <strong style="color: var(--text);">KVTM Rework Quick Fix · Spec Doc v1.2</strong><br>
+          Khu Vườn Trên Mây · Internal · Generated 2026-05-04
+        </div>
+        <div class="text-right">
+          <strong style="color: var(--primary);">DRAFT</strong><br>
+          Hướng A · 8 tuần dev · Giữ 100% userbase
+        </div>
+      </div>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  // Active TOC tracking
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        document.querySelectorAll('.toc a').forEach(a => a.classList.remove('active'));
+        const link = document.querySelector(`.toc a[href="#${id}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Triple Tile — Map 36: Vườn Phù Thủy</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg-deep: #1a0d2e;
+  --bg-mid: #2d1b4e;
+  --bg-card: #3d2560;
+  --bg-card-hi: #4e2f78;
+  --violet: #7c3aed;
+  --violet-light: #a855f7;
+  --gold: #fbbf24;
+  --gold-light: #fde68a;
+  --text: #f0e6ff;
+  --text-muted: #b08fd0;
+  --shadow: rgba(124,58,237,0.35);
+  --slot-empty: rgba(255,255,255,0.08);
+  --slot-border: rgba(168,85,247,0.4);
+}
+
+html, body {
+  height: 100%;
+  background: linear-gradient(160deg, var(--bg-deep) 0%, #0f0520 50%, #1e0a35 100%);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#app {
+  width: 100%;
+  max-width: 420px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Stars background */
+#app::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 15%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 8%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 30%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 10% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 70%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 55% 85%, rgba(255,255,255,0.3) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── HEADER ── */
+#header {
+  flex-shrink: 0;
+  padding: 12px 16px 6px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+#header h1 {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 12px rgba(251,191,36,0.5);
+}
+#header .subtitle {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* ── HUD ── */
+#hud {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 16px;
+  background: rgba(61,37,96,0.75);
+  border-radius: 16px;
+  margin: 0 12px 6px;
+  box-shadow: 0 2px 16px var(--shadow);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(168,85,247,0.25);
+  position: relative;
+  z-index: 1;
+}
+.hud-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.hud-icon { font-size: 16px; line-height: 1; }
+#timer { color: var(--gold); font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+#timer.urgent { color: #f87171; animation: pulse-red 0.5s infinite alternate; }
+@keyframes pulse-red { from { opacity: 1; } to { opacity: 0.5; } }
+#stars-display { color: var(--gold); }
+#match-count { color: var(--violet-light); }
+
+/* ── PILE AREA ── */
+#pile-wrap {
+  flex: 1;
+  position: relative;
+  margin: 0 10px 6px;
+  z-index: 1;
+}
+#pile-container {
+  width: 100%;
+  height: 100%;
+  background: rgba(45,27,78,0.6);
+  border-radius: 20px;
+  border: 1px solid rgba(168,85,247,0.3);
+  box-shadow: inset 0 2px 20px rgba(0,0,0,0.4), 0 4px 20px var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+#pile-container::before {
+  content: '✨';
+  position: absolute;
+  top: 8px; right: 10px;
+  font-size: 18px;
+  opacity: 0.3;
+  animation: float 3s ease-in-out infinite;
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* ── TILE ── */
+.tile {
+  position: absolute;
+  width: 54px;
+  height: 54px;
+  background: linear-gradient(145deg, var(--bg-card-hi), var(--bg-card));
+  border-radius: 12px;
+  border: 2px solid rgba(168,85,247,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.12s, box-shadow 0.12s;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+  transform-origin: center;
+}
+.tile:hover:not(.disabled) {
+  transform: scale(1.08) translateY(-2px);
+  box-shadow: 0 6px 20px rgba(168,85,247,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+  border-color: var(--violet-light);
+}
+.tile.disabled {
+  cursor: default;
+  filter: brightness(0.55) saturate(0.6);
+}
+.tile.disabled::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.3);
+}
+.tile.flying {
+  transition: left 0.3s cubic-bezier(0.25,0.46,0.45,0.94),
+              top 0.3s cubic-bezier(0.25,0.46,0.45,0.94),
+              transform 0.3s ease;
+  pointer-events: none;
+  z-index: 100 !important;
+}
+
+/* ── SLOT AREA ── */
+#slot-area {
+  flex-shrink: 0;
+  padding: 6px 10px 10px;
+  position: relative;
+  z-index: 1;
+}
+#slot-label {
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+#slots {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+  align-items: center;
+  background: rgba(45,27,78,0.7);
+  border-radius: 16px;
+  padding: 8px 8px;
+  border: 1px solid rgba(168,85,247,0.25);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  min-height: 70px;
+  position: relative;
+}
+.slot-box {
+  width: 50px;
+  height: 54px;
+  border-radius: 10px;
+  border: 2px dashed var(--slot-border);
+  background: var(--slot-empty);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  position: relative;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: visible;
+}
+.slot-box.has-tile {
+  border-style: solid;
+  border-color: rgba(168,85,247,0.6);
+  background: rgba(78,47,120,0.6);
+}
+.slot-tile {
+  font-size: 24px;
+  line-height: 1;
+  display: block;
+}
+.slot-box.match-flash {
+  animation: match-flash 0.4s ease forwards;
+}
+@keyframes match-flash {
+  0% { transform: scale(1); background: rgba(78,47,120,0.6); }
+  30% { transform: scale(1.2); background: rgba(251,191,36,0.4); border-color: var(--gold); box-shadow: 0 0 20px rgba(251,191,36,0.6); }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+/* Sparkle */
+.sparkle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 200;
+  font-size: 18px;
+  animation: sparkle-out 0.6s ease-out forwards;
+}
+@keyframes sparkle-out {
+  0% { transform: translate(-50%,-50%) scale(0) rotate(0deg); opacity: 1; }
+  50% { transform: translate(-50%,-50%) scale(1.4) rotate(180deg); opacity: 1; }
+  100% { transform: translate(-50%,-50%) scale(0) rotate(360deg); opacity: 0; }
+}
+
+/* ── ACTION BUTTONS ── */
+#actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  padding: 4px 12px 10px;
+  position: relative;
+  z-index: 1;
+}
+.btn {
+  flex: 1;
+  padding: 9px 6px;
+  border-radius: 12px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: transform 0.1s, box-shadow 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.95); }
+.btn-reset {
+  background: linear-gradient(135deg, #4e2f78, #3d2560);
+  color: var(--text-muted);
+  border: 1px solid rgba(168,85,247,0.3);
+}
+.btn-reset:hover { background: linear-gradient(135deg, #5e3f88, #4d3570); }
+.btn-undo {
+  background: linear-gradient(135deg, #2d4a7a, #1e3560);
+  color: #93c5fd;
+  border: 1px solid rgba(96,165,250,0.3);
+}
+.btn-undo:hover { background: linear-gradient(135deg, #3d5a8a, #2e4570); }
+.btn-undo:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── OVERLAY ── */
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,5,20,0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+#overlay.show {
+  opacity: 1;
+  pointer-events: all;
+}
+.popup {
+  background: linear-gradient(145deg, #3d2560, #2d1b4e);
+  border: 1px solid rgba(168,85,247,0.5);
+  border-radius: 24px;
+  padding: 28px 24px 22px;
+  text-align: center;
+  max-width: 300px;
+  width: 88%;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.7), 0 0 40px rgba(124,58,237,0.3);
+  transform: scale(0.85);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+#overlay.show .popup { transform: scale(1); }
+.popup-icon { font-size: 56px; margin-bottom: 8px; }
+.popup-title {
+  font-size: 22px;
+  font-weight: 900;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+}
+.popup-title.win { color: var(--gold); text-shadow: 0 0 20px rgba(251,191,36,0.6); }
+.popup-title.lose { color: #f87171; }
+.popup-body {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+.reward-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  font-size: 18px;
+  font-weight: 800;
+}
+.reward-item { display: flex; align-items: center; gap: 4px; }
+.reward-item span:last-child { font-size: 14px; color: var(--gold); }
+.btn-popup {
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  border: none;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--violet), #9333ea);
+  color: white;
+  box-shadow: 0 4px 16px rgba(124,58,237,0.5);
+  transition: transform 0.1s, box-shadow 0.1s;
+  letter-spacing: 0.01em;
+}
+.btn-popup:hover { box-shadow: 0 6px 24px rgba(124,58,237,0.7); transform: translateY(-1px); }
+.btn-popup:active { transform: scale(0.97); }
+
+/* Win particles */
+.confetti {
+  position: fixed;
+  pointer-events: none;
+  z-index: 600;
+  font-size: 20px;
+  animation: confetti-fall 1.2s ease-out forwards;
+}
+@keyframes confetti-fall {
+  0% { transform: translateY(-20px) rotate(0deg) scale(0); opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: translateY(120px) rotate(720deg) scale(1.2); opacity: 0; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="header">
+    <h1>🎁 TRIPLE TILE — Map 36</h1>
+    <div class="subtitle">Vườn Phù Thủy · Fantasy · Clear the pile!</div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-item" id="stars-display">
+      <span class="hud-icon">⭐</span>
+      <span id="stars-val">0</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-icon">⏱️</span>
+      <span id="timer">3:00</span>
+    </div>
+    <div class="hud-item" id="match-count">
+      <span class="hud-icon">💥</span>
+      <span id="match-val">0</span>
+      <span style="color:var(--text-muted);font-size:10px"> matched</span>
+    </div>
+  </div>
+
+  <!-- PILE -->
+  <div id="pile-wrap">
+    <div id="pile-container"></div>
+  </div>
+
+  <!-- SLOTS -->
+  <div id="slot-area">
+    <div id="slot-label">Slot — 7 ô · 3 cùng loại = match 💥</div>
+    <div id="slots"></div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div id="actions">
+    <button class="btn btn-undo" id="btn-undo" disabled onclick="doUndo()">↩ Undo</button>
+    <button class="btn btn-reset" onclick="resetGame()">🔄 Restart</button>
+  </div>
+
+</div>
+
+<!-- OVERLAY -->
+<div id="overlay">
+  <div class="popup">
+    <div class="popup-icon" id="popup-icon">🏆</div>
+    <div class="popup-title" id="popup-title">Level Complete!</div>
+    <div class="popup-body" id="popup-body">You cleared the pile!</div>
+    <div class="reward-row" id="reward-row" style="display:none">
+      <div class="reward-item"><span>⭐⭐</span><span>+2 Stars</span></div>
+      <div class="reward-item"><span>🪙</span><span>+50 Coins</span></div>
+    </div>
+    <button class="btn-popup" id="popup-btn" onclick="resetGame()">Play Again</button>
+  </div>
+</div>
+
+<script>
+// ─── AUDIO ───────────────────────────────────────────────────────────────────
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+const resumeAC = () => { if (AC.state === 'suspended') AC.resume(); };
+
+function playTone(freq, type, duration, gainVal, delay = 0) {
+  resumeAC();
+  const osc = AC.createOscillator();
+  const gain = AC.createGain();
+  osc.connect(gain);
+  gain.connect(AC.destination);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, AC.currentTime + delay);
+  gain.gain.setValueAtTime(0, AC.currentTime + delay);
+  gain.gain.linearRampToValueAtTime(gainVal, AC.currentTime + delay + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + delay + duration);
+  osc.start(AC.currentTime + delay);
+  osc.stop(AC.currentTime + delay + duration + 0.05);
+}
+
+function soundMove() {
+  playTone(660, 'sine', 0.12, 0.25);
+  playTone(880, 'sine', 0.08, 0.15, 0.06);
+}
+function soundMatch() {
+  [523, 659, 784, 1047].forEach((f, i) => playTone(f, 'sine', 0.2, 0.3, i * 0.07));
+}
+function soundWin() {
+  const melody = [523,659,784,1047,1319,1047,784,659,523];
+  melody.forEach((f, i) => playTone(f, 'sine', 0.25, 0.35, i * 0.08));
+}
+function soundLose() {
+  [440, 330, 220].forEach((f, i) => playTone(f, 'sawtooth', 0.25, 0.2, i * 0.12));
+}
+function soundUrgent() {
+  playTone(880, 'square', 0.06, 0.12);
+}
+
+function haptic(ms = 25) {
+  if (navigator.vibrate) navigator.vibrate(ms);
+}
+
+// ─── GAME STATE ───────────────────────────────────────────────────────────────
+const TILE_TYPES = [
+  { id: 'wizard',  emoji: '🧙' },
+  { id: 'dragon',  emoji: '🐉' },
+  { id: 'crystal', emoji: '💎' },
+  { id: 'unicorn', emoji: '🦄' },
+  { id: 'star',    emoji: '🌟' },
+];
+
+const TOTAL_TILES = 30; // 5 types × 6 = 30
+const SLOT_COUNT = 7;
+const TIME_LIMIT = 180; // seconds
+
+let pile = [];       // array of tile objects { id, type, emoji, x, y, z, disabled, el }
+let slots = [];      // array of slot content (null or tile object), length SLOT_COUNT
+let undoStack = [];  // for undo
+let matchCount = 0;
+let stars = 0;
+let timeLeft = TIME_LIMIT;
+let timerInterval = null;
+let gameOver = false;
+
+// ─── BUILD TILE DECK ──────────────────────────────────────────────────────────
+function buildDeck() {
+  const deck = [];
+  TILE_TYPES.forEach(t => {
+    for (let i = 0; i < 6; i++) {
+      deck.push({ type: t.id, emoji: t.emoji });
+    }
+  });
+  return deck;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ─── LAYOUT TILES IN PILE ─────────────────────────────────────────────────────
+function layoutPile() {
+  const container = document.getElementById('pile-container');
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+
+  const deck = shuffle(buildDeck());
+
+  pile = deck.map((d, i) => {
+    // Arrange in a roughly stacked pile with slight offsets
+    const row = Math.floor(i / 6);
+    const col = i % 6;
+    const colCount = 6;
+    const rowCount = Math.ceil(deck.length / colCount);
+
+    const padX = 30;
+    const padY = 20;
+    const cellW = (cw - padX * 2 - 54) / (colCount - 1);
+    const cellH = (ch - padY * 2 - 54) / (rowCount - 1);
+
+    const baseX = padX + col * cellW;
+    const baseY = padY + row * cellH;
+
+    // Add jitter for pile feel
+    const jx = (Math.random() - 0.5) * 18;
+    const jy = (Math.random() - 0.5) * 14;
+
+    return {
+      id: i,
+      type: d.type,
+      emoji: d.emoji,
+      x: Math.max(4, Math.min(cw - 58, baseX + jx)),
+      y: Math.max(4, Math.min(ch - 58, baseY + jy)),
+      z: i,
+      disabled: false,
+      el: null,
+    };
+  });
+}
+
+// ─── COMPUTE DISABLED STATE ───────────────────────────────────────────────────
+function computeDisabled() {
+  // A tile is disabled if it is covered by another tile
+  // Simple: tile A covers tile B if their rects overlap AND A.z > B.z
+  const TILE_W = 54, TILE_H = 54;
+
+  pile.forEach(t => { t.disabled = false; });
+
+  for (let i = 0; i < pile.length; i++) {
+    for (let j = i + 1; j < pile.length; j++) {
+      const a = pile[i], b = pile[j];
+      const higher = a.z > b.z ? a : b;
+      const lower  = a.z > b.z ? b : a;
+
+      // Check overlap
+      const overlapX = Math.abs(higher.x - lower.x) < TILE_W * 0.65;
+      const overlapY = Math.abs(higher.y - lower.y) < TILE_H * 0.65;
+      if (overlapX && overlapY) {
+        lower.disabled = true;
+      }
+    }
+  }
+}
+
+// ─── RENDER PILE ─────────────────────────────────────────────────────────────
+function renderPile() {
+  const container = document.getElementById('pile-container');
+  // Remove old tile elements
+  container.querySelectorAll('.tile').forEach(el => el.remove());
+
+  computeDisabled();
+
+  // Sort by z then render
+  const sorted = [...pile].sort((a, b) => a.z - b.z);
+
+  sorted.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'tile' + (t.disabled ? ' disabled' : '');
+    el.dataset.id = t.id;
+    el.style.left = t.x + 'px';
+    el.style.top = t.y + 'px';
+    el.style.zIndex = t.z + 1;
+    el.textContent = t.emoji;
+
+    if (!t.disabled) {
+      el.addEventListener('click', () => tapTile(t.id));
+      el.addEventListener('touchend', (e) => { e.preventDefault(); tapTile(t.id); });
+    }
+
+    container.appendChild(el);
+    t.el = el;
+  });
+}
+
+// ─── RENDER SLOTS ─────────────────────────────────────────────────────────────
+function renderSlots() {
+  const slotContainer = document.getElementById('slots');
+  slotContainer.innerHTML = '';
+  for (let i = 0; i < SLOT_COUNT; i++) {
+    const box = document.createElement('div');
+    box.className = 'slot-box' + (slots[i] ? ' has-tile' : '');
+    box.id = 'slot-' + i;
+    if (slots[i]) {
+      const span = document.createElement('span');
+      span.className = 'slot-tile';
+      span.textContent = slots[i].emoji;
+      box.appendChild(span);
+    }
+    slotContainer.appendChild(box);
+  }
+}
+
+// ─── TAP TILE ─────────────────────────────────────────────────────────────────
+function tapTile(tileId) {
+  if (gameOver) return;
+  resumeAC();
+  haptic(20);
+
+  const tile = pile.find(t => t.id === tileId);
+  if (!tile || tile.disabled) return;
+
+  // Find first empty slot
+  const emptyIdx = slots.indexOf(null);
+  if (emptyIdx === -1) return; // No space (shouldn't happen here)
+
+  soundMove();
+
+  // Save undo state before modifying
+  undoStack.push({
+    pile: pile.map(t => ({ ...t, el: null })),
+    slots: [...slots],
+    matchCount,
+    stars,
+  });
+  document.getElementById('btn-undo').disabled = false;
+
+  // Animate tile flying to slot
+  animateTileToSlot(tile, emptyIdx, () => {
+    // Move tile from pile to slot
+    pile = pile.filter(t => t.id !== tileId);
+    slots[emptyIdx] = { type: tile.type, emoji: tile.emoji };
+
+    // Sort slots: group same types together (insert in sorted position)
+    sortSlots();
+
+    renderPile();
+    renderSlots();
+    checkMatch();
+    checkWin();
+    checkLose();
+    updateMatchDisplay();
+  });
+}
+
+function sortSlots() {
+  // Move non-null items to front, group same types
+  const filled = slots.filter(s => s !== null);
+  // Sort by type to group same types together
+  filled.sort((a, b) => a.type.localeCompare(b.type));
+  for (let i = 0; i < SLOT_COUNT; i++) {
+    slots[i] = i < filled.length ? filled[i] : null;
+  }
+}
+
+// ─── ANIMATE TILE FLYING ──────────────────────────────────────────────────────
+function animateTileToSlot(tile, slotIdx, onDone) {
+  const container = document.getElementById('pile-container');
+  const slotBox = document.getElementById('slot-' + slotIdx);
+
+  if (!tile.el || !slotBox) { onDone(); return; }
+
+  const tileRect = tile.el.getBoundingClientRect();
+  const slotRect = slotBox.getBoundingClientRect();
+
+  // Create flying clone
+  const clone = document.createElement('div');
+  clone.className = 'tile flying';
+  clone.textContent = tile.emoji;
+  clone.style.position = 'fixed';
+  clone.style.left = tileRect.left + 'px';
+  clone.style.top  = tileRect.top  + 'px';
+  clone.style.zIndex = 999;
+  clone.style.width = '54px';
+  clone.style.height = '54px';
+  clone.style.margin = '0';
+  clone.style.pointerEvents = 'none';
+  document.body.appendChild(clone);
+
+  // Hide original
+  tile.el.style.visibility = 'hidden';
+
+  // Force layout
+  clone.getBoundingClientRect();
+
+  // Target position (center of slot)
+  const targetLeft = slotRect.left + (slotRect.width - 54) / 2;
+  const targetTop  = slotRect.top  + (slotRect.height - 54) / 2;
+
+  clone.style.left = targetLeft + 'px';
+  clone.style.top  = targetTop  + 'px';
+  clone.style.transform = 'scale(0.85)';
+
+  setTimeout(() => {
+    clone.remove();
+    onDone();
+  }, 320);
+}
+
+// ─── CHECK MATCH ─────────────────────────────────────────────────────────────
+function checkMatch() {
+  // Find 3 consecutive same-type after sort
+  let i = 0;
+  while (i <= SLOT_COUNT - 3) {
+    const s = slots[i];
+    if (s && slots[i+1] && slots[i+2] &&
+        s.type === slots[i+1].type &&
+        s.type === slots[i+2].type) {
+      // Match found! Animate and remove
+      triggerMatch(i);
+      return; // Will re-render after animation
+    }
+    i++;
+  }
+}
+
+function triggerMatch(startIdx) {
+  soundMatch();
+  haptic([30, 20, 30]);
+  matchCount++;
+  stars = Math.min(3, Math.floor(matchCount / 3) + (matchCount > 0 ? 1 : 0));
+
+  // Flash animation on matched slots
+  for (let i = startIdx; i < startIdx + 3; i++) {
+    const box = document.getElementById('slot-' + i);
+    if (box) {
+      box.classList.add('match-flash');
+      spawnSparkles(box);
+    }
+  }
+
+  setTimeout(() => {
+    // Remove matched tiles from slots
+    slots.splice(startIdx, 3);
+    // Fill back to SLOT_COUNT with nulls
+    while (slots.length < SLOT_COUNT) slots.push(null);
+
+    renderSlots();
+    updateMatchDisplay();
+
+    // Check for another match (chain)
+    checkMatch();
+    checkWin();
+  }, 450);
+}
+
+function spawnSparkles(box) {
+  const rect = box.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top  + rect.height / 2;
+  const sparks = ['✨','⭐','💫','🌟','✦'];
+  for (let i = 0; i < 5; i++) {
+    const el = document.createElement('div');
+    el.className = 'sparkle';
+    el.textContent = sparks[i % sparks.length];
+    el.style.left = (cx + (Math.random()-0.5)*50) + 'px';
+    el.style.top  = (cy + (Math.random()-0.5)*40) + 'px';
+    el.style.animationDelay = (Math.random() * 0.2) + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 800);
+  }
+}
+
+// ─── CHECK WIN / LOSE ─────────────────────────────────────────────────────────
+function checkWin() {
+  if (pile.length === 0 && slots.every(s => s === null)) {
+    endGame(true);
+  }
+}
+
+function checkLose() {
+  // Lose if all 7 slots filled with no possible match
+  const filled = slots.filter(s => s !== null);
+  if (filled.length < SLOT_COUNT) return;
+
+  // Check if any 3 of same type exist in slots
+  const counts = {};
+  filled.forEach(s => { counts[s.type] = (counts[s.type] || 0) + 1; });
+  const canMatch = Object.values(counts).some(c => c >= 3);
+  if (!canMatch) {
+    endGame(false, 'out_of_slots');
+  }
+}
+
+function endGame(win, reason) {
+  if (gameOver) return;
+  gameOver = true;
+  clearInterval(timerInterval);
+  haptic(win ? [30,50,30] : [100,50,100]);
+
+  if (win) {
+    soundWin();
+    spawnConfetti();
+    showPopup(true);
+  } else {
+    soundLose();
+    showPopup(false, reason);
+  }
+}
+
+function showPopup(win, reason) {
+  const overlay = document.getElementById('overlay');
+  const icon = document.getElementById('popup-icon');
+  const title = document.getElementById('popup-title');
+  const body = document.getElementById('popup-body');
+  const reward = document.getElementById('reward-row');
+  const btn = document.getElementById('popup-btn');
+
+  if (win) {
+    icon.textContent = '🏆';
+    title.className = 'popup-title win';
+    title.textContent = 'Level Complete!';
+    body.textContent = `Bạn đã clear toàn bộ pile!\nMatched: ${matchCount} lần`;
+    reward.style.display = 'flex';
+    btn.textContent = '🎉 Play Again';
+  } else {
+    icon.textContent = reason === 'out_of_slots' ? '💔' : '⏰';
+    title.className = 'popup-title lose';
+    title.textContent = reason === 'out_of_slots' ? 'Out of Slots!' : 'Time\'s Up!';
+    body.textContent = reason === 'out_of_slots'
+      ? 'Slot đầy mà không match được.\nCòn lại ' + pile.length + ' tile trên pile.'
+      : 'Hết 3 phút! Còn lại ' + pile.length + ' tile.';
+    reward.style.display = 'none';
+    btn.textContent = '🔄 Try Again';
+  }
+
+  overlay.classList.add('show');
+}
+
+function spawnConfetti() {
+  const emojis = ['🎉','✨','🌟','💎','🎊','⭐','🦄','💫'];
+  for (let i = 0; i < 18; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.textContent = emojis[i % emojis.length];
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.top = -20 + 'px';
+    el.style.animationDelay = Math.random() * 0.8 + 's';
+    el.style.fontSize = (14 + Math.random() * 14) + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2000);
+  }
+}
+
+// ─── TIMER ────────────────────────────────────────────────────────────────────
+function startTimer() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (gameOver) return;
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft <= 30 && timeLeft % 2 === 0) soundUrgent();
+    if (timeLeft <= 0) endGame(false, 'time');
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timer');
+  const m = Math.floor(timeLeft / 60);
+  const s = timeLeft % 60;
+  el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+  el.classList.toggle('urgent', timeLeft <= 30);
+}
+
+// ─── UNDO ─────────────────────────────────────────────────────────────────────
+function doUndo() {
+  if (!undoStack.length || gameOver) return;
+  haptic(15);
+  const state = undoStack.pop();
+  pile = state.pile;
+  slots = state.slots;
+  matchCount = state.matchCount;
+  stars = state.stars;
+  document.getElementById('btn-undo').disabled = undoStack.length === 0;
+  renderPile();
+  renderSlots();
+  updateMatchDisplay();
+}
+
+// ─── UPDATE DISPLAY ───────────────────────────────────────────────────────────
+function updateMatchDisplay() {
+  document.getElementById('match-val').textContent = matchCount;
+  const earnedStars = matchCount >= 8 ? 3 : matchCount >= 4 ? 2 : matchCount >= 2 ? 1 : 0;
+  document.getElementById('stars-val').textContent = earnedStars;
+}
+
+// ─── RESET / INIT ─────────────────────────────────────────────────────────────
+function resetGame() {
+  document.getElementById('overlay').classList.remove('show');
+  clearInterval(timerInterval);
+  gameOver = false;
+  slots = new Array(SLOT_COUNT).fill(null);
+  undoStack = [];
+  matchCount = 0;
+  stars = 0;
+  timeLeft = TIME_LIMIT;
+
+  layoutPile();
+  renderPile();
+  renderSlots();
+  updateTimerDisplay();
+  updateMatchDisplay();
+  document.getElementById('btn-undo').disabled = true;
+
+  startTimer();
+}
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // Small delay so container has real dimensions
+  setTimeout(resetGame, 100);
+});
+
+// Prevent scroll on touch in game area
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+</script>
+</body>
+</html>

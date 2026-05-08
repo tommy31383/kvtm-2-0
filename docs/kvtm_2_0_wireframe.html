@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KVTM 2.0 — Wireframe Overview v2.2</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+  --border: #30363d; --border-hi: #58a6ff44;
+  --text: #e6edf3; --muted: #8b949e; --dim: #484f58;
+  --hub: #f0883e;       --hub-bg: rgba(240,136,62,.12);
+  --puzzle: #79c0ff;    --puzzle-bg: rgba(121,192,255,.12);
+  --popup: #56d364;     --popup-bg: rgba(86,211,100,.12);
+  --lose: #f85149;      --lose-bg: rgba(248,81,73,.12);
+  --story: #d2a8ff;     --story-bg: rgba(210,168,255,.12);
+  --gold: #e3b341; --pink: #f778ba; --green: #56d364;
+  --panel-w: 400px;
+}
+body { font-family: 'Be Vietnam Pro', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+
+/* HEADER */
+#hdr {
+  flex-shrink: 0; height: 52px; background: var(--bg2); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px; gap: 16px;
+}
+#hdr .title { font-weight: 800; font-size: 15px; color: var(--text); letter-spacing: -.01em; }
+#hdr .sub { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+#hdr .stats { margin-left: auto; display: flex; gap: 8px; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 700; border: 1px solid; }
+.badge-node { background: rgba(121,192,255,.1); color: var(--puzzle); border-color: rgba(121,192,255,.3); }
+.badge-edge { background: rgba(86,211,100,.1); color: var(--green); border-color: rgba(86,211,100,.3); }
+.badge-comp { background: rgba(210,168,255,.1); color: var(--story); border-color: rgba(210,168,255,.3); }
+#hdr .actions { display: flex; gap: 6px; margin-left: 12px; }
+.hdr-btn { padding: 4px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 11px; cursor: pointer; transition: .15s; font-family: inherit; }
+.hdr-btn:hover { color: var(--text); border-color: #8b949e; }
+
+/* LEGEND */
+#legend {
+  flex-shrink: 0; height: 32px; background: var(--bg); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px; gap: 20px;
+}
+.leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.leg-dot { width: 10px; height: 10px; border-radius: 2px; }
+.leg-line { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.leg-svg { width: 28px; height: 12px; }
+
+/* MAIN AREA */
+#main { flex: 1; display: flex; overflow: hidden; position: relative; }
+
+/* CANVAS */
+#canvas-wrap { flex: 1; overflow: hidden; position: relative; cursor: grab; }
+#canvas-wrap.dragging { cursor: grabbing; }
+#canvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+
+/* SVG EDGES */
+#edges-svg { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; }
+
+/* ZOOM CONTROLS */
+#zoom-ctrl {
+  position: absolute; bottom: 16px; left: 16px; display: flex; flex-direction: column; gap: 4px; z-index: 10;
+}
+.zoom-btn { width: 28px; height: 28px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: .15s; }
+.zoom-btn:hover { background: var(--bg3); }
+#zoom-label { text-align: center; font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+/* NODES */
+.node {
+  position: absolute; width: 186px; border-radius: 10px; border: 2px solid;
+  cursor: pointer; transition: box-shadow .15s, border-color .15s; user-select: none;
+  background: var(--bg2);
+}
+.node:hover { box-shadow: 0 0 0 3px rgba(255,255,255,.08); }
+.node.active { box-shadow: 0 0 0 3px rgba(255,255,255,.15); }
+.node-header { padding: 10px 12px 8px; border-bottom: 1px solid; }
+.node-id { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+.node-name { font-weight: 800; font-size: 13px; color: var(--text); line-height: 1.2; }
+.node-purpose { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+.node-footer { padding: 7px 12px; display: flex; align-items: center; justify-content: space-between; }
+.node-comp-badge { font-size: 10px; color: var(--dim); font-family: 'JetBrains Mono', monospace; }
+.node-type-badge { font-size: 9px; padding: 1px 6px; border-radius: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; }
+
+/* Node type colors */
+.node-hub { border-color: var(--hub); }
+.node-hub .node-header { border-bottom-color: var(--hub-bg); background: var(--hub-bg); }
+.node-hub .node-id { color: var(--hub); }
+.node-hub .node-type-badge { background: var(--hub-bg); color: var(--hub); }
+
+.node-puzzle { border-color: var(--puzzle); }
+.node-puzzle .node-header { border-bottom-color: var(--puzzle-bg); background: var(--puzzle-bg); }
+.node-puzzle .node-id { color: var(--puzzle); }
+.node-puzzle .node-type-badge { background: var(--puzzle-bg); color: var(--puzzle); }
+
+.node-popup { border-color: var(--popup); }
+.node-popup .node-header { border-bottom-color: var(--popup-bg); background: var(--popup-bg); }
+.node-popup .node-id { color: var(--popup); }
+.node-popup .node-type-badge { background: var(--popup-bg); color: var(--popup); }
+
+.node-lose { border-color: var(--lose); }
+.node-lose .node-header { border-bottom-color: var(--lose-bg); background: var(--lose-bg); }
+.node-lose .node-id { color: var(--lose); }
+.node-lose .node-type-badge { background: var(--lose-bg); color: var(--lose); }
+
+.node-story { border-color: var(--story); }
+.node-story .node-header { border-bottom-color: var(--story-bg); background: var(--story-bg); }
+.node-story .node-id { color: var(--story); }
+.node-story .node-type-badge { background: var(--story-bg); color: var(--story); }
+
+/* DETAIL PANEL */
+#panel {
+  flex-shrink: 0; width: var(--panel-w); background: var(--bg2); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; transform: translateX(100%); transition: transform .25s ease-out;
+  position: absolute; right: 0; top: 0; bottom: 0; z-index: 20;
+}
+#panel.open { transform: translateX(0); }
+#panel-header { padding: 16px 16px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+#panel-close {
+  position: absolute; top: 12px; right: 12px; width: 26px; height: 26px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; color: var(--muted);
+  cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: .15s;
+}
+#panel-close:hover { color: var(--text); background: var(--border); }
+#panel-screen-id { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+#panel-screen-name { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+#panel-screen-type { font-size: 11px; }
+#panel-body { flex: 1; overflow-y: auto; padding: 0; }
+#panel-body::-webkit-scrollbar { width: 4px; }
+#panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.panel-section { border-bottom: 1px solid var(--border); padding: 14px 16px; }
+.panel-section-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.panel-section-title::before { content: ''; display: block; width: 3px; height: 12px; border-radius: 2px; background: currentColor; }
+
+/* Entry/Exit points */
+.flow-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; font-size: 12px; }
+.flow-arrow { font-family: 'JetBrains Mono', monospace; font-weight: 700; flex-shrink: 0; font-size: 13px; }
+.flow-screen { font-weight: 600; color: var(--text); }
+.flow-trigger { color: var(--muted); font-size: 11px; }
+
+/* Component table */
+.comp-filter { width: 100%; padding: 6px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; font-family: inherit; margin-bottom: 10px; outline: none; }
+.comp-filter:focus { border-color: #8b949e; }
+.comp-item { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+.comp-item-head {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  background: var(--bg3); cursor: pointer; transition: .12s;
+}
+.comp-item-head:hover { background: #2d333b; }
+.comp-item-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text); }
+.comp-item-type { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: var(--bg2); border: 1px solid var(--border); color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.comp-item-pos { font-size: 10px; color: var(--dim); margin-left: auto; }
+.comp-body { padding: 10px; display: none; }
+.comp-body.open { display: block; }
+.comp-row { margin-bottom: 8px; }
+.comp-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); font-family: 'JetBrains Mono', monospace; font-weight: 700; margin-bottom: 3px; }
+.comp-value { font-size: 12px; color: var(--text); line-height: 1.45; }
+.state-tag { display: inline-block; padding: 1px 7px; margin: 2px 2px 2px 0; border-radius: 10px; font-size: 10px; font-family: 'JetBrains Mono', monospace; background: var(--bg3); border: 1px solid var(--border); color: var(--muted); }
+.action-item { font-size: 11px; padding: 3px 0; color: var(--muted); }
+.action-item strong { color: var(--text); }
+.notes-text { font-size: 11px; color: var(--muted); font-style: italic; line-height: 1.5; }
+
+/* Assets */
+.asset-item { font-size: 11px; padding: 3px 0; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.asset-item span { color: var(--text); }
+
+/* Open questions */
+.oq-item { font-size: 12px; padding: 5px 8px; border-left: 2px solid var(--gold); background: rgba(227,179,65,.05); border-radius: 0 4px 4px 0; margin-bottom: 6px; color: var(--text); }
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#f778ba,#d2a8ff);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">&#x1F451;</div>
+    <div>
+      <div class="title">KVTM 2.0 — Wireframe Overview</div>
+      <div class="sub">v2.2 · Cozy Puzzle + Makeover + K-Drama Romance · Mobile Portrait 390×844</div>
+    </div>
+  </div>
+  <div class="stats">
+    <span class="badge badge-node">7 Screens</span>
+    <span class="badge badge-edge">11 Edges</span>
+    <span class="badge badge-comp">42 Components</span>
+  </div>
+  <div class="actions">
+    <button class="hdr-btn" onclick="resetZoom()">Reset View</button>
+    <button class="hdr-btn" onclick="closePanel()">Close Panel</button>
+  </div>
+</div>
+
+<div id="legend">
+  <span style="font-size:11px;color:var(--dim);font-family:'JetBrains Mono',monospace;font-weight:700;margin-right:4px;">NODE TYPE</span>
+  <span class="leg"><span class="leg-dot" style="background:var(--hub);"></span> Hub</span>
+  <span class="leg"><span class="leg-dot" style="background:var(--puzzle);"></span> Puzzle</span>
+  <span class="leg"><span class="leg-dot" style="background:var(--popup);"></span> Win Popup</span>
+  <span class="leg"><span class="leg-dot" style="background:var(--lose);"></span> Lose Popup</span>
+  <span class="leg"><span class="leg-dot" style="background:var(--story);"></span> Story</span>
+  <span style="width:1px;height:20px;background:var(--border);margin:0 6px;"></span>
+  <span style="font-size:11px;color:var(--dim);font-family:'JetBrains Mono',monospace;font-weight:700;margin-right:4px;">WIRE</span>
+  <span class="leg-line">
+    <svg class="leg-svg"><line x1="0" y1="6" x2="22" y2="6" stroke="#8b949e" stroke-width="2"/><polygon points="22,3 28,6 22,9" fill="#8b949e"/></svg>
+    Default nav
+  </span>
+  <span class="leg-line">
+    <svg class="leg-svg"><line x1="0" y1="6" x2="22" y2="6" stroke="#8b949e" stroke-width="2" stroke-dasharray="4,3"/><polygon points="22,3 28,6 22,9" fill="#8b949e"/></svg>
+    Conditional
+  </span>
+  <span class="leg-line">
+    <svg class="leg-svg"><line x1="0" y1="6" x2="22" y2="6" stroke="#8b949e" stroke-width="2" stroke-dasharray="2,3"/><polygon points="22,3 28,6 22,9" fill="#8b949e"/></svg>
+    System/auto
+  </span>
+  <span style="margin-left:auto;font-size:11px;color:var(--dim);">Scroll to zoom · Drag to pan · Click node for details</span>
+</div>
+
+<div id="main">
+  <div id="canvas-wrap">
+    <div id="canvas">
+      <svg id="edges-svg"></svg>
+    </div>
+  </div>
+  <div id="zoom-ctrl">
+    <button class="zoom-btn" onclick="zoomIn()">+</button>
+    <div id="zoom-label">100%</div>
+    <button class="zoom-btn" onclick="zoomOut()">-</button>
+  </div>
+  <div id="panel">
+    <div id="panel-header">
+      <button id="panel-close" onclick="closePanel()">&#x2715;</button>
+      <div id="panel-screen-id"></div>
+      <div id="panel-screen-name"></div>
+      <div id="panel-screen-type"></div>
+    </div>
+    <div id="panel-body"></div>
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────
+   WIREFRAME DATA — Single source of truth
+───────────────────────────────────────────── */
+const WF = {
+  screens: [
+    {
+      id: 'hub',
+      name: 'Hub Dashboard',
+      type: 'hub',
+      typeLabel: 'HUB',
+      purpose: 'Central garden progress view. Mở app = thấy garden. Highlight 1 task next. Entry tất cả màn hình.',
+      position: { x: 320, y: 220 },
+      components: [
+        { id: 'top-bar', type: 'container', position: 'top fixed', states: ['default'], actions: [{ e: 'render', ef: 'Hiển thị map title, chapter, settings icon' }], data: 'map_title: string, chapter: number', notes: 'Sticky top. Height 48dp. Map name + settings gear right.' },
+        { id: 'resource-bar', type: 'container', position: 'below top-bar', states: ['default'], actions: [{ e: 'tap ⭐', ef: 'navigate → shop tab star' }, { e: 'tap 💎', ef: 'navigate → shop tab KC' }, { e: 'tap ❤️', ef: 'show lives info popup' }], data: 'star_count: number, heart_count: number (max 5), kc: number', notes: '3 resource icons inline. Tap each opens relevant shop panel.' },
+        { id: 'garden-view', type: 'image', position: 'center fill', states: ['ruin (0-29%)', 'mid (30-59%)', 'glorious (60-99%)', 'complete (100%)'], actions: [{ e: 'tap highlighted-task', ef: 'show task detail tooltip' }], data: 'decor_progress: 0-100, active_task: Task object', notes: 'Isometric animated scene. State changes as decor_progress milestones. Mia + Mochi animated overlay.' },
+        { id: 'mia-character', type: 'image', position: 'center garden overlay', states: ['idle-walk', 'pointing', 'happy', 'sad'], actions: [{ e: 'tap', ef: 'play speech bubble' }], data: null, notes: 'Animated character. Speech bubble shows context hint.' },
+        { id: 'mochi-character', type: 'image', position: 'near mia', states: ['idle', 'follow', 'react'], actions: [], data: null, notes: 'Cat companion. Always near Mia. Plays reaction on events.' },
+        { id: 'task-highlight', type: 'container', position: 'over garden at task item position', states: ['visible', 'hidden', 'pulsing'], actions: [{ e: 'tap', ef: 'show cost tooltip: -1⭐ to fix' }], data: 'task_name: string, star_cost: 1|2|3|5', notes: 'Glow pulse arrow pointing at current task item. "Cần 1⭐ để thay" label. Hidden after auto-spend.' },
+        { id: 'speech-bubble', type: 'label', position: 'above bottom-nav', states: ['visible', 'hidden'], actions: [{ e: 'tap', ef: 'dismiss' }], data: 'mia_dialog: string', notes: 'Mia contextual hint. Auto-dismiss 4s. Appears on app open.' },
+        { id: 'progress-bar', type: 'progress', position: 'below garden, above nav', states: ['filling', 'milestone-glow'], actions: [], data: 'decor_progress: 0-100, milestone_30: bool, milestone_60: bool', notes: 'Thin horizontal bar. Gold fill. Flash + sfx at 30/60/100%.' },
+        { id: 'bottom-nav', type: 'container', position: 'bottom fixed', states: ['default'], actions: [], data: null, notes: 'Height 64dp. 5 buttons. PLAY is raised 8dp center CTA.' },
+        { id: 'btn-shop', type: 'button', position: 'bottom-nav left-1', states: ['idle', 'hover', 'pressed'], actions: [{ e: 'tap', ef: 'navigate → shop screen' }], data: null, notes: '🛍 icon + "Shop" label. 44dp touch target.' },
+        { id: 'btn-inventory', type: 'button', position: 'bottom-nav left-2', states: ['idle', 'hover', 'pressed'], actions: [{ e: 'tap', ef: 'navigate → inventory screen' }], data: null, notes: '🎁 icon + "Inv" label.' },
+        { id: 'btn-play', type: 'button', position: 'bottom-nav center raised', states: ['idle', 'idle-pulse-glow', 'pressed', 'disabled'], actions: [{ e: 'tap', ef: 'navigate → puzzle level (mechanic per map config)' }], data: 'energy: heart_count > 0 → enabled', notes: 'PRIMARY CTA. Gold gradient. Raised 8dp. Pulse glow idle 3s cycle. Shake idle 5s. Disabled when hearts=0.' },
+        { id: 'btn-story', type: 'button', position: 'bottom-nav right-2', states: ['idle', 'hover', 'pressed', 'notification-dot'], actions: [{ e: 'tap', ef: 'navigate → story cutscene (if available) else show story log' }], data: 'story_available: bool', notes: '📖 icon. Red dot notification badge if new cutscene unlocked.' },
+        { id: 'btn-friend', type: 'button', position: 'bottom-nav right-1', states: ['idle', 'hover', 'pressed'], actions: [{ e: 'tap', ef: 'navigate → friend/social screen' }], data: null, notes: '👥 icon + "Friend" label.' }
+      ],
+      assets: ['bg_garden_ruin.png', 'bg_garden_mid.png', 'bg_garden_glorious.png', 'char_mia_walk.spritesheet', 'char_mochi_idle.spritesheet', 'icon_play_gold.svg', 'sfx_app_open.mp3'],
+      openQuestions: ['Q: Garden view isometric — 2.5D sprite or full 3D rendered?', 'Q: Settings screen specs not listed in 7-screen scope — out of scope for MVP?', 'Q: Shop/Inventory/Friend screens — separate from core 7 or modal overlays?']
+    },
+    {
+      id: 'sort-vase',
+      name: 'Sort Vase Puzzle',
+      type: 'puzzle',
+      typeLabel: 'PUZZLE',
+      purpose: 'Blossom Sort variant. Sort hoa theo màu vào từng vase. Map 1-25. Tap A → tap B chuyển bông top.',
+      position: { x: 80, y: 500 },
+      components: [
+        { id: 'puzzle-top-bar', type: 'container', position: 'top', states: ['default'], actions: [{ e: 'tap back', ef: 'confirm quit → hub (lose 1 heart if quit mid)' }, { e: 'tap pause', ef: 'show pause overlay' }], data: 'level_num: number, mechanic: "sort_vase"', notes: 'Back arrow left, level number center, pause ⏸ right.' },
+        { id: 'move-counter', type: 'label', position: 'below top-bar left', states: ['counting', 'warning (≤5 moves)', 'unlimited'], actions: [], data: 'moves_remaining: number | null', notes: 'Shows "Move: 12". Turns red when ≤5. Hidden on easy maps (no limit).' },
+        { id: 'goal-label', type: 'label', position: 'below top-bar right', states: ['default'], actions: [], data: null, notes: '"Goal: Sort all flowers" text.' },
+        { id: 'vase-grid', type: 'container', position: 'center fill', states: ['default'], actions: [], data: 'vases: Vase[] (3-8 vases per map config)', notes: 'Horizontal row of vases. Max 8 per row. 2 rows if map 81-100. Each vase = independent component.' },
+        { id: 'vase', type: 'container', position: 'inside vase-grid', states: ['idle', 'selected (glow border)', 'full', 'complete (all same color, sparkle)', 'locked'], actions: [{ e: 'tap', ef: '1st tap → select (highlight). 2nd tap diff vase → move top flower A→B' }, { e: 'tap locked', ef: 'show "🔒 Locked" tooltip' }], data: 'flowers: FlowerStack, locked: bool, capacity: 3', notes: '44pt min width. Stack renders top 3 flowers. Selected state = thick colored border + scale 1.05.' },
+        { id: 'booster-bar', type: 'container', position: 'bottom', states: ['default'], actions: [], data: null, notes: 'Bottom bar with 2 boosters. Coin cost shown.' },
+        { id: 'btn-undo', type: 'button', position: 'booster-bar left', states: ['idle', 'pressed', 'disabled (no moves to undo)'], actions: [{ e: 'tap', ef: 'undo last move, costs 10 🪙' }], data: 'undo_history: Move[]', notes: '↶ icon. Spend 10 gold. Show coin deduct animation.' },
+        { id: 'btn-shuffle', type: 'button', position: 'booster-bar right', states: ['idle', 'pressed', 'cooldown'], actions: [{ e: 'tap', ef: 'shuffle flowers in vases randomly, costs 30 💎' }], data: null, notes: '🔀 icon. Costs 30 KC. Confirm dialog before spending.' }
+      ],
+      assets: ['flower_rose.png', 'flower_tulip.png', 'flower_sunflower.png', 'vase_classic.png', 'vase_locked.png', 'sfx_flower_sort.mp3', 'sfx_vase_complete.mp3', 'sfx_combo.mp3'],
+      openQuestions: ['Q: Max vases per row = 8 confirmed — what is min vase width at 390px? (390/8 = ~49px, barely enough for art)', 'Q: Locked vase unlock cost or condition?']
+    },
+    {
+      id: 'sort-shelf',
+      name: 'Sort Shelf Puzzle',
+      type: 'puzzle',
+      typeLabel: 'PUZZLE',
+      purpose: 'Goods Sort variant. Drag items giữa shelves. Match 3 same per row → clear. Map 26-35, 56-75.',
+      position: { x: 550, y: 500 },
+      components: [
+        { id: 'shelf-top-bar', type: 'container', position: 'top', states: ['default'], actions: [{ e: 'tap back', ef: 'confirm quit → hub' }, { e: 'tap pause', ef: 'show pause overlay' }], data: 'level_num: number, mechanic: "sort_shelf"', notes: 'Same pattern as vase top-bar.' },
+        { id: 'shelf-move-counter', type: 'label', position: 'below top-bar left', states: ['counting', 'warning (≤5)', 'unlimited'], actions: [], data: 'moves_remaining: number | null', notes: 'Move limit per map config. Red warning ≤5.' },
+        { id: 'shelf-area', type: 'container', position: 'center fill', states: ['default'], actions: [], data: 'shelves: Shelf[] (2-7 shelves per config)', notes: 'Vertical list of shelf rows. Touch target: cell width = 390/3 = 130px.' },
+        { id: 'shelf-row', type: 'container', position: 'inside shelf-area', states: ['default', 'complete-flash', 'locked'], actions: [], data: 'items: Item[3], locked: bool', notes: '3 cells per row. When all 3 = same type → MATCH flash + clear + sfx.' },
+        { id: 'shelf-item', type: 'image', position: 'inside shelf-row cell', states: ['idle', 'dragging', 'placed', 'locked-by-obstacle'], actions: [{ e: 'drag start', ef: 'lift item, show drag shadow' }, { e: 'drag end valid', ef: 'place in target shelf cell' }, { e: 'drag end invalid', ef: 'snap back with shake' }], data: 'item_type: string, locked: bool', notes: 'Drag & drop interaction. Obstacle item blocks cell.' },
+        { id: 'shelf-booster-bar', type: 'container', position: 'bottom', states: ['default'], actions: [], data: null, notes: '2 boosters same as vase variant.' },
+        { id: 'shelf-btn-undo', type: 'button', position: 'booster-bar left', states: ['idle', 'pressed', 'disabled'], actions: [{ e: 'tap', ef: 'undo last drag move, costs 10 🪙' }], data: null, notes: 'Same as vase undo.' },
+        { id: 'shelf-btn-shuffle', type: 'button', position: 'booster-bar right', states: ['idle', 'pressed', 'cooldown'], actions: [{ e: 'tap', ef: 'shuffle items, costs 30 💎' }], data: null, notes: 'Same as vase shuffle.' }
+      ],
+      assets: ['shelf_classic.png', 'item_apple.png', 'item_banana.png', 'item_obstacle.png', 'sfx_item_match.mp3', 'sfx_shelf_clear.mp3'],
+      openQuestions: ['Q: Multi-tier shelves (mid difficulty) — items on tier 2 require tier 1 items cleared first?', 'Q: Locked shelf — whole shelf locked or individual cells?']
+    },
+    {
+      id: 'triple-tile',
+      name: 'Triple Tile Puzzle',
+      type: 'puzzle',
+      typeLabel: 'PUZZLE',
+      purpose: 'Tap tiles from pile to 7-slot bottom bar. Match 3 same → clear. Slot full = lose. Map 36-55, 76-100.',
+      position: { x: 80, y: 780 },
+      components: [
+        { id: 'triple-top-bar', type: 'container', position: 'top', states: ['default'], actions: [{ e: 'tap back', ef: 'confirm quit → hub' }, { e: 'tap pause', ef: 'show pause overlay' }], data: 'level_num: number, mechanic: "triple_tile"', notes: 'Back + level + pause. Also shows lives remaining (❤️5).' },
+        { id: 'timer', type: 'label', position: 'top-bar right of level', states: ['counting', 'warning (≤30s red pulse)', 'hidden (no time limit easy)'], actions: [], data: 'time_remaining: number (seconds) | null', notes: 'Format MM:SS. Red pulse animation when ≤30s. Easy maps no timer.' },
+        { id: 'tile-pile', type: 'container', position: 'center fill', states: ['default', 'empty (win state)'], actions: [], data: 'tiles: Tile[][] (layered pile, 15-50 tiles per config)', notes: 'Scattered pile with layering. Top tiles always tappable. Covered tiles semi-transparent.' },
+        { id: 'tile', type: 'button', position: 'inside tile-pile', states: ['idle', 'tap-fly (animation to slot)', 'covered (semi-opaque)', 'hidden (face-down)', 'locked', 'mystery'], actions: [{ e: 'tap (if top layer)', ef: 'fly to slot-bar, add to next empty slot' }, { e: 'tap covered', ef: 'no action (blocked)' }], data: 'tile_type: string, layer: number, face_down: bool, locked: bool', notes: 'Min 44pt touch target. Flying animation 200ms ease-in. Covered tiles are not tappable.' },
+        { id: 'slot-bar', type: 'container', position: 'bottom above boosters', states: ['default', 'match-burst', 'full-shake (lose trigger)'], actions: [], data: 'slots: Slot[7], filled_count: 0-7', notes: '7 slots. When 3 same appear → MATCH animation burst + remove. When all 7 filled = LOSE trigger.' },
+        { id: 'slot-cell', type: 'container', position: 'inside slot-bar', states: ['empty', 'filled', 'matching-pulse'], actions: [], data: 'tile: Tile | null', notes: 'Fixed positions left to right.' },
+        { id: 'triple-booster-bar', type: 'container', position: 'bottom', states: ['default'], actions: [], data: null, notes: '3 booster buttons for triple tile.' },
+        { id: 'triple-btn-undo', type: 'button', position: 'booster-bar', states: ['idle', 'pressed', 'disabled'], actions: [{ e: 'tap', ef: 'return last slotted tile back to pile, costs 10 🪙' }], data: null, notes: 'Only undoes 1 step.' },
+        { id: 'triple-btn-clear', type: 'button', position: 'booster-bar', states: ['idle', 'pressed', 'disabled (slot empty)'], actions: [{ e: 'tap', ef: 'remove 1 selected tile from slot bar, costs 30 💎' }], data: null, notes: '🗑 icon. Removes 1 tile. User selects which tile first.' },
+        { id: 'triple-btn-shuffle', type: 'button', position: 'booster-bar', states: ['idle', 'pressed', 'cooldown'], actions: [{ e: 'tap', ef: 'reshuffle tile pile layers, costs 30 💎' }], data: null, notes: '🔀 icon.' }
+      ],
+      assets: ['tile_rose.png', 'tile_butterfly.png', 'tile_wizard.png', 'tile_locked.png', 'tile_facedown.png', 'slot_bar_bg.png', 'sfx_tile_tap.mp3', 'sfx_tile_match.mp3', 'sfx_slot_full_lose.mp3'],
+      openQuestions: ['Q: Mystery tile reveals type only when it enters the slot bar — confirmed behavior?', 'Q: Pro maps use 5 slots instead of 7. How does slot-bar component handle dynamic count?']
+    },
+    {
+      id: 'win-popup',
+      name: 'Win Popup + Cinematic',
+      type: 'popup',
+      typeLabel: 'WIN POPUP',
+      purpose: 'Level Complete overlay → auto-spend ⭐ → Mia makeover cinematic → task next highlight.',
+      position: { x: 320, y: 500 },
+      components: [
+        { id: 'win-overlay', type: 'modal', position: 'full screen overlay', states: ['enter-burst', 'visible', 'cinematic-phase', 'exit'], actions: [], data: null, notes: 'Scale-in from center 300ms. Blocks game input. Gold particle burst on enter.' },
+        { id: 'win-title', type: 'label', position: 'top of modal', states: ['idle'], actions: [], data: null, notes: '"LEVEL COMPLETE!" bold display. Star burst animation behind.' },
+        { id: 'star-reward', type: 'label', position: 'center modal', states: ['counting-up'], actions: [], data: 'stars_earned: 1|2|3, coins_earned: number', notes: '⭐ +2 🪙 +50 counter animation. Big numbers. Overshoot ease.' },
+        { id: 'star-rating', type: 'container', position: 'below star-reward', states: ['1star', '2star', '3star'], actions: [], data: 'rating: 1|2|3', notes: '3 star icons. Empty → filled animation per star. 3⭐ = perfect (used <50% moves).' },
+        { id: 'cinematic-scene', type: 'image', position: 'center modal (replaces star display after 1.5s)', states: ['hidden', 'playing', 'complete'], actions: [], data: 'active_task: Task, before_state: img, after_state: img', notes: 'Auto-plays after star count. Mia walk animation → task item transform before/after. 2-3 seconds total.' },
+        { id: 'coin-bonus-label', type: 'label', position: 'cinematic-scene overlay', states: ['hidden', 'pop-in'], actions: [], data: 'coin_bonus: number', notes: '"+1🪙 bonus" pops in during cinematic.' },
+        { id: 'next-task-label', type: 'label', position: 'below cinematic', states: ['hidden', 'visible'], actions: [], data: 'next_task_name: string, next_task_cost: number', notes: 'Shows after cinematic: "Next: [task name] -[N]⭐"' },
+        { id: 'btn-continue', type: 'button', position: 'bottom of modal', states: ['idle', 'pressed', 'loading'], actions: [{ e: 'tap', ef: 'close modal → return to hub, next task highlighted' }], data: null, notes: 'Gold CTA. Appears after cinematic finishes or user taps to skip cinematic.' }
+      ],
+      assets: ['anim_mia_work.spritesheet', 'particle_gold_burst.json', 'sfx_win_fanfare.mp3', 'sfx_star_earn.mp3', 'sfx_transform.mp3', 'sfx_coin_bonus.mp3'],
+      openQuestions: ['Q: Can user tap to skip cinematic? Confirm behavior.', 'Q: What if decor task requires 2⭐ but player only earned 1⭐ — partial accumulation?']
+    },
+    {
+      id: 'lose-popup',
+      name: 'Lose Popup',
+      type: 'lose',
+      typeLabel: 'LOSE POPUP',
+      purpose: 'Out of moves/time/slot full. 3 CTA: booster +5 moves · continue retry · quit -1❤️. Royal Match revenue moment.',
+      position: { x: 560, y: 780 },
+      components: [
+        { id: 'lose-overlay', type: 'modal', position: 'full screen overlay', states: ['enter-drop', 'visible', 'exit'], actions: [], data: null, notes: 'Appears 1.5s after lose moment. Slides down from top 300ms.' },
+        { id: 'lose-icon', type: 'image', position: 'top modal', states: ['idle', 'anim-sad'], actions: [], data: 'lose_type: "out_of_moves"|"time_up"|"slot_full"', notes: 'Mochi sad face animation. Type-specific messaging.' },
+        { id: 'lose-title', type: 'label', position: 'below lose-icon', states: ['default'], actions: [], data: 'lose_type: string', notes: '"OUT OF MOVES!" / "TIME\'S UP!" / "SLOTS FULL!" based on lose_type.' },
+        { id: 'mia-dialog-lose', type: 'label', position: 'below lose-title', states: ['visible'], actions: [], data: null, notes: '"Đừng bỏ cuộc!" speech bubble from Mia.' },
+        { id: 'btn-booster', type: 'button', position: 'modal center top CTA', states: ['idle', 'pressed', 'loading'], actions: [{ e: 'tap', ef: 'deduct 50 KC → resume puzzle with +5 moves added' }, { e: 'insufficient KC', ef: 'show "Not enough KC" → redirect to shop' }], data: 'cost_kc: 50', notes: 'PRIMARY revenue CTA. Gold border. Shows move count. "+5 Moves — 50 💎" label. Whale moment.' },
+        { id: 'btn-continue', type: 'button', position: 'modal center mid CTA', states: ['idle', 'pressed', 'loading'], actions: [{ e: 'tap', ef: 'deduct 100 KC → full retry from start, reset state' }, { e: 'insufficient KC', ef: 'show shop' }], data: 'cost_kc: 100', notes: '"Continue — 100 💎". Full level restart.' },
+        { id: 'btn-quit', type: 'button', position: 'modal center bottom CTA', states: ['idle', 'pressed'], actions: [{ e: 'tap', ef: 'close modal, deduct 1 ❤️, navigate → hub' }], data: 'lives_after: number', notes: '"Quit — -1 ❤️". Destructive action. Gray style. Confirm optional.' },
+        { id: 'tip-label', type: 'label', position: 'bottom modal', states: ['visible'], actions: [], data: 'tip: string', notes: 'Gameplay tip relevant to mechanic. "Tip: Sort theo màu cùng vase trước."' },
+        { id: 'no-lives-overlay', type: 'modal', position: 'full screen (replaces lose popup when hearts=0)', states: ['hidden', 'visible'], actions: [{ e: 'tap wait', ef: 'dismiss, set 30min regen timer' }, { e: 'tap skip', ef: 'spend 50 KC per life skip' }, { e: 'tap buy', ef: 'IAP 5 lives pack 100 KC' }], data: 'hearts: 0', notes: 'Appears when 5th heart consumed. Wait / Skip / Buy options.' }
+      ],
+      assets: ['char_mochi_sad.spritesheet', 'char_mia_encourage.png', 'sfx_lose.mp3', 'sfx_heartbreak.mp3'],
+      openQuestions: ['Q: After booster +5 moves applied — does game state restore exactly or re-init with +5 added to current?', 'Q: Confirm dialog on Quit or direct action?']
+    },
+    {
+      id: 'story-cutscene',
+      name: 'Story Cutscene',
+      type: 'story',
+      typeLabel: 'STORY',
+      purpose: 'K-drama dialog Mia × Leo × cast. Triggered at 30%/60%/100% decor milestone per map. Voice + petals.',
+      position: { x: 320, y: 780 },
+      components: [
+        { id: 'scene-header', type: 'container', position: 'top', states: ['visible'], actions: [{ e: 'tap skip', ef: 'fast-forward to end of current beat or skip whole cutscene' }], data: 'chapter: number, beat_current: number, beat_total: number', notes: '[Skip ▶] top right. "Ch 2 · Beat 3/10" top left.' },
+        { id: 'scene-background', type: 'image', position: 'full screen', states: ['static', 'parallax-scroll', 'scene-transition'], actions: [], data: 'bg_id: string (e.g. "pho-co-rain", "mansion", "palace")', notes: 'Full-bleed background matching map theme. Parallax depth on scroll.' },
+        { id: 'falling-petals', type: 'image', position: 'full screen overlay', states: ['idle', 'falling', 'intense'], actions: [], data: 'petal_intensity: 0-3', notes: 'CSS particle layer. Adjusts based on mood. Romance beats = intense.' },
+        { id: 'char-leo', type: 'image', position: 'right side mid-screen', states: ['idle', 'talking', 'laughing', 'stern', 'worried', 'hidden'], actions: [{ e: 'tap', ef: 'advance dialog' }], data: 'expression: string', notes: '3D Pixar-style character sprite. Expression changes per dialog line.' },
+        { id: 'char-mia', type: 'image', position: 'left side mid-screen', states: ['idle', 'talking', 'surprised', 'sad', 'happy', 'blushing', 'hidden'], actions: [{ e: 'tap', ef: 'advance dialog' }], data: 'expression: string', notes: 'Same as Leo. Both can be visible simultaneously.' },
+        { id: 'dialog-box', type: 'container', position: 'bottom', states: ['visible', 'auto-advance', 'voice-playing'], actions: [{ e: 'tap box', ef: 'advance to next line (or skip current voice)' }, { e: 'long press', ef: 'show dialog log' }], data: 'speaker: string, text: string, voice_clip: string | null', notes: 'Cream panel bottom 1/3 screen. Speaker name + dialog text. Voice clip auto-plays if available.' },
+        { id: 'voice-indicator', type: 'icon', position: 'top-right dialog-box', states: ['playing', 'muted', 'loading'], actions: [{ e: 'tap', ef: 'toggle voice on/off' }], data: 'voice_enabled: bool', notes: '💜 voice icon. Muted state stores preference.' },
+        { id: 'progress-dots', type: 'label', position: 'top of dialog-box', states: ['default'], actions: [], data: 'beat_current: number, beat_total: number', notes: 'Dot indicators for current dialog beat progress.' }
+      ],
+      assets: ['bg_pho_co_rain.jpg', 'bg_villa_garden.jpg', 'bg_palace.jpg', 'char_leo_expressions.spritesheet', 'char_mia_expressions.spritesheet', 'char_elena.spritesheet', 'char_chloe.spritesheet', 'petals_particle.json', 'voice_leo_ch2_beat3.mp3', 'bgm_romance.mp3'],
+      openQuestions: ['Q: Voice AI (ElevenLabs) MVP — which lines have voice in Phase 0? All or key beats only?', 'Q: Story log (long press) — simple scroll or dedicated UI?', 'Q: Does Skip skip entire scene or beat-by-beat?']
+    }
+  ],
+  edges: [
+    { id: 'e1', from: 'hub', to: 'sort-vase',    trigger: 'Tap PLAY (Sort Vase map)',    style: 'solid' },
+    { id: 'e2', from: 'hub', to: 'sort-shelf',   trigger: 'Tap PLAY (Sort Shelf map)',   style: 'solid' },
+    { id: 'e3', from: 'hub', to: 'triple-tile',  trigger: 'Tap PLAY (Triple Tile map)',  style: 'solid' },
+    { id: 'e4', from: 'sort-vase',    to: 'win-popup',   trigger: 'Win (sort complete)',      style: 'dashed' },
+    { id: 'e5', from: 'sort-shelf',   to: 'win-popup',   trigger: 'Win (all shelves clear)',  style: 'dashed' },
+    { id: 'e6', from: 'triple-tile',  to: 'win-popup',   trigger: 'Win (pile cleared)',        style: 'dashed' },
+    { id: 'e7', from: 'sort-vase',    to: 'lose-popup',  trigger: 'Lose (moves/time)',         style: 'dashed' },
+    { id: 'e8', from: 'sort-shelf',   to: 'lose-popup',  trigger: 'Lose (moves/time)',         style: 'dashed' },
+    { id: 'e9', from: 'triple-tile',  to: 'lose-popup',  trigger: 'Lose (slot full/time)',     style: 'dashed' },
+    { id: 'e10', from: 'win-popup',    to: 'hub',         trigger: 'Tap Continue (auto-spend done)', style: 'dotted' },
+    { id: 'e11', from: 'lose-popup',   to: 'sort-vase',   trigger: 'Booster/Continue → resume', style: 'dashed' },
+    { id: 'e12', from: 'lose-popup',   to: 'sort-shelf',  trigger: 'Booster/Continue → resume', style: 'dashed' },
+    { id: 'e13', from: 'lose-popup',   to: 'triple-tile', trigger: 'Booster/Continue → resume', style: 'dashed' },
+    { id: 'e14', from: 'lose-popup',   to: 'hub',         trigger: 'Quit (-1 ❤️)',              style: 'solid' },
+    { id: 'e15', from: 'hub',          to: 'story-cutscene', trigger: 'Decor 30%/60%/100% milestone', style: 'dotted' },
+    { id: 'e16', from: 'story-cutscene', to: 'hub',       trigger: 'Beat ends / Skip',          style: 'dotted' }
+  ]
+};
+
+/* ─────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────── */
+let panX = 0, panY = 0, scale = 1;
+let isDragging = false, dragStartX = 0, dragStartY = 0, dragStartPanX = 0, dragStartPanY = 0;
+let activeNode = null;
+let compExpandState = {};
+
+/* ─────────────────────────────────────────────
+   CANVAS RENDER
+───────────────────────────────────────────── */
+function buildNodes() {
+  const canvas = document.getElementById('canvas');
+  WF.screens.forEach(s => {
+    const el = document.createElement('div');
+    el.className = `node node-${s.type}`;
+    el.id = `node-${s.id}`;
+    el.style.left = s.position.x + 'px';
+    el.style.top  = s.position.y + 'px';
+    el.innerHTML = `
+      <div class="node-header">
+        <div class="node-id">${s.id}</div>
+        <div class="node-name">${s.name}</div>
+        <div class="node-purpose">${s.purpose.slice(0, 72)}${s.purpose.length > 72 ? '…' : ''}</div>
+      </div>
+      <div class="node-footer">
+        <span class="node-comp-badge">${s.components.length} components</span>
+        <span class="node-type-badge">${s.typeLabel}</span>
+      </div>`;
+    el.addEventListener('click', () => openPanel(s.id));
+    canvas.appendChild(el);
+  });
+}
+
+function buildEdges() {
+  const svg = document.getElementById('edges-svg');
+  // marker defs
+  svg.innerHTML = `<defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#6e7681"/>
+    </marker>
+    <marker id="arr-dash" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#6e7681"/>
+    </marker>
+  </defs>`;
+
+  WF.edges.forEach(e => {
+    const fromS = WF.screens.find(s => s.id === e.from);
+    const toS   = WF.screens.find(s => s.id === e.to);
+    if (!fromS || !toS) return;
+
+    // compute node center with actual rendered size (186 wide, estimate height)
+    const nw = 186, nh = 110;
+    const fx = fromS.position.x + nw/2, fy = fromS.position.y + nh/2;
+    const tx = toS.position.x   + nw/2, ty = toS.position.y   + nh/2;
+
+    // bezier control points
+    const dx = tx - fx, dy = ty - fy;
+    const cx1 = fx + dx*0.4 + (dy > 0 ? -30 : 30);
+    const cy1 = fy + dy*0.2;
+    const cx2 = tx - dx*0.4 + (dy > 0 ? 30 : -30);
+    const cy2 = ty - dy*0.2;
+    const d = `M${fx},${fy} C${cx1},${cy1} ${cx2},${cy2} ${tx},${ty}`;
+
+    const strokeDA = e.style === 'solid' ? '' : e.style === 'dashed' ? 'stroke-dasharray="6,4"' : 'stroke-dasharray="2,4"';
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.innerHTML = `
+      <path d="${d}" fill="none" stroke="#6e7681" stroke-width="1.8" ${strokeDA} marker-end="url(#arr)" opacity=".7"/>
+      <path d="${d}" fill="none" stroke="transparent" stroke-width="10" class="edge-hover" data-eid="${e.id}"/>`;
+
+    // label midpoint
+    const mx = (fx + tx) / 2 + (dx > 0 ? -20 : 20);
+    const my = (fy + ty) / 2;
+    const fo = document.createElementNS('http://www.w3.org/2000/svg','foreignObject');
+    fo.setAttribute('x', mx - 60); fo.setAttribute('y', my - 12);
+    fo.setAttribute('width', '120'); fo.setAttribute('height', '24');
+    fo.innerHTML = `<div xmlns="http://www.w3.org/1999/xhtml" style="font-family:'Be Vietnam Pro',sans-serif;font-size:9px;color:#8b949e;background:#161b22;border:1px solid #30363d;border-radius:4px;padding:2px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${e.trigger}">${e.trigger}</div>`;
+    g.appendChild(fo);
+    svg.appendChild(g);
+  });
+
+  // hover highlight on edges
+  svg.querySelectorAll('.edge-hover').forEach(p => {
+    p.style.cursor = 'default';
+    p.addEventListener('mouseenter', () => {
+      const path = p.previousElementSibling;
+      if (path) { path.style.stroke = '#58a6ff'; path.style.opacity = '1'; }
+    });
+    p.addEventListener('mouseleave', () => {
+      const path = p.previousElementSibling;
+      if (path) { path.style.stroke = '#6e7681'; path.style.opacity = '.7'; }
+    });
+  });
+}
+
+/* ─────────────────────────────────────────────
+   PAN / ZOOM
+───────────────────────────────────────────── */
+function applyTransform() {
+  const c = document.getElementById('canvas');
+  c.style.transform = `translate(${panX}px,${panY}px) scale(${scale})`;
+  document.getElementById('zoom-label').textContent = Math.round(scale*100) + '%';
+}
+
+function zoomIn()  { scale = Math.min(2, scale * 1.2); applyTransform(); }
+function zoomOut() { scale = Math.max(0.4, scale / 1.2); applyTransform(); }
+function resetZoom() { panX = 40; panY = 20; scale = 1; applyTransform(); }
+
+document.getElementById('canvas-wrap').addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  scale = Math.min(2, Math.max(0.4, scale * factor));
+  applyTransform();
+}, { passive: false });
+
+document.getElementById('canvas-wrap').addEventListener('mousedown', e => {
+  if (e.target.closest('.node')) return;
+  isDragging = true;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  dragStartPanX = panX; dragStartPanY = panY;
+  document.getElementById('canvas-wrap').classList.add('dragging');
+});
+document.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  panX = dragStartPanX + (e.clientX - dragStartX);
+  panY = dragStartPanY + (e.clientY - dragStartY);
+  applyTransform();
+});
+document.addEventListener('mouseup', () => {
+  isDragging = false;
+  document.getElementById('canvas-wrap').classList.remove('dragging');
+});
+
+/* ─────────────────────────────────────────────
+   DETAIL PANEL
+───────────────────────────────────────────── */
+function openPanel(screenId) {
+  const s = WF.screens.find(x => x.id === screenId);
+  if (!s) return;
+  // update active node
+  document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+  const nodeEl = document.getElementById(`node-${s.id}`);
+  if (nodeEl) nodeEl.classList.add('active');
+  activeNode = s.id;
+
+  // update URL hash
+  history.replaceState(null, '', `#screen-${s.id}`);
+
+  // color accent per type
+  const colors = { hub: 'var(--hub)', puzzle: 'var(--puzzle)', popup: 'var(--popup)', lose: 'var(--lose)', story: 'var(--story)' };
+  const c = colors[s.type] || 'var(--muted)';
+
+  document.getElementById('panel-screen-id').textContent = s.id;
+  document.getElementById('panel-screen-id').style.color = c;
+  document.getElementById('panel-screen-name').textContent = s.name;
+  document.getElementById('panel-screen-type').innerHTML = `<span style="color:${c};font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;">${s.typeLabel}</span>`;
+
+  // entry / exit
+  const entries = WF.edges.filter(e => e.to === s.id).map(e => ({ from: e.from, trigger: e.trigger }));
+  const exits   = WF.edges.filter(e => e.from === s.id).map(e => ({ to: e.to, trigger: e.trigger }));
+
+  const entryHTML = entries.length ? entries.map(e => {
+    const fr = WF.screens.find(x => x.id === e.from);
+    return `<div class="flow-item"><span class="flow-arrow" style="color:${c}">&#x2190;</span><div><span class="flow-screen" style="cursor:pointer;" onclick="openPanel('${e.from}')">${fr ? fr.name : e.from}</span><div class="flow-trigger">${e.trigger}</div></div></div>`;
+  }).join('') : '<div style="color:var(--dim);font-size:12px;">App entry point</div>';
+
+  const exitHTML = exits.length ? exits.map(e => {
+    const to = WF.screens.find(x => x.id === e.to);
+    return `<div class="flow-item"><span class="flow-arrow" style="color:${c}">&#x2192;</span><div><span class="flow-screen" style="cursor:pointer;" onclick="openPanel('${e.to}')">${to ? to.name : e.to}</span><div class="flow-trigger">${e.trigger}</div></div></div>`;
+  }).join('') : '<div style="color:var(--dim);font-size:12px;">Terminal screen</div>';
+
+  // component filter + list
+  const compHTML = `
+    <input class="comp-filter" id="comp-filter-${s.id}" type="text" placeholder="Filter components..." oninput="filterComps('${s.id}')">
+    <div id="comp-list-${s.id}">
+      ${s.components.map((c, i) => buildCompItem(c, s.id, i)).join('')}
+    </div>`;
+
+  // assets
+  const assetsHTML = s.assets.length
+    ? s.assets.map(a => `<div class="asset-item">&#x2502; <span>${a}</span></div>`).join('')
+    : '<div style="color:var(--dim);font-size:12px;">No assets defined yet</div>';
+
+  // open questions
+  const oqHTML = (s.openQuestions && s.openQuestions.length)
+    ? s.openQuestions.map(q => `<div class="oq-item">${q}</div>`).join('')
+    : '<div style="color:var(--dim);font-size:12px;">None</div>';
+
+  document.getElementById('panel-body').innerHTML = `
+    <div class="panel-section">
+      <div class="panel-section-title" style="color:${c};">Purpose</div>
+      <div style="font-size:13px;line-height:1.6;color:var(--text);">${s.purpose}</div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title" style="color:${c};">Entry Points</div>
+      ${entryHTML}
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title" style="color:${c};">Exit Points</div>
+      ${exitHTML}
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title" style="color:${c};">Components (${s.components.length})</div>
+      ${compHTML}
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title" style="color:${c};">Art Assets Needed</div>
+      ${assetsHTML}
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title" style="color:${c};">Open Questions</div>
+      ${oqHTML}
+    </div>`;
+
+  document.getElementById('panel').classList.add('open');
+}
+
+function buildCompItem(comp, screenId, idx) {
+  const stateTagsHTML = comp.states.map(st => `<span class="state-tag">${st}</span>`).join('');
+  const actionsHTML = comp.actions.map(a => `<div class="action-item"><strong>${a.e}</strong> → ${a.ef}</div>`).join('') || '<div class="action-item" style="color:var(--dim)">none</div>';
+  const bodyId = `cb-${screenId}-${idx}`;
+  return `
+    <div class="comp-item" data-comp-id="${comp.id}" data-comp-type="${comp.type}">
+      <div class="comp-item-head" onclick="toggleComp('${bodyId}')">
+        <span class="comp-item-id">${comp.id}</span>
+        <span class="comp-item-type">${comp.type}</span>
+        <span class="comp-item-pos">${comp.position}</span>
+      </div>
+      <div class="comp-body" id="${bodyId}">
+        <div class="comp-row"><div class="comp-label">States</div><div class="comp-value">${stateTagsHTML}</div></div>
+        <div class="comp-row"><div class="comp-label">Actions</div><div class="comp-value">${actionsHTML}</div></div>
+        <div class="comp-row"><div class="comp-label">Data</div><div class="comp-value" style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;">${comp.data || '—'}</div></div>
+        <div class="comp-row"><div class="comp-label">Notes</div><div class="notes-text">${comp.notes}</div></div>
+      </div>
+    </div>`;
+}
+
+function toggleComp(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('open');
+}
+
+function filterComps(screenId) {
+  const q = document.getElementById(`comp-filter-${screenId}`).value.toLowerCase();
+  document.querySelectorAll(`#comp-list-${screenId} .comp-item`).forEach(el => {
+    const id = el.dataset.compId || '';
+    const type = el.dataset.compType || '';
+    el.style.display = (id.includes(q) || type.includes(q) || q === '') ? '' : 'none';
+  });
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+  document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+  activeNode = null;
+  history.replaceState(null, '', location.pathname);
+}
+
+/* ─────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────── */
+function init() {
+  buildNodes();
+  buildEdges();
+
+  // initial pan to center content
+  const wrap = document.getElementById('canvas-wrap');
+  panX = Math.max(40, (wrap.clientWidth - 800) / 2);
+  panY = 40;
+  applyTransform();
+
+  // handle deep link via hash
+  const hash = location.hash;
+  if (hash && hash.startsWith('#screen-')) {
+    const id = hash.replace('#screen-', '');
+    if (WF.screens.find(s => s.id === id)) openPanel(id);
+  }
+
+  // keyboard: Escape to close panel
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closePanel();
+  });
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

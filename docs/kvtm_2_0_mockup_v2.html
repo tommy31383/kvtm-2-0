@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KVTM 2.0 Mockup v2 — Royal Match Style</title>
+<style>
+/* ─── PAGE SHELL ─── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  background: #1a1a2e;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── HELP BANNER ─── */
+.mockup-help-banner {
+  position: sticky; top: 0; z-index: 200;
+  padding: 8px 16px;
+  background: #1f2937;
+  color: #f9fafb;
+  font-size: 13px;
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap;
+}
+.mockup-help-banner kbd {
+  background: #374151; padding: 2px 6px;
+  border-radius: 4px; font-family: monospace;
+}
+.mockup-help-dismiss {
+  margin-left: auto; background: transparent;
+  color: inherit; border: none; cursor: pointer; font-size: 20px;
+}
+
+/* ─── LAYOUT ─── */
+.page-body {
+  display: flex; flex: 1;
+  gap: 0;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: 220px; flex-shrink: 0;
+  background: #0f172a;
+  border-right: 1px solid #1e3a5f;
+  padding: 20px 0;
+  position: sticky;
+  top: 38px;
+  height: calc(100vh - 38px);
+  overflow-y: auto;
+}
+.sidebar-title {
+  font-size: 10px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: #64748b; padding: 0 16px 12px;
+}
+.sidebar-item {
+  display: block; padding: 9px 16px;
+  font-size: 12px; font-weight: 600;
+  color: #94a3b8; cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all 0.15s; text-decoration: none;
+  border-bottom: none; background: none;
+  width: 100%; text-align: left;
+}
+.sidebar-item:hover { background: #1e293b; color: #e2e8f0; }
+.sidebar-item.active {
+  background: #1e3a5f; color: #FFD700;
+  border-left-color: #FFD700;
+}
+.sidebar-num {
+  display: inline-block; width: 20px; height: 20px;
+  border-radius: 4px; font-size: 10px; font-weight: 800;
+  text-align: center; line-height: 20px;
+  margin-right: 8px; background: #1e293b; color: #94a3b8;
+}
+.sidebar-item.active .sidebar-num { background: #FFD700; color: #2D1810; }
+
+/* ─── MAIN ─── */
+.main-area {
+  flex: 1; display: flex;
+  justify-content: center; align-items: flex-start;
+  padding: 32px 24px;
+}
+
+/* ─── PHONE FRAME ─── */
+.phone-frame {
+  width: 390px; height: 844px;
+  border-radius: 48px;
+  background: #111;
+  box-shadow: 0 0 0 12px #222, 0 0 0 13px #333, 0 30px 80px rgba(0,0,0,0.8);
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+.phone-notch {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 120px; height: 34px;
+  background: #111; border-radius: 0 0 20px 20px;
+  z-index: 50;
+}
+
+/* ─── SCREEN ─── */
+.screen {
+  position: absolute; inset: 0;
+  overflow: hidden;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease-in-out;
+}
+.screen.active {
+  opacity: 1; pointer-events: all;
+}
+
+/* ─── ROYAL MATCH PALETTE ─── */
+:root {
+  --rm-red: #C8302E;
+  --rm-gold: #FFD700;
+  --rm-blue: #2E5F99;
+  --rm-green: #6BBF59;
+  --rm-sky: #87CEEB;
+  --rm-cream: #F5E8D0;
+  --rm-wood: #8B5A1A;
+  --rm-outline: #2D1810;
+  --rm-white: #FFFFFF;
+}
+
+/* ─── SHARED UI ELEMENTS ─── */
+.rm-btn {
+  border: none; cursor: pointer; font-weight: 800;
+  font-family: inherit; border-radius: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; transition: transform 0.1s;
+  outline: 3px solid var(--rm-outline);
+  box-shadow: 0 4px 0 rgba(0,0,0,0.4), inset 0 2px 0 rgba(255,255,255,0.3);
+}
+.rm-btn:active { transform: scale(0.96) translateY(2px); }
+.rm-btn-gold {
+  background: linear-gradient(180deg, #FFE44D 0%, #FFB800 50%, #CC8800 100%);
+  color: var(--rm-outline);
+}
+.rm-btn-blue {
+  background: linear-gradient(180deg, #4A90D9 0%, #2E5F99 50%, #1A3F70 100%);
+  color: white;
+}
+.rm-btn-red {
+  background: linear-gradient(180deg, #E85550 0%, #C8302E 50%, #8B1A18 100%);
+  color: white;
+}
+.rm-btn-green {
+  background: linear-gradient(180deg, #8BD96A 0%, #6BBF59 50%, #4A8A3A 100%);
+  color: white;
+}
+.rm-btn-gray {
+  background: linear-gradient(180deg, #ccc 0%, #999 50%, #666 100%);
+  color: white;
+}
+
+/* Top status bar */
+.game-top-bar {
+  position: absolute; top: 34px; left: 0; right: 0;
+  padding: 8px 14px 6px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 10;
+}
+.resource-chip {
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(0,0,0,0.55); border-radius: 20px;
+  padding: 4px 10px 4px 6px;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  font-size: 13px; font-weight: 800; color: white;
+}
+.resource-icon { font-size: 16px; }
+
+/* Bottom nav */
+.bottom-nav {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 82px;
+  background: linear-gradient(180deg, #1a0a04 0%, #0d0502 100%);
+  border-top: 2px solid var(--rm-wood);
+  display: flex; align-items: center; justify-content: space-around;
+  padding: 0 8px 12px;
+  z-index: 20;
+}
+.nav-btn {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px; cursor: pointer; flex: 1;
+  color: #8B5A1A; font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  transition: color 0.15s;
+  background: none; border: none;
+}
+.nav-btn .nav-icon { font-size: 22px; }
+.nav-btn.nav-play {
+  position: relative; top: -18px;
+}
+.nav-btn.nav-play .nav-icon-wrap {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(180deg, #FFE44D 0%, #FFB800 50%, #CC8800 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  border: 3px solid var(--rm-outline);
+  box-shadow: 0 4px 0 rgba(0,0,0,0.5), 0 0 16px rgba(255,215,0,0.6);
+}
+.nav-btn.nav-play span.nav-label { color: var(--rm-gold); }
+
+/* Puzzle header */
+.puzzle-header {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 80px;
+  background: linear-gradient(180deg, rgba(45,24,16,0.95) 80%, transparent 100%);
+  display: flex; align-items: center; padding: 30px 14px 8px;
+  gap: 10px; z-index: 10;
+}
+.back-btn {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: white; cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.puzzle-level-badge {
+  background: rgba(255,215,0,0.2); border: 1.5px solid var(--rm-gold);
+  border-radius: 12px; padding: 4px 12px;
+  font-size: 12px; font-weight: 800; color: var(--rm-gold);
+}
+.pause-btn {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; cursor: pointer; margin-left: auto; color: white;
+}
+.move-counter {
+  background: rgba(0,0,0,0.45); border-radius: 12px; padding: 4px 10px;
+  font-size: 11px; font-weight: 800; color: #e2e8f0;
+  border: 1.5px solid rgba(255,255,255,0.15);
+}
+
+/* Puzzle bottom toolbar */
+.puzzle-toolbar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 10px 16px 20px;
+  background: linear-gradient(0deg, rgba(45,24,16,0.95) 80%, transparent 100%);
+  display: flex; gap: 10px; justify-content: center;
+  z-index: 10;
+}
+
+/* ═══════════════════════════
+   SCREEN 1 — HUB DASHBOARD
+   ═══════════════════════════ */
+#screen-hub {
+  background: linear-gradient(180deg, #87CEEB 0%, #a8d8ea 30%, #6BBF59 70%, #4a8a3a 100%);
+}
+.hub-map-title {
+  position: absolute; top: 36px; left: 14px;
+  font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.9);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.hub-settings-btn {
+  position: absolute; top: 36px; right: 14px;
+  width: 32px; height: 32px; border-radius: 10px;
+  background: rgba(0,0,0,0.3); border: 1.5px solid rgba(255,255,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: white; cursor: pointer;
+}
+
+/* Garden area */
+.hub-garden {
+  position: absolute; top: 100px; left: 0; right: 0;
+  height: 380px; overflow: hidden;
+}
+.garden-ground {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 160px;
+  background: linear-gradient(180deg, #5aab48 0%, #3d7a2e 100%);
+  border-radius: 40% 40% 0 0 / 20% 20% 0 0;
+}
+/* Isometric garden tiles */
+.garden-item {
+  position: absolute;
+  font-size: 28px;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.4));
+}
+/* Task highlight arrow */
+.task-highlight {
+  position: absolute; top: 195px; left: 60px;
+  display: flex; flex-direction: column; align-items: center;
+  animation: float 2s ease-in-out infinite;
+}
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+.task-arrow {
+  width: 0; height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 18px solid var(--rm-gold);
+  filter: drop-shadow(0 0 8px rgba(255,215,0,0.8));
+}
+.task-label {
+  background: var(--rm-gold); color: var(--rm-outline);
+  border-radius: 10px; padding: 3px 10px;
+  font-size: 11px; font-weight: 800;
+  border: 2px solid var(--rm-outline);
+  margin-top: 4px; white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Mia + Mochi character */
+.hub-characters {
+  position: absolute; bottom: 155px; right: 40px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.char-mia {
+  font-size: 44px;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+  animation: walk 1.5s ease-in-out infinite alternate;
+}
+@keyframes walk { from{transform:translateX(-4px) rotate(-2deg)} to{transform:translateX(4px) rotate(2deg)} }
+.char-mochi { font-size: 22px; margin-top: -4px; }
+
+/* Speech bubble */
+.speech-bubble {
+  position: absolute; bottom: 88px; left: 0; right: 0;
+  margin: 0 14px;
+  background: var(--rm-cream);
+  border-radius: 16px; padding: 10px 14px;
+  border: 2.5px solid var(--rm-wood);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  display: flex; align-items: center; gap: 8px;
+}
+.bubble-avatar { font-size: 22px; flex-shrink: 0; }
+.bubble-text { font-size: 12px; font-weight: 700; color: var(--rm-outline); }
+.speech-bubble::after {
+  content: '';
+  position: absolute; bottom: -12px; left: 60px;
+  width: 0; height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 12px solid var(--rm-wood);
+}
+
+/* Progress bar hub */
+.hub-progress-bar-wrap {
+  position: absolute; top: 72px; left: 14px; right: 14px;
+  background: rgba(0,0,0,0.3); border-radius: 10px;
+  padding: 6px 10px;
+  border: 1.5px solid rgba(255,255,255,0.2);
+}
+.hub-progress-label {
+  font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.9);
+  display: flex; justify-content: space-between; margin-bottom: 4px;
+}
+.hub-progress-track {
+  height: 8px; background: rgba(0,0,0,0.4);
+  border-radius: 4px; overflow: hidden;
+}
+.hub-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FFD700, #FFB800);
+  border-radius: 4px;
+  box-shadow: 0 0 6px rgba(255,215,0,0.6);
+  width: 35%;
+}
+
+/* ═══════════════════════════
+   SCREEN 2 — SORT VASE
+   ═══════════════════════════ */
+#screen-sort-vase {
+  background: linear-gradient(180deg, #1a0d3a 0%, #2d1b5e 40%, #1a0a30 100%);
+}
+.vase-area {
+  position: absolute; top: 90px; left: 0; right: 0; bottom: 80px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; padding: 0 12px;
+}
+.vase-row {
+  display: flex; gap: 8px; justify-content: center;
+}
+.vase-cell {
+  width: 58px; border-radius: 12px;
+  border: 2.5px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.08);
+  overflow: hidden; cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  display: flex; flex-direction: column;
+}
+.vase-cell.selected {
+  border-color: var(--rm-gold);
+  box-shadow: 0 0 12px rgba(255,215,0,0.7);
+}
+.vase-cell.empty-vase {
+  border-color: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+}
+.vase-slot {
+  height: 36px; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);
+  transition: background 0.15s;
+}
+.vase-slot:last-child { border-bottom: none; }
+.vase-base {
+  height: 10px; background: rgba(255,255,255,0.1);
+  border-radius: 0 0 8px 8px;
+}
+.vase-label {
+  text-align: center; font-size: 9px; color: rgba(255,255,255,0.4);
+  padding: 3px 0; font-weight: 700;
+}
+/* Flowers row */
+.flower-pool {
+  display: flex; gap: 6px; justify-content: center;
+  padding: 8px 0;
+}
+.flower-chip {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  border: 2px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+
+/* ═══════════════════════════
+   SCREEN 3 — SORT SHELF
+   ═══════════════════════════ */
+#screen-sort-shelf {
+  background: linear-gradient(180deg, #0a1628 0%, #1a2d4a 40%, #0a1220 100%);
+}
+.shelf-area {
+  position: absolute; top: 90px; left: 14px; right: 14px; bottom: 80px;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  padding: 8px 0;
+}
+.shelf-unit {
+  border-radius: 12px; overflow: hidden;
+  border: 2px solid rgba(139,90,26,0.5);
+  background: rgba(139,90,26,0.15);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.shelf-board {
+  background: linear-gradient(180deg, #8B5A1A 0%, #6B3E10 100%);
+  height: 6px;
+}
+.shelf-row {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 3px; padding: 4px 6px;
+  border-bottom: 1px solid rgba(139,90,26,0.3);
+}
+.shelf-row:last-child { border-bottom: none; }
+.shelf-item {
+  height: 44px; border-radius: 8px;
+  background: rgba(255,255,255,0.1);
+  border: 1.5px solid rgba(255,255,255,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; cursor: pointer;
+  transition: transform 0.1s, border-color 0.15s;
+}
+.shelf-item:active { transform: scale(0.95); }
+.shelf-item.match-row {
+  background: rgba(107,191,89,0.3);
+  border-color: var(--rm-green);
+  animation: matchPulse 0.5s ease-out;
+}
+@keyframes matchPulse { 0%{transform:scale(1)} 50%{transform:scale(1.08)} 100%{transform:scale(1)} }
+.shelf-item.empty { background: rgba(0,0,0,0.2); border-style: dashed; }
+.shelf-label {
+  padding: 3px 8px;
+  font-size: 9px; font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  background: rgba(0,0,0,0.2);
+  text-align: right;
+}
+
+/* ═══════════════════════════
+   SCREEN 4 — TRIPLE TILE
+   ═══════════════════════════ */
+#screen-triple {
+  background: linear-gradient(180deg, #1a0a2e 0%, #2d1450 40%, #0d0020 100%);
+}
+.triple-info-bar {
+  position: absolute; top: 36px; left: 0; right: 0;
+  padding: 4px 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  z-index: 10;
+}
+.timer-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(200,48,46,0.3); border-radius: 20px;
+  padding: 4px 10px; border: 1.5px solid var(--rm-red);
+  font-size: 14px; font-weight: 800; color: #ff7b7a;
+}
+.triple-pile-area {
+  position: absolute; top: 100px; left: 10px; right: 10px; bottom: 180px;
+  border-radius: 20px; overflow: hidden;
+  background: rgba(255,255,255,0.05);
+  border: 1.5px solid rgba(255,255,255,0.1);
+}
+.pile-grid {
+  width: 100%; height: 100%;
+  display: flex; flex-wrap: wrap;
+  align-content: flex-start;
+  padding: 8px; gap: 0;
+  position: relative;
+}
+.pile-tile {
+  position: absolute;
+  width: 52px; height: 52px;
+  border-radius: 10px;
+  border: 2.5px solid rgba(255,255,255,0.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; cursor: pointer;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.5);
+  transition: transform 0.1s;
+}
+.pile-tile:active { transform: scale(0.92); }
+/* tile bg colors */
+.tile-c1 { background: linear-gradient(135deg,#4A3580,#2d1b5e); }
+.tile-c2 { background: linear-gradient(135deg,#1a5e3a,#0d3020); }
+.tile-c3 { background: linear-gradient(135deg,#5e2a1a,#3a0e0e); }
+.tile-c4 { background: linear-gradient(135deg,#1a3a5e,#0d1a30); }
+.tile-c5 { background: linear-gradient(135deg,#5e4a1a,#3a2e0e); }
+
+.slot-strip {
+  position: absolute; bottom: 68px; left: 8px; right: 8px;
+  display: flex; gap: 5px; justify-content: center; padding: 10px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 16px;
+  border: 2px solid rgba(255,255,255,0.12);
+}
+.slot-cell {
+  width: 46px; height: 52px; border-radius: 10px;
+  background: rgba(255,255,255,0.07);
+  border: 2px dashed rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+}
+.slot-cell.filled {
+  background: rgba(255,255,255,0.12);
+  border-style: solid;
+  border-color: rgba(255,255,255,0.3);
+}
+.slot-cell.match-3 {
+  background: rgba(107,191,89,0.3);
+  border-color: var(--rm-green);
+  box-shadow: 0 0 10px rgba(107,191,89,0.5);
+}
+
+/* ═══════════════════════════
+   SCREEN 5 — WIN POPUP
+   ═══════════════════════════ */
+#screen-win {
+  background: linear-gradient(180deg, #1a3a5e 0%, #0d2040 100%);
+}
+.win-bg-sparkles {
+  position: absolute; inset: 0;
+  overflow: hidden;
+}
+.sparkle {
+  position: absolute; font-size: 22px;
+  animation: sparkleFloat 3s ease-in-out infinite;
+}
+@keyframes sparkleFloat {
+  0%{opacity:0; transform:translateY(20px) rotate(0deg)}
+  20%{opacity:1}
+  80%{opacity:1}
+  100%{opacity:0; transform:translateY(-200px) rotate(360deg)}
+}
+.win-panel {
+  position: absolute; left: 20px; right: 20px; top: 100px;
+  background: linear-gradient(180deg, #F5E8D0 0%, #e8d4b0 100%);
+  border-radius: 28px;
+  border: 4px solid var(--rm-gold);
+  box-shadow: 0 8px 0 rgba(0,0,0,0.4), 0 0 30px rgba(255,215,0,0.4);
+  overflow: hidden;
+  padding-bottom: 20px;
+}
+.win-header {
+  background: linear-gradient(180deg, #FFD700 0%, #CC8800 100%);
+  padding: 16px; text-align: center;
+  border-bottom: 3px solid var(--rm-wood);
+}
+.win-title {
+  font-size: 26px; font-weight: 900;
+  color: var(--rm-outline);
+  text-shadow: 0 2px 0 rgba(255,255,255,0.3);
+  letter-spacing: -0.02em;
+}
+.win-subtitle { font-size: 13px; font-weight: 700; color: rgba(45,24,16,0.7); }
+.win-rewards {
+  display: flex; justify-content: center; gap: 20px;
+  padding: 20px; border-bottom: 2px solid rgba(139,90,26,0.2);
+}
+.reward-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: rgba(255,215,0,0.15); border-radius: 14px; padding: 10px 18px;
+  border: 2px solid rgba(255,215,0,0.4);
+}
+.reward-icon { font-size: 32px; }
+.reward-amount {
+  font-size: 20px; font-weight: 900; color: var(--rm-outline);
+}
+.reward-label { font-size: 9px; font-weight: 700; color: rgba(45,24,16,0.6); text-transform: uppercase; }
+
+.win-cinematic {
+  padding: 16px; text-align: center;
+  border-bottom: 2px solid rgba(139,90,26,0.2);
+}
+.cinematic-scene {
+  background: linear-gradient(135deg, #87CEEB, #6BBF59);
+  border-radius: 16px; height: 100px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; margin-bottom: 8px;
+  position: relative; overflow: hidden;
+  border: 2px solid rgba(0,0,0,0.15);
+}
+.cinematic-char { font-size: 34px; }
+.cinematic-transform {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 28px;
+}
+.cinematic-arrow { font-size: 20px; }
+.cinematic-label {
+  font-size: 11px; font-weight: 800; color: rgba(45,24,16,0.7);
+}
+.next-task-banner {
+  margin: 12px 16px 0;
+  background: rgba(255,215,0,0.15); border: 2px solid rgba(255,215,0,0.4);
+  border-radius: 12px; padding: 8px 12px;
+  font-size: 12px; font-weight: 800; color: var(--rm-outline);
+  text-align: center;
+}
+
+/* ═══════════════════════════
+   SCREEN 6 — LOSE POPUP
+   ═══════════════════════════ */
+#screen-lose {
+  background: linear-gradient(180deg, #1a0808 0%, #300808 50%, #1a0808 100%);
+}
+.lose-panel {
+  position: absolute; left: 16px; right: 16px; top: 80px;
+  background: linear-gradient(180deg, #F5E8D0 0%, #e8d4b0 100%);
+  border-radius: 28px;
+  border: 4px solid var(--rm-red);
+  box-shadow: 0 8px 0 rgba(0,0,0,0.5), 0 0 30px rgba(200,48,46,0.3);
+  overflow: hidden;
+  padding-bottom: 20px;
+}
+.lose-header {
+  background: linear-gradient(180deg, #E85550 0%, #C8302E 100%);
+  padding: 14px; text-align: center;
+  border-bottom: 3px solid #8B1A18;
+}
+.lose-title { font-size: 22px; font-weight: 900; color: white; letter-spacing: -0.02em; }
+.lose-subtitle { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.8); }
+.lose-chars {
+  display: flex; justify-content: center; align-items: flex-end; gap: 8px;
+  padding: 14px 20px 8px;
+  border-bottom: 2px solid rgba(139,90,26,0.2);
+}
+.lose-mochi { font-size: 48px; }
+.lose-mia-bubble {
+  background: white; border-radius: 16px 16px 16px 4px;
+  padding: 8px 12px; max-width: 160px;
+  border: 2px solid var(--rm-wood);
+  font-size: 12px; font-weight: 700; color: var(--rm-outline);
+  position: relative; top: -10px;
+}
+.lose-actions {
+  padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;
+}
+.lose-cta {
+  width: 100%; padding: 13px 16px;
+  border-radius: 16px; cursor: pointer;
+  font-family: inherit; font-weight: 800; font-size: 14px;
+  border: 3px solid var(--rm-outline);
+  box-shadow: 0 4px 0 rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.25);
+  display: flex; align-items: center; justify-content: space-between;
+  transition: transform 0.1s;
+}
+.lose-cta:active { transform: scale(0.97) translateY(2px); }
+.lose-cta-primary {
+  background: linear-gradient(180deg, #FFE44D 0%, #FFB800 50%, #CC8800 100%);
+  color: var(--rm-outline);
+  animation: pulseCta 2s ease-in-out infinite;
+}
+@keyframes pulseCta {
+  0%,100%{box-shadow: 0 4px 0 rgba(0,0,0,0.3), 0 0 0px rgba(255,215,0,0)}
+  50%{box-shadow: 0 4px 0 rgba(0,0,0,0.3), 0 0 16px rgba(255,215,0,0.7)}
+}
+.lose-cta-secondary {
+  background: linear-gradient(180deg, #4A90D9 0%, #2E5F99 50%, #1A3F70 100%);
+  color: white;
+}
+.lose-cta-free {
+  background: linear-gradient(180deg, #aaa 0%, #888 50%, #555 100%);
+  color: white;
+}
+.lose-cta-label { display: flex; flex-direction: column; gap: 1px; text-align: left; }
+.lose-cta-sublabel { font-size: 10px; font-weight: 600; opacity: 0.8; }
+.lose-cta-price {
+  font-size: 13px; font-weight: 900;
+  background: rgba(0,0,0,0.2); border-radius: 8px;
+  padding: 3px 8px;
+}
+.lose-tip {
+  margin: 0 16px;
+  background: rgba(107,191,89,0.15); border: 1.5px solid rgba(107,191,89,0.4);
+  border-radius: 10px; padding: 8px 12px;
+  font-size: 11px; color: var(--rm-outline);
+  display: flex; align-items: flex-start; gap: 6px;
+}
+.lose-tip-icon { font-size: 14px; flex-shrink: 0; }
+
+/* ═══════════════════════════
+   SCREEN 7 — STORY CUTSCENE
+   ═══════════════════════════ */
+#screen-story {
+  background: #0a0414;
+}
+.story-bg {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, #0a0414 0%, #1a0a28 40%, #0a1428 100%);
+  overflow: hidden;
+}
+.story-petal {
+  position: absolute; font-size: 16px;
+  animation: petalFall 6s linear infinite;
+  opacity: 0.7;
+}
+@keyframes petalFall {
+  0%{transform: translateY(-20px) rotate(0deg); opacity:0}
+  10%{opacity:0.7}
+  90%{opacity:0.5}
+  100%{transform: translateY(900px) rotate(360deg); opacity:0}
+}
+.story-header {
+  position: absolute; top: 36px; left: 0; right: 0;
+  padding: 6px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 20;
+}
+.story-skip-btn {
+  background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.3);
+  border-radius: 10px; padding: 5px 12px;
+  font-size: 11px; font-weight: 800; color: white; cursor: pointer;
+}
+.story-progress-dots {
+  display: flex; gap: 5px; align-items: center;
+}
+.story-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+}
+.story-dot.active { background: var(--rm-gold); width: 20px; border-radius: 4px; }
+.story-dot.done { background: rgba(255,215,0,0.5); }
+.story-chapter-label {
+  font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6);
+}
+
+.story-scene {
+  position: absolute; top: 100px; left: 0; right: 0; bottom: 220px;
+  display: flex; align-items: flex-end; justify-content: center; gap: 30px;
+  padding-bottom: 20px;
+}
+.story-char {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.story-char-sprite { font-size: 80px; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.6)); }
+.story-char-name {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.08em; color: rgba(255,255,255,0.5);
+}
+.story-char.active .story-char-sprite { filter: drop-shadow(0 8px 12px rgba(0,0,0,0.6)); }
+.story-char.inactive .story-char-sprite { opacity: 0.5; filter: grayscale(30%) drop-shadow(0 8px 12px rgba(0,0,0,0.6)); }
+
+.story-dialog {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 220px;
+  background: linear-gradient(180deg, rgba(15,5,30,0) 0%, rgba(15,5,30,0.97) 20%, #0f051e 100%);
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.dialog-box {
+  flex: 1;
+  background: linear-gradient(180deg, #1a0a2e, #2d1450);
+  border-radius: 18px;
+  border: 2px solid var(--rm-gold);
+  padding: 12px 14px;
+  box-shadow: 0 0 20px rgba(255,215,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+  position: relative;
+}
+.dialog-ornament-tl, .dialog-ornament-tr {
+  position: absolute; top: -2px; font-size: 14px;
+}
+.dialog-ornament-tl { left: 8px; }
+.dialog-ornament-tr { right: 8px; }
+.dialog-speaker {
+  font-size: 11px; font-weight: 900; color: var(--rm-gold);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;
+}
+.dialog-text {
+  font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.95);
+  line-height: 1.55;
+}
+.dialog-voice-icon {
+  position: absolute; bottom: 10px; right: 12px;
+  font-size: 16px; color: rgba(255,215,0,0.7);
+  animation: voicePulse 1.5s ease-in-out infinite;
+}
+@keyframes voicePulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
+.dialog-tap-hint {
+  text-align: center; font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  animation: tapBlink 1.5s ease-in-out infinite;
+}
+@keyframes tapBlink { 0%,100%{opacity:0.4} 50%{opacity:0.9} }
+
+/* ─── TRANSITIONS ─── */
+.screen { transition: opacity 0.25s ease-in-out; }
+</style>
+</head>
+<body>
+
+<!-- HELP BANNER -->
+<div class="mockup-help-banner" role="note">
+  <strong>Component Picker:</strong>
+  Giu <kbd>Cmd+C</kbd> (macOS) hoac <kbd>Ctrl+C</kbd> (Windows/Linux)
+  trong 200ms de kich hoat &rarr; click bat ky component nao de copy context.
+  Paste vao feedback de chinh sua component cu the.
+  <button class="mockup-help-dismiss" aria-label="An banner">&#x00D7;</button>
+</div>
+
+<div class="page-body">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" role="navigation" aria-label="Screen navigation">
+    <div class="sidebar-title">KVTM 2.0 — 7 Screens</div>
+    <button class="sidebar-item active" data-target="screen-hub">
+      <span class="sidebar-num">1</span>Hub Dashboard
+    </button>
+    <button class="sidebar-item" data-target="screen-sort-vase">
+      <span class="sidebar-num">2</span>Sort Vase Puzzle
+    </button>
+    <button class="sidebar-item" data-target="screen-sort-shelf">
+      <span class="sidebar-num">3</span>Sort Shelf Puzzle
+    </button>
+    <button class="sidebar-item" data-target="screen-triple">
+      <span class="sidebar-num">4</span>Triple Tile Puzzle
+    </button>
+    <button class="sidebar-item" data-target="screen-win">
+      <span class="sidebar-num">5</span>Win + Cinematic
+    </button>
+    <button class="sidebar-item" data-target="screen-lose">
+      <span class="sidebar-num">6</span>Lose Popup
+    </button>
+    <button class="sidebar-item" data-target="screen-story">
+      <span class="sidebar-num">7</span>Story Cutscene
+    </button>
+  </nav>
+
+  <!-- MAIN + PHONE FRAME -->
+  <main class="main-area">
+    <div class="phone-frame" role="main">
+      <div class="phone-notch"></div>
+
+      <!-- ═══ SCREEN 1: HUB DASHBOARD ═══ -->
+      <section id="screen-hub" class="screen active"
+        data-screen="hub" data-component="screen-hub">
+
+        <!-- Sky background decoration -->
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,#87CEEB 0%,#a8d8ea 25%,#6BBF59 60%,#3d7a2e 100%);"></div>
+
+        <!-- Clouds -->
+        <div style="position:absolute;top:45px;left:-10px;font-size:32px;opacity:0.7">&#x2601;&#xFE0F;</div>
+        <div style="position:absolute;top:55px;right:20px;font-size:24px;opacity:0.6">&#x2601;&#xFE0F;</div>
+
+        <!-- Map title + settings -->
+        <div class="hub-map-title" data-component="map-title" data-screen="hub">Map 1 · Chapter 1</div>
+        <button class="hub-settings-btn" data-component="settings-btn" data-screen="hub">&#x2699;&#xFE0F;</button>
+
+        <!-- Top resource bar -->
+        <header class="game-top-bar" data-component="top-resource-bar" data-screen="hub">
+          <div class="resource-chip" data-component="star-counter" data-screen="hub">
+            <span class="resource-icon">&#x2B50;</span>
+            <span>12</span>
+          </div>
+          <div class="resource-chip" data-component="lives-counter" data-screen="hub">
+            <span class="resource-icon">&#x2764;&#xFE0F;</span>
+            <span>5</span>
+          </div>
+          <div class="resource-chip" data-component="coin-counter" data-screen="hub">
+            <span class="resource-icon">&#x1F48E;</span>
+            <span>100</span>
+          </div>
+        </header>
+
+        <!-- Progress bar -->
+        <div class="hub-progress-bar-wrap" data-component="hub-progress-bar" data-screen="hub">
+          <div class="hub-progress-label">
+            <span>Tien do trang tri</span>
+            <span style="color:#FFD700">5/14 nhiem vu</span>
+          </div>
+          <div class="hub-progress-track">
+            <div class="hub-progress-fill"></div>
+          </div>
+        </div>
+
+        <!-- Garden view -->
+        <div class="hub-garden" data-component="garden-view" data-screen="hub">
+          <!-- Ground -->
+          <div class="garden-ground"></div>
+
+          <!-- Garden decor items (isometric feel) -->
+          <div class="garden-item" style="bottom:120px;left:30px;font-size:40px">&#x1F331;</div>
+          <div class="garden-item" style="bottom:115px;left:80px;font-size:36px">&#x1F33A;</div>
+          <div class="garden-item" style="bottom:125px;right:30px;font-size:44px">&#x1F333;</div>
+          <div class="garden-item" style="bottom:110px;right:80px;font-size:32px">&#x1F337;</div>
+          <div class="garden-item" style="bottom:145px;left:160px;font-size:50px">&#x1F3E0;</div>
+          <div class="garden-item" style="bottom:118px;left:130px;font-size:30px">&#x1F33C;</div>
+
+          <!-- Broken lamp highlight -->
+          <div class="task-highlight" data-component="task-highlight-arrow" data-screen="hub">
+            <div class="task-arrow"></div>
+            <div class="task-label" data-component="task-cost-label" data-screen="hub">Den vuon vo · -1&#x2B50;</div>
+          </div>
+
+          <!-- Broken lamp item -->
+          <div class="garden-item" style="bottom:155px;left:55px;font-size:30px;filter:grayscale(60%) drop-shadow(0 0 8px rgba(255,215,0,0.7))">&#x1F4A1;</div>
+
+          <!-- Mia + Mochi -->
+          <div class="hub-characters" data-component="character-mia-mochi" data-screen="hub">
+            <div class="char-mia">&#x1F469;&#x200D;&#x1F33E;</div>
+            <div class="char-mochi">&#x1F431;</div>
+          </div>
+        </div>
+
+        <!-- Speech bubble -->
+        <div class="speech-bubble" data-component="mia-speech-bubble" data-screen="hub">
+          <span class="bubble-avatar">&#x1F469;&#x200D;&#x1F33E;</span>
+          <span class="bubble-text">"Vuon nay can em cham! Thay cai den truoc nha!"</span>
+        </div>
+
+        <!-- Bottom nav -->
+        <nav class="bottom-nav" data-component="bottom-nav" data-screen="hub">
+          <button class="nav-btn" data-component="nav-shop" data-screen="hub">
+            <span class="nav-icon">&#x1F6CD;&#xFE0F;</span>
+            <span class="nav-label" style="font-size:9px;color:#8B5A1A;font-weight:700">Shop</span>
+          </button>
+          <button class="nav-btn" data-component="nav-inventory" data-screen="hub">
+            <span class="nav-icon">&#x1F381;</span>
+            <span class="nav-label" style="font-size:9px;color:#8B5A1A;font-weight:700">Inv</span>
+          </button>
+          <button class="nav-btn nav-play" data-component="nav-play-btn" data-screen="hub" id="btn-play">
+            <div class="nav-icon-wrap">&#x25B6;&#xFE0F;</div>
+            <span class="nav-label" style="font-size:9px;font-weight:800;color:#FFD700">PLAY</span>
+          </button>
+          <button class="nav-btn" data-component="nav-story" data-screen="hub">
+            <span class="nav-icon">&#x1F4D6;</span>
+            <span class="nav-label" style="font-size:9px;color:#8B5A1A;font-weight:700">Story</span>
+          </button>
+          <button class="nav-btn" data-component="nav-friend" data-screen="hub">
+            <span class="nav-icon">&#x1F465;</span>
+            <span class="nav-label" style="font-size:9px;color:#8B5A1A;font-weight:700">Friend</span>
+          </button>
+        </nav>
+      </section>
+
+      <!-- ═══ SCREEN 2: SORT VASE ═══ -->
+      <section id="screen-sort-vase" class="screen"
+        data-screen="sort-vase" data-component="screen-sort-vase">
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,#1a0d3a 0%,#2d1b5e 40%,#1a0a30 100%);"></div>
+
+        <!-- Stars deco -->
+        <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+          <div style="position:absolute;top:90px;left:20px;font-size:8px;color:rgba(255,255,255,0.4)">&#x2B50;</div>
+          <div style="position:absolute;top:120px;right:30px;font-size:6px;color:rgba(255,255,255,0.3)">&#x2B50;</div>
+          <div style="position:absolute;top:200px;left:50px;font-size:7px;color:rgba(255,255,255,0.35)">&#x2B50;</div>
+        </div>
+
+        <!-- Header -->
+        <header class="puzzle-header" data-component="puzzle-header" data-screen="sort-vase">
+          <button class="back-btn" data-component="back-button" data-screen="sort-vase" id="vase-back">&#x2190;</button>
+          <div class="puzzle-level-badge" data-component="level-badge" data-screen="sort-vase">Lvl 7</div>
+          <div class="move-counter" data-component="move-counter" data-screen="sort-vase">&#x1F7E6; 18 luoc</div>
+          <button class="pause-btn" data-component="pause-button" data-screen="sort-vase">&#x23F8;&#xFE0F;</button>
+        </header>
+
+        <!-- Goal label -->
+        <div style="position:absolute;top:88px;left:0;right:0;text-align:center;font-size:11px;font-weight:800;color:rgba(255,255,255,0.6);letter-spacing:0.05em;text-transform:uppercase"
+          data-component="goal-label" data-screen="sort-vase">Sap xep hoa cung mau vao cung lo</div>
+
+        <!-- Vase area -->
+        <div class="vase-area" data-component="vase-grid" data-screen="sort-vase">
+          <!-- Row 1 of vases -->
+          <div class="vase-row" data-component="vase-row-1" data-screen="sort-vase">
+            <!-- Vase 1 -->
+            <div class="vase-cell selected" data-component="vase-1" data-screen="sort-vase">
+              <div class="vase-slot">&#x1F339;</div>
+              <div class="vase-slot">&#x1F33B;</div>
+              <div class="vase-slot">&#x1F339;</div>
+              <div class="vase-base"></div>
+              <div class="vase-label">V1</div>
+            </div>
+            <!-- Vase 2 -->
+            <div class="vase-cell" data-component="vase-2" data-screen="sort-vase">
+              <div class="vase-slot">&#x1F33B;</div>
+              <div class="vase-slot">&#x1F339;</div>
+              <div class="vase-slot">&#x1F33B;</div>
+              <div class="vase-base"></div>
+              <div class="vase-label">V2</div>
+            </div>
+            <!-- Vase 3 -->
+            <div class="vase-cell" data-component="vase-3" data-screen="sort-vase">
+              <div class="vase-slot">&#x1F337;</div>
+              <div class="vase-slot">&#x1F339;</div>
+              <div class="vase-slot">&#x1F337;</div>
+              <div class="vase-base"></div>
+              <div class="vase-label">V3</div>
+            </div>
+            <!-- Vase 4 -->
+            <div class="vase-cell" data-component="vase-4" data-screen="sort-vase">
+              <div class="vase-slot">&#x1F33A;</div>
+              <div class="vase-slot">&#x1F337;</div>
+              <div class="vase-slot">&#x1F33A;</div>
+              <div class="vase-base"></div>
+              <div class="vase-label">V4</div>
+            </div>
+            <!-- Vase 5 empty -->
+            <div class="vase-cell empty-vase" data-component="vase-5-empty" data-screen="sort-vase">
+              <div class="vase-slot" style="color:rgba(255,255,255,0.2)">&#x22EF;</div>
+              <div class="vase-slot" style="color:rgba(255,255,255,0.2)">&#x22EF;</div>
+              <div class="vase-slot" style="color:rgba(255,255,255,0.2)">&#x22EF;</div>
+              <div class="vase-base"></div>
+              <div class="vase-label" style="color:rgba(255,255,255,0.2)">V5</div>
+            </div>
+          </div>
+
+          <!-- Divider + instruction -->
+          <div style="text-align:center;font-size:11px;color:rgba(255,255,255,0.5);font-weight:700">
+            &#x2B06; Nhan lo de chon &middot; Nhan lo khac de di chuyen
+          </div>
+
+          <!-- Flower preview row (top flowers in each vase) -->
+          <div class="flower-pool" data-component="flower-preview-row" data-screen="sort-vase">
+            <div class="flower-chip" style="background:rgba(200,0,60,0.25);border-color:rgba(200,0,60,0.5)">&#x1F339;</div>
+            <div class="flower-chip" style="background:rgba(255,180,0,0.25);border-color:rgba(255,180,0,0.5)">&#x1F33B;</div>
+            <div class="flower-chip" style="background:rgba(200,100,200,0.25);border-color:rgba(200,100,200,0.5)">&#x1F337;</div>
+            <div class="flower-chip" style="background:rgba(255,80,80,0.25);border-color:rgba(255,80,80,0.5)">&#x1F33A;</div>
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="puzzle-toolbar" data-component="puzzle-toolbar" data-screen="sort-vase">
+          <button class="rm-btn rm-btn-blue" style="padding:10px 18px;font-size:13px"
+            data-component="undo-btn" data-screen="sort-vase">
+            &#x21B6; Hoan tac <span style="font-size:10px;opacity:0.8">&#x1FA99;10</span>
+          </button>
+          <button class="rm-btn rm-btn-red" style="padding:10px 18px;font-size:13px"
+            data-component="shuffle-btn" data-screen="sort-vase">
+            &#x1F500; Tron <span style="font-size:10px;opacity:0.8">&#x1F48E;30</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ═══ SCREEN 3: SORT SHELF ═══ -->
+      <section id="screen-sort-shelf" class="screen"
+        data-screen="sort-shelf" data-component="screen-sort-shelf">
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,#0a1628 0%,#1a2d4a 40%,#0a1220 100%);"></div>
+
+        <!-- Header -->
+        <header class="puzzle-header" data-component="puzzle-header" data-screen="sort-shelf">
+          <button class="back-btn" data-component="back-button" data-screen="sort-shelf" id="shelf-back">&#x2190;</button>
+          <div class="puzzle-level-badge" data-component="level-badge" data-screen="sort-shelf">Lvl 28</div>
+          <div class="move-counter" data-component="move-counter" data-screen="sort-shelf">&#x1F7E6; 22 luoc</div>
+          <button class="pause-btn" data-component="pause-button" data-screen="sort-shelf">&#x23F8;&#xFE0F;</button>
+        </header>
+
+        <!-- Goal label -->
+        <div style="position:absolute;top:88px;left:0;right:0;text-align:center;font-size:11px;font-weight:800;color:rgba(255,255,255,0.6);letter-spacing:0.05em;text-transform:uppercase"
+          data-component="goal-label" data-screen="sort-shelf">Sap xep 3 vat giong nhau cung hang</div>
+
+        <!-- Shelf area -->
+        <div class="shelf-area" data-component="shelf-grid" data-screen="sort-shelf">
+
+          <!-- Shelf 1 - partial match -->
+          <div class="shelf-unit" data-component="shelf-1" data-screen="sort-shelf">
+            <div class="shelf-board"></div>
+            <div class="shelf-label">Ke 1</div>
+            <div class="shelf-row">
+              <div class="shelf-item">&#x1F34E;</div>
+              <div class="shelf-item">&#x1F34C;</div>
+              <div class="shelf-item">&#x1F34E;</div>
+            </div>
+            <div class="shelf-row">
+              <div class="shelf-item">&#x1F34C;</div>
+              <div class="shelf-item">&#x1F34E;</div>
+              <div class="shelf-item">&#x1F34C;</div>
+            </div>
+            <div class="shelf-row match-row">
+              <div class="shelf-item match-row">&#x1F353;</div>
+              <div class="shelf-item match-row">&#x1F353;</div>
+              <div class="shelf-item match-row">&#x1F353;</div>
+            </div>
+          </div>
+
+          <!-- Shelf 2 -->
+          <div class="shelf-unit" data-component="shelf-2" data-screen="sort-shelf">
+            <div class="shelf-board"></div>
+            <div class="shelf-label">Ke 2</div>
+            <div class="shelf-row">
+              <div class="shelf-item">&#x1F347;</div>
+              <div class="shelf-item">&#x1F34A;</div>
+              <div class="shelf-item">&#x1F347;</div>
+            </div>
+            <div class="shelf-row">
+              <div class="shelf-item">&#x1F34A;</div>
+              <div class="shelf-item">&#x1F347;</div>
+              <div class="shelf-item">&#x1F34A;</div>
+            </div>
+            <div class="shelf-row">
+              <div class="shelf-item">&#x1F34C;</div>
+              <div class="shelf-item">&#x1F34E;</div>
+              <div class="shelf-item">&#x1F34C;</div>
+            </div>
+          </div>
+
+          <!-- Shelf 3 with empty slot -->
+          <div class="shelf-unit" data-component="shelf-3" data-screen="sort-shelf">
+            <div class="shelf-board"></div>
+            <div class="shelf-label">Ke 3</div>
+            <div class="shelf-row">
+              <div class="shelf-item">&#x1F34A;</div>
+              <div class="shelf-item">&#x1F347;</div>
+              <div class="shelf-item empty">&#x2014;</div>
+            </div>
+            <div class="shelf-row">
+              <div class="shelf-item">&#x1F34E;</div>
+              <div class="shelf-item empty">&#x2014;</div>
+              <div class="shelf-item empty">&#x2014;</div>
+            </div>
+            <div class="shelf-row">
+              <div class="shelf-item empty">&#x2014;</div>
+              <div class="shelf-item empty">&#x2014;</div>
+              <div class="shelf-item empty">&#x2014;</div>
+            </div>
+          </div>
+
+          <!-- Spacer for toolbar -->
+          <div style="height:70px;flex-shrink:0"></div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="puzzle-toolbar" data-component="puzzle-toolbar" data-screen="sort-shelf">
+          <button class="rm-btn rm-btn-blue" style="padding:10px 18px;font-size:13px"
+            data-component="undo-btn" data-screen="sort-shelf">
+            &#x21B6; Hoan tac <span style="font-size:10px;opacity:0.8">&#x1FA99;10</span>
+          </button>
+          <button class="rm-btn rm-btn-red" style="padding:10px 18px;font-size:13px"
+            data-component="shuffle-btn" data-screen="sort-shelf">
+            &#x1F500; Tron <span style="font-size:10px;opacity:0.8">&#x1F48E;30</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ═══ SCREEN 4: TRIPLE TILE ═══ -->
+      <section id="screen-triple" class="screen"
+        data-screen="triple-tile" data-component="screen-triple-tile">
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,#1a0a2e 0%,#2d1450 40%,#0d0020 100%);"></div>
+
+        <!-- Info bar -->
+        <div class="triple-info-bar" data-component="triple-info-bar" data-screen="triple-tile">
+          <div class="resource-chip" data-component="lives-display" data-screen="triple-tile">
+            <span>&#x2764;&#xFE0F;</span><span>5</span>
+          </div>
+          <div class="puzzle-level-badge" data-component="level-badge" data-screen="triple-tile">Lvl 42</div>
+          <div class="timer-chip" data-component="timer" data-screen="triple-tile">
+            &#x23F1; 3:00
+          </div>
+        </div>
+
+        <!-- Puzzle header -->
+        <header class="puzzle-header" data-component="puzzle-header" data-screen="triple-tile" style="background:transparent">
+          <button class="back-btn" data-component="back-button" data-screen="triple-tile" id="triple-back">&#x2190;</button>
+          <div style="flex:1"></div>
+          <button class="pause-btn" data-component="pause-button" data-screen="triple-tile">&#x23F8;&#xFE0F;</button>
+        </header>
+
+        <!-- Pile area -->
+        <div class="triple-pile-area" data-component="tile-pile" data-screen="triple-tile">
+          <div class="pile-grid">
+            <!-- 20 tiles scattered with varying positions -->
+            <div class="pile-tile tile-c1" style="top:8px;left:10px"  data-component="tile" data-screen="triple-tile">&#x1F9D9;</div>
+            <div class="pile-tile tile-c2" style="top:8px;left:70px"  data-component="tile" data-screen="triple-tile">&#x1F48E;</div>
+            <div class="pile-tile tile-c3" style="top:8px;left:130px" data-component="tile" data-screen="triple-tile">&#x1F409;</div>
+            <div class="pile-tile tile-c4" style="top:8px;left:190px" data-component="tile" data-screen="triple-tile">&#x1F9D9;</div>
+            <div class="pile-tile tile-c5" style="top:8px;left:250px" data-component="tile" data-screen="triple-tile">&#x1F31F;</div>
+            <div class="pile-tile tile-c2" style="top:68px;left:30px" data-component="tile" data-screen="triple-tile">&#x1F409;</div>
+            <div class="pile-tile tile-c1" style="top:68px;left:95px" data-component="tile" data-screen="triple-tile">&#x1F48E;</div>
+            <div class="pile-tile tile-c5" style="top:68px;left:160px" data-component="tile" data-screen="triple-tile">&#x1F9D9;</div>
+            <div class="pile-tile tile-c3" style="top:68px;left:220px" data-component="tile" data-screen="triple-tile">&#x1F31F;</div>
+            <div class="pile-tile tile-c4" style="top:128px;left:15px" data-component="tile" data-screen="triple-tile">&#x1F31F;</div>
+            <div class="pile-tile tile-c1" style="top:128px;left:75px" data-component="tile" data-screen="triple-tile">&#x1F409;</div>
+            <div class="pile-tile tile-c2" style="top:128px;left:140px" data-component="tile" data-screen="triple-tile">&#x1F48E;</div>
+            <div class="pile-tile tile-c5" style="top:128px;left:200px" data-component="tile" data-screen="triple-tile">&#x1F409;</div>
+            <div class="pile-tile tile-c3" style="top:188px;left:40px" data-component="tile" data-screen="triple-tile">&#x1F9D9;</div>
+            <div class="pile-tile tile-c4" style="top:188px;left:100px" data-component="tile" data-screen="triple-tile">&#x1F31F;</div>
+            <div class="pile-tile tile-c1" style="top:188px;left:165px" data-component="tile" data-screen="triple-tile">&#x1F48E;</div>
+            <div class="pile-tile tile-c2" style="top:188px;left:230px" data-component="tile" data-screen="triple-tile">&#x1F409;</div>
+          </div>
+        </div>
+
+        <!-- Slot strip -->
+        <div class="slot-strip" data-component="tile-slots" data-screen="triple-tile">
+          <div class="slot-cell filled match-3" data-component="slot-1" data-screen="triple-tile">&#x1F9D9;</div>
+          <div class="slot-cell filled match-3" data-component="slot-2" data-screen="triple-tile">&#x1F9D9;</div>
+          <div class="slot-cell filled match-3" data-component="slot-3" data-screen="triple-tile">&#x1F9D9;</div>
+          <div class="slot-cell filled" data-component="slot-4" data-screen="triple-tile">&#x1F48E;</div>
+          <div class="slot-cell filled" data-component="slot-5" data-screen="triple-tile">&#x1F31F;</div>
+          <div class="slot-cell" data-component="slot-6" data-screen="triple-tile"></div>
+          <div class="slot-cell" data-component="slot-7" data-screen="triple-tile"></div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="puzzle-toolbar" data-component="puzzle-toolbar" data-screen="triple-tile" style="bottom:10px">
+          <button class="rm-btn rm-btn-blue" style="padding:8px 14px;font-size:12px"
+            data-component="undo-btn" data-screen="triple-tile">&#x21B6; Undo</button>
+          <button class="rm-btn rm-btn-red" style="padding:8px 14px;font-size:12px"
+            data-component="clear-slot-btn" data-screen="triple-tile">&#x1F5D1; Clear</button>
+          <button class="rm-btn rm-btn-gold" style="padding:8px 14px;font-size:12px"
+            data-component="shuffle-btn" data-screen="triple-tile">&#x1F500; Tron</button>
+        </div>
+      </section>
+
+      <!-- ═══ SCREEN 5: WIN POPUP ═══ -->
+      <section id="screen-win" class="screen"
+        data-screen="win-popup" data-component="screen-win-popup">
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,#0a2040 0%,#1a3a70 50%,#0a1020 100%);"></div>
+
+        <!-- Sparkles background -->
+        <div class="win-bg-sparkles" data-component="win-sparkles-bg" data-screen="win-popup">
+          <div class="sparkle" style="left:10%;animation-delay:0s">&#x2728;</div>
+          <div class="sparkle" style="left:25%;animation-delay:0.8s">&#x1F31F;</div>
+          <div class="sparkle" style="left:45%;animation-delay:1.6s">&#x2B50;</div>
+          <div class="sparkle" style="left:65%;animation-delay:0.4s">&#x2728;</div>
+          <div class="sparkle" style="left:80%;animation-delay:1.2s">&#x1F31F;</div>
+          <div class="sparkle" style="left:5%;animation-delay:2s">&#x2B50;</div>
+          <div class="sparkle" style="left:90%;animation-delay:0.6s">&#x2728;</div>
+        </div>
+
+        <!-- Win panel -->
+        <div class="win-panel" data-component="win-panel" data-screen="win-popup">
+          <!-- Header -->
+          <div class="win-header" data-component="win-header" data-screen="win-popup">
+            <div style="font-size:28px;margin-bottom:4px">&#x1F389; &#x1F389;</div>
+            <div class="win-title" data-component="win-title" data-screen="win-popup">LEVEL COMPLETE!</div>
+            <div class="win-subtitle">Xuat sac! Tiep tuc cham vuon nhe!</div>
+          </div>
+
+          <!-- Rewards -->
+          <div class="win-rewards" data-component="win-rewards-strip" data-screen="win-popup">
+            <div class="reward-item" data-component="reward-star" data-screen="win-popup">
+              <span class="reward-icon">&#x2B50;</span>
+              <span class="reward-amount">+2</span>
+              <span class="reward-label">Sao</span>
+            </div>
+            <div class="reward-item" data-component="reward-coin" data-screen="win-popup">
+              <span class="reward-icon">&#x1FA99;</span>
+              <span class="reward-amount">+50</span>
+              <span class="reward-label">Xu vang</span>
+            </div>
+          </div>
+
+          <!-- Cinematic -->
+          <div class="win-cinematic" data-component="win-cinematic-scene" data-screen="win-popup">
+            <div style="font-size:11px;font-weight:800;color:rgba(45,24,16,0.6);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">
+              Auto-spend &#x2B50; &rarr; Trang tri
+            </div>
+            <div class="cinematic-scene" data-component="cinematic-transform" data-screen="win-popup">
+              <!-- Gold particles deco -->
+              <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+                <div style="position:absolute;top:5px;left:10px;font-size:12px;animation:sparkleFloat 2s infinite 0.3s">&#x2728;</div>
+                <div style="position:absolute;top:8px;right:15px;font-size:10px;animation:sparkleFloat 2s infinite 0.8s">&#x1F31F;</div>
+                <div style="position:absolute;bottom:5px;left:30px;font-size:11px;animation:sparkleFloat 2.5s infinite 1.1s">&#x2728;</div>
+              </div>
+              <div class="cinematic-char">&#x1F469;&#x200D;&#x1F33E;</div>
+              <div class="cinematic-transform">
+                <span style="font-size:28px;filter:grayscale(80%)">&#x1F4A1;</span>
+                <span class="cinematic-arrow" style="color:var(--rm-gold)">&#x2192;</span>
+                <span style="font-size:28px">&#x1F4A1;</span>
+              </div>
+            </div>
+            <div class="cinematic-label">Mia thay den vuon · +1&#x1FA99; bonus!</div>
+          </div>
+
+          <!-- Next task -->
+          <div class="next-task-banner" data-component="next-task-hint" data-screen="win-popup">
+            &#x27A1; Nhiem vu tiep theo: Ghe go · <strong>-1&#x2B50;</strong>
+          </div>
+        </div>
+
+        <!-- Continue button -->
+        <button class="rm-btn rm-btn-gold"
+          style="position:absolute;bottom:100px;left:40px;right:40px;padding:16px;font-size:18px"
+          data-component="continue-btn" data-screen="win-popup" id="win-continue">
+          Tiep tuc &#x25B6;
+        </button>
+      </section>
+
+      <!-- ═══ SCREEN 6: LOSE POPUP ═══ -->
+      <section id="screen-lose" class="screen"
+        data-screen="lose-popup" data-component="screen-lose-popup">
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,#1a0808 0%,#300808 50%,#1a0808 100%);"></div>
+
+        <!-- Dark vignette particles -->
+        <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+          <div style="position:absolute;top:40px;left:20px;font-size:18px;opacity:0.3;animation:sparkleFloat 4s infinite">&#x2764;</div>
+          <div style="position:absolute;top:60px;right:25px;font-size:14px;opacity:0.2;animation:sparkleFloat 5s infinite 1s">&#x2764;</div>
+        </div>
+
+        <div class="lose-panel" data-component="lose-panel" data-screen="lose-popup">
+          <!-- Header -->
+          <div class="lose-header" data-component="lose-header" data-screen="lose-popup">
+            <div style="font-size:24px;margin-bottom:4px">&#x1F494;</div>
+            <div class="lose-title" data-component="lose-title" data-screen="lose-popup">HET LUOC ROI!</div>
+            <div class="lose-subtitle">Out of Moves · Thu lai nao?</div>
+          </div>
+
+          <!-- Characters -->
+          <div class="lose-chars" data-component="lose-chars" data-screen="lose-popup">
+            <div class="lose-mochi" data-component="mochi-sad-face" data-screen="lose-popup">&#x1F63F;</div>
+            <div class="lose-mia-bubble" data-component="mia-encourage-bubble" data-screen="lose-popup">
+              "Dung bo cuoc! Lan nay se lam duoc!"
+            </div>
+          </div>
+
+          <!-- 3 CTAs -->
+          <div class="lose-actions" data-component="lose-cta-group" data-screen="lose-popup">
+            <!-- CTA A: +5 moves -->
+            <button class="lose-cta lose-cta-primary"
+              data-component="cta-add-moves" data-screen="lose-popup">
+              <div class="lose-cta-label">
+                <span>+5 Luoc &middot; Tiep tuc</span>
+                <span class="lose-cta-sublabel">Them 5 nuoc di</span>
+              </div>
+              <span class="lose-cta-price">50 KC</span>
+            </button>
+
+            <!-- CTA B: Continue 100KC -->
+            <button class="lose-cta lose-cta-secondary"
+              data-component="cta-continue-paid" data-screen="lose-popup">
+              <div class="lose-cta-label">
+                <span>Choi lai &middot; Reset day du</span>
+                <span class="lose-cta-sublabel">Level reset ve dau</span>
+              </div>
+              <span class="lose-cta-price">100 KC</span>
+            </button>
+
+            <!-- CTA C: Quit free -->
+            <button class="lose-cta lose-cta-free"
+              data-component="cta-quit-free" data-screen="lose-popup" id="lose-quit">
+              <div class="lose-cta-label">
+                <span>Thoat &middot; Ve Hub</span>
+                <span class="lose-cta-sublabel">Mat -1 &#x2764;&#xFE0F; · Mien phi</span>
+              </div>
+              <span class="lose-cta-price" style="background:rgba(255,255,255,0.15)">-1 &#x2764;&#xFE0F;</span>
+            </button>
+          </div>
+
+          <!-- Tip -->
+          <div class="lose-tip" data-component="gameplay-tip" data-screen="lose-popup">
+            <span class="lose-tip-icon">&#x1F4A1;</span>
+            <span><strong>Meo:</strong> Sap xep hoa cung mau vao cung lo truoc khi xu ly lo khac.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ SCREEN 7: STORY CUTSCENE ═══ -->
+      <section id="screen-story" class="screen"
+        data-screen="story-cutscene" data-component="screen-story-cutscene">
+        <div class="story-bg">
+          <!-- Petals -->
+          <div class="story-petal" style="left:5%;animation-delay:0s">&#x1F338;</div>
+          <div class="story-petal" style="left:15%;animation-delay:1.5s">&#x1F33F;</div>
+          <div class="story-petal" style="left:28%;animation-delay:3s">&#x1F338;</div>
+          <div class="story-petal" style="left:42%;animation-delay:0.8s">&#x1F33F;</div>
+          <div class="story-petal" style="left:58%;animation-delay:2.2s">&#x1F338;</div>
+          <div class="story-petal" style="left:72%;animation-delay:4s">&#x1F33F;</div>
+          <div class="story-petal" style="left:85%;animation-delay:1s">&#x1F338;</div>
+          <div class="story-petal" style="left:95%;animation-delay:2.8s">&#x1F33F;</div>
+        </div>
+
+        <!-- Header -->
+        <header class="story-header" data-component="story-header" data-screen="story-cutscene">
+          <button class="story-skip-btn" data-component="skip-btn" data-screen="story-cutscene"
+            id="story-skip">Skip &#x25B6;</button>
+          <div class="story-chapter-label" data-component="chapter-label" data-screen="story-cutscene">
+            Chapter 2 · Beat 3
+          </div>
+          <div class="story-progress-dots" data-component="beat-progress-dots" data-screen="story-cutscene">
+            <div class="story-dot done"></div>
+            <div class="story-dot done"></div>
+            <div class="story-dot active"></div>
+            <div class="story-dot"></div>
+            <div class="story-dot"></div>
+            <div class="story-dot"></div>
+            <div class="story-dot"></div>
+            <div class="story-dot"></div>
+            <div class="story-dot"></div>
+            <div class="story-dot"></div>
+          </div>
+        </header>
+
+        <!-- Scene background label -->
+        <div style="position:absolute;top:85px;left:0;right:0;text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:0.08em;text-transform:uppercase"
+          data-component="scene-location-label" data-screen="story-cutscene">
+          Pho Co · Dem mua phun · Cau co
+        </div>
+
+        <!-- City night scene deco -->
+        <div style="position:absolute;top:95px;left:0;right:0;height:320px;overflow:hidden">
+          <!-- Simplified city silhouettes via CSS -->
+          <div style="position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(0deg,rgba(10,20,50,0.8),transparent)"></div>
+          <div style="position:absolute;bottom:20px;left:10px;width:40px;height:90px;background:rgba(20,30,60,0.8);border-radius:4px 4px 0 0;border:1px solid rgba(100,150,255,0.2)"></div>
+          <div style="position:absolute;bottom:20px;left:55px;width:30px;height:70px;background:rgba(20,30,60,0.8);border-radius:4px 4px 0 0;border:1px solid rgba(100,150,255,0.2)"></div>
+          <div style="position:absolute;bottom:20px;right:10px;width:45px;height:100px;background:rgba(20,30,60,0.8);border-radius:4px 4px 0 0;border:1px solid rgba(100,150,255,0.2)"></div>
+          <div style="position:absolute;bottom:20px;right:60px;width:35px;height:75px;background:rgba(20,30,60,0.8);border-radius:4px 4px 0 0;border:1px solid rgba(100,150,255,0.2)"></div>
+          <!-- Moon -->
+          <div style="position:absolute;top:20px;right:50px;font-size:28px;opacity:0.8">&#x1F319;</div>
+          <!-- Rain deco dots -->
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent,transparent 20px,rgba(150,200,255,0.04) 20px,rgba(150,200,255,0.04) 21px)"></div>
+        </div>
+
+        <!-- Characters -->
+        <div class="story-scene" data-component="story-scene" data-screen="story-cutscene">
+          <div class="story-char inactive" data-component="char-mia" data-screen="story-cutscene">
+            <div class="story-char-sprite">&#x1F469;&#x200D;&#x1F33E;</div>
+            <div class="story-char-name">Mia</div>
+          </div>
+          <div class="story-char active" data-component="char-leo" data-screen="story-cutscene">
+            <div class="story-char-sprite">&#x1F468;&#x200D;&#x1F4BC;</div>
+            <div class="story-char-name" style="color:rgba(255,215,0,0.8)">Leo</div>
+          </div>
+        </div>
+
+        <!-- Dialog box -->
+        <div class="story-dialog" data-component="story-dialog-area" data-screen="story-cutscene">
+          <div class="dialog-box" data-component="dialog-box" data-screen="story-cutscene">
+            <div class="dialog-ornament-tl">&#x1F451;</div>
+            <div class="dialog-ornament-tr">&#x1F451;</div>
+            <div class="dialog-speaker" data-component="dialog-speaker-name" data-screen="story-cutscene">
+              Leo
+            </div>
+            <div class="dialog-text" data-component="dialog-text" data-screen="story-cutscene">
+              "Em khong the la Mia mai duoc. Cai ten do... qua binh thuong voi em. Anh dat ten em la — Maya."
+            </div>
+            <div class="dialog-voice-icon" data-component="voice-indicator" data-screen="story-cutscene">
+              &#x1F399;&#xFE0F;
+            </div>
+          </div>
+          <div class="dialog-tap-hint" data-component="tap-to-continue-hint" data-screen="story-cutscene">
+            Cham de tiep tuc &#x25B6;
+          </div>
+        </div>
+      </section>
+
+    </div><!-- end phone-frame -->
+  </main>
+</div><!-- end page-body -->
+
+<!-- dom-grab CDN for component picker -->
+<script src="https://unpkg.com/dom-grab"></script>
+
+<script>
+// ─── HELP BANNER DISMISS ───
+document.querySelector('.mockup-help-dismiss')?.addEventListener('click', (e) => {
+  e.target.closest('.mockup-help-banner').style.display = 'none';
+});
+
+// ─── SCREEN NAVIGATION ───
+function showScreen(targetId) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+  });
+  document.querySelectorAll('.sidebar-item').forEach(b => {
+    b.classList.remove('active');
+  });
+
+  const target = document.getElementById(targetId);
+  if (target) target.classList.add('active');
+
+  const sideBtn = document.querySelector(`.sidebar-item[data-target="${targetId}"]`);
+  if (sideBtn) sideBtn.classList.add('active');
+}
+
+// Sidebar buttons
+document.querySelectorAll('.sidebar-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    showScreen(btn.dataset.target);
+  });
+});
+
+// Back buttons → Hub
+['vase-back','shelf-back','triple-back'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', () => showScreen('screen-hub'));
+});
+
+// PLAY → Sort Vase (default)
+const playBtn = document.getElementById('btn-play');
+if (playBtn) playBtn.addEventListener('click', () => showScreen('screen-sort-vase'));
+
+// Win continue → Hub
+const continueBtn = document.getElementById('win-continue');
+if (continueBtn) continueBtn.addEventListener('click', () => showScreen('screen-hub'));
+
+// Lose quit → Hub
+const quitBtn = document.getElementById('lose-quit');
+if (quitBtn) quitBtn.addEventListener('click', () => showScreen('screen-hub'));
+
+// Story skip → Hub
+const skipBtn = document.getElementById('story-skip');
+if (skipBtn) skipBtn.addEventListener('click', () => showScreen('screen-hub'));
+</script>
+</body>
+</html>

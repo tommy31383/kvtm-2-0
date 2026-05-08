@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KVTM 2.0 — Mockup · 6 Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ─── RESET ─── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{
+  font-family:'Be Vietnam Pro',system-ui,sans-serif;
+  background:#1a1a2e;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ─── HELP BANNER ─── */
+.mockup-help-banner{
+  position:sticky;top:0;z-index:9999;
+  padding:8px 16px;
+  background:#1f2937;
+  color:#f9fafb;
+  font-size:12px;
+  display:flex;align-items:center;gap:10px;
+  flex-wrap:wrap;
+  border-bottom:1px solid #374151;
+}
+.mockup-help-banner kbd{
+  background:#374151;padding:2px 6px;
+  border-radius:4px;font-family:monospace;font-size:11px;
+}
+.mockup-help-dismiss{
+  margin-left:auto;background:transparent;color:inherit;
+  border:none;cursor:pointer;font-size:18px;line-height:1;
+  flex-shrink:0;
+}
+
+/* ─── LAYOUT ─── */
+.workspace{
+  display:flex;flex:1;min-height:0;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar{
+  width:220px;min-width:180px;flex-shrink:0;
+  background:#0f0f1a;
+  border-right:1px solid rgba(255,255,255,.07);
+  padding:20px 0;
+  overflow-y:auto;
+  position:sticky;top:40px;height:calc(100vh - 40px);
+}
+.sidebar-title{
+  font-size:10px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;color:#6b7280;
+  padding:0 16px 12px;
+}
+.sidebar-screen{
+  display:block;padding:10px 16px;
+  color:#9ca3af;font-size:12px;font-weight:500;
+  cursor:pointer;border:none;background:transparent;
+  width:100%;text-align:left;
+  border-left:3px solid transparent;
+  transition:all .15s;line-height:1.4;
+}
+.sidebar-screen:hover{background:rgba(255,255,255,.04);color:#e5e7eb;}
+.sidebar-screen.active{
+  background:rgba(255,182,193,.08);
+  color:#FFB6C1;
+  border-left-color:#FFB6C1;
+}
+.sidebar-screen .s-num{
+  font-size:10px;font-weight:700;color:#6b7280;
+  display:block;margin-bottom:2px;
+}
+.sidebar-screen.active .s-num{color:#f9a8d4;}
+
+/* ─── PHONE STAGE ─── */
+.stage{
+  flex:1;display:flex;align-items:flex-start;
+  justify-content:center;padding:32px 24px;
+  gap:28px;flex-wrap:wrap;
+}
+
+/* ─── PHONE FRAME ─── */
+.phone-frame{
+  width:390px;min-height:844px;
+  background:#fff;
+  border-radius:48px;
+  overflow:hidden;
+  position:relative;
+  box-shadow:
+    0 0 0 2px #2d2d4e,
+    0 0 0 10px #1a1a2e,
+    0 0 0 12px #2d2d4e,
+    0 40px 80px rgba(0,0,0,.6),
+    0 0 60px rgba(255,182,193,.08);
+  flex-shrink:0;
+}
+.phone-notch{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:120px;height:32px;
+  background:#0f0f1a;
+  border-radius:0 0 18px 18px;
+  z-index:50;
+}
+
+/* ─── ANNOTATION PANEL ─── */
+.annotation-panel{
+  width:240px;flex-shrink:0;
+  background:#0f0f1a;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:16px;
+  padding:16px;
+  align-self:flex-start;
+  margin-top:8px;
+}
+.annotation-panel h4{
+  font-size:11px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:#FFB6C1;margin-bottom:10px;
+}
+.ann-item{
+  font-size:11px;color:#9ca3af;line-height:1.6;
+  margin-bottom:6px;padding-left:12px;
+  border-left:2px solid rgba(255,182,193,.3);
+}
+.ann-item strong{color:#e5e7eb;}
+
+/* ─── SCREEN COMMON ─── */
+.screen{
+  width:100%;min-height:844px;
+  position:relative;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+}
+
+/* ══════════════════════════════
+   SCREEN 1 — HUB GARDEN
+══════════════════════════════ */
+.s1-bg{
+  background:linear-gradient(180deg,
+    #b8e8ff 0%,
+    #d4f5e9 25%,
+    #e8f5e0 50%,
+    #c8e6c9 70%,
+    #a5d6a7 100%);
+  flex:1;
+}
+
+/* Top bar */
+.top-bar{
+  display:flex;align-items:center;gap:6px;
+  padding:38px 14px 8px;
+  background:linear-gradient(180deg,rgba(184,232,255,.95),rgba(184,232,255,.6));
+  position:relative;z-index:10;
+}
+.tb-avatar{
+  width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,#FFB6C1,#E6E6FA);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;border:2px solid white;
+  box-shadow:0 2px 8px rgba(255,182,193,.5);
+  flex-shrink:0;
+}
+.tb-level{
+  font-size:9px;font-weight:800;color:#fff;
+  background:#ff6b9d;padding:1px 5px;border-radius:8px;
+  margin-left:-8px;margin-top:20px;align-self:flex-start;
+  border:1px solid white;
+}
+.tb-currency{
+  display:flex;align-items:center;gap:4px;
+  background:rgba(255,255,255,.75);
+  border-radius:20px;padding:4px 9px;
+  font-size:11px;font-weight:700;color:#2d3748;
+  border:1px solid rgba(255,255,255,.9);
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
+}
+.tb-spacer{flex:1;}
+.tb-lives{
+  display:flex;align-items:center;gap:2px;
+  background:rgba(255,255,255,.75);
+  border-radius:20px;padding:4px 8px;
+  font-size:11px;font-weight:700;color:#e53e3e;
+  border:1px solid rgba(255,255,255,.9);
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
+}
+
+/* Garden isometric area */
+.garden-area{
+  flex:1;padding:8px 16px 4px;
+  position:relative;
+}
+.floor-label{
+  font-size:9px;font-weight:800;letter-spacing:.08em;
+  color:#6b7280;text-transform:uppercase;
+  margin-bottom:4px;display:flex;align-items:center;gap:4px;
+}
+.floor-label .lock-badge{
+  background:#e0e0e0;color:#9e9e9e;
+  font-size:8px;padding:1px 5px;border-radius:8px;
+}
+
+.floor-row{
+  display:flex;gap:6px;
+  margin-bottom:8px;
+  justify-content:space-between;
+}
+
+.pot{
+  width:60px;height:72px;
+  border-radius:8px 8px 14px 14px;
+  position:relative;
+  cursor:pointer;
+  transition:transform .15s;
+}
+.pot:hover{transform:scale(1.05);}
+
+/* Pot shapes using CSS */
+.pot-empty{
+  background:linear-gradient(135deg,#d7ccc8,#bcaaa4);
+  border:2px solid rgba(255,255,255,.4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.3);
+}
+.pot-planted{
+  background:linear-gradient(135deg,#ef9a9a,#e57373);
+  border:2px solid rgba(255,255,255,.4);
+  display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:4px;
+  font-size:24px;
+  box-shadow:0 4px 12px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.3);
+}
+.pot-planted2{
+  background:linear-gradient(135deg,#a5d6a7,#81c784);
+  border:2px solid rgba(255,255,255,.4);
+  display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:4px;
+  font-size:24px;
+  box-shadow:0 4px 12px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.3);
+}
+.pot-locked{
+  background:linear-gradient(135deg,#e0e0e0,#bdbdbd);
+  border:2px dashed #bdbdbd;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;opacity:.6;
+}
+.pot-ready{
+  background:linear-gradient(135deg,#fff9c4,#fff176);
+  border:2px solid #ffd54f;
+  display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:4px;
+  font-size:24px;
+  box-shadow:0 4px 14px rgba(255,213,79,.4),inset 0 1px 0 rgba(255,255,255,.5);
+  animation:glow-pot 2s ease-in-out infinite;
+}
+@keyframes glow-pot{
+  0%,100%{box-shadow:0 4px 14px rgba(255,213,79,.4);}
+  50%{box-shadow:0 4px 20px rgba(255,213,79,.8);}
+}
+
+/* floor divider */
+.floor-divider{
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,0,0,.1),transparent);
+  margin:4px 0 10px;
+  position:relative;
+}
+
+/* Hub area */
+.hub-area{
+  padding:4px 16px 6px;
+  display:flex;gap:8px;align-items:center;
+  flex-wrap:wrap;
+}
+.hub-npc{
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:600;color:#2d3748;
+  background:rgba(255,255,255,.8);
+  border-radius:12px;padding:6px 10px;
+  border:1px solid rgba(255,255,255,.9);
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+
+/* Speech bubble above Mia */
+.mia-speech{
+  margin:0 16px 6px;
+  background:white;
+  border-radius:14px 14px 14px 4px;
+  padding:8px 12px;
+  font-size:11px;color:#374151;
+  box-shadow:0 2px 10px rgba(0,0,0,.1);
+  border:1px solid rgba(255,182,193,.3);
+  position:relative;display:flex;align-items:center;gap:8px;
+}
+.mia-speech::before{
+  content:'';position:absolute;bottom:-8px;left:20px;
+  border:4px solid transparent;
+  border-top:4px solid white;
+}
+.mia-speech .mia-emoji{
+  font-size:22px;flex-shrink:0;
+}
+
+/* Bottom navigation */
+.bottom-nav{
+  background:white;
+  border-top:1px solid rgba(0,0,0,.08);
+  padding:8px 4px 16px;
+  display:flex;justify-content:space-around;align-items:center;
+  box-shadow:0 -4px 20px rgba(0,0,0,.08);
+}
+.nav-btn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  cursor:pointer;
+  font-size:9px;font-weight:700;color:#9ca3af;
+  padding:4px 6px;border-radius:10px;
+  transition:all .15s;min-width:52px;
+  border:none;background:transparent;
+}
+.nav-btn:hover{color:#FFB6C1;background:rgba(255,182,193,.08);}
+.nav-btn.nav-active{color:#ff6b9d;}
+.nav-btn .nav-icon{font-size:20px;}
+.nav-btn.nav-active .nav-icon{
+  background:linear-gradient(135deg,#FFB6C1,#ff6b9d);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.nav-play-btn{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  cursor:pointer;margin-top:-18px;
+}
+.nav-play-inner{
+  width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,#ff6b9d,#FFB6C1);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;
+  box-shadow:0 4px 16px rgba(255,107,157,.5),0 0 0 3px white,0 0 0 5px rgba(255,107,157,.2);
+  border:none;cursor:pointer;
+}
+.nav-play-label{
+  font-size:9px;font-weight:800;color:#ff6b9d;letter-spacing:.04em;
+}
+
+/* Mochi cat walking */
+.mochi-cat{
+  position:absolute;bottom:110px;right:20px;
+  font-size:28px;animation:mochi-walk 3s ease-in-out infinite;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.15));
+}
+@keyframes mochi-walk{
+  0%,100%{transform:translateX(0) scaleX(1);}
+  25%{transform:translateX(-8px) scaleX(1);}
+  75%{transform:translateX(-4px) scaleX(-1);}
+}
+
+/* Sky decoration */
+.sky-clouds{
+  position:absolute;top:80px;left:0;right:0;
+  display:flex;gap:20px;padding:0 20px;
+  pointer-events:none;
+  opacity:.7;
+}
+.cloud{font-size:24px;animation:cloud-float 4s ease-in-out infinite;}
+.cloud:nth-child(2){animation-delay:1.5s;font-size:18px;}
+.cloud:nth-child(3){animation-delay:3s;font-size:20px;}
+@keyframes cloud-float{
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(-5px);}
+}
+
+/* Order badge on hub */
+.order-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:linear-gradient(135deg,#fff3cd,#ffe082);
+  border:1.5px solid #ffd54f;
+  border-radius:20px;padding:4px 10px;
+  font-size:10px;font-weight:700;color:#7c5e00;
+  box-shadow:0 2px 8px rgba(255,213,79,.3);
+}
+
+/* ══════════════════════════════
+   SCREEN 2 — BLOSSOM SORT
+══════════════════════════════ */
+.s2-bg{
+  background:linear-gradient(180deg,#fce4ec 0%,#f8bbd0 15%,#fdf6ff 40%,#f3e5f5 100%);
+  flex:1;
+}
+.puzzle-topbar{
+  display:flex;align-items:center;gap:8px;
+  padding:36px 14px 10px;
+  background:linear-gradient(180deg,rgba(252,228,236,.95),rgba(252,228,236,.7));
+}
+.back-btn{
+  width:36px;height:36px;border-radius:50%;
+  background:white;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.1);
+  flex-shrink:0;
+}
+.level-info{
+  flex:1;text-align:center;
+}
+.level-info .level-name{
+  font-size:13px;font-weight:800;color:#2d3748;
+}
+.level-info .level-sub{
+  font-size:10px;color:#9ca3af;font-weight:500;
+}
+.pause-btn{
+  width:36px;height:36px;border-radius:50%;
+  background:white;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+
+/* Move counter + goal */
+.puzzle-stats{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px 12px;
+}
+.move-counter{
+  display:flex;align-items:center;gap:6px;
+  background:white;border-radius:12px;padding:6px 12px;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+.move-counter .move-num{
+  font-size:20px;font-weight:900;color:#2d3748;
+  font-family:system-ui;
+}
+.move-counter .move-label{
+  font-size:9px;font-weight:700;color:#9ca3af;
+  text-transform:uppercase;letter-spacing:.05em;
+}
+.goal-hint{
+  background:linear-gradient(135deg,#fff9c4,#fff59d);
+  border:1.5px solid #fdd835;
+  border-radius:12px;padding:6px 10px;
+  font-size:10px;font-weight:700;color:#7c5e00;
+  display:flex;align-items:center;gap:4px;
+  box-shadow:0 2px 8px rgba(253,216,53,.3);
+}
+
+/* Vase grid */
+.vase-grid{
+  display:flex;gap:8px;justify-content:center;
+  padding:12px 16px 8px;
+  flex-wrap:nowrap;
+}
+.vase-container{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  flex:1;min-width:0;
+}
+.vase-body{
+  width:58px;
+  background:linear-gradient(180deg,#fce4ec,#f8bbd0);
+  border:2px solid rgba(255,255,255,.8);
+  border-radius:8px 8px 20px 20px;
+  overflow:hidden;
+  box-shadow:0 4px 12px rgba(244,114,182,.2),inset 0 1px 0 rgba(255,255,255,.5);
+  position:relative;
+}
+.vase-body.selected{
+  border-color:#ff6b9d;
+  box-shadow:0 4px 16px rgba(255,107,157,.5);
+}
+.vase-body.empty-vase{
+  background:linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,.3));
+  border-style:dashed;border-color:#e0a4c0;
+}
+.vase-flower-slot{
+  height:32px;display:flex;align-items:center;justify-content:center;
+  font-size:18px;border-bottom:1px solid rgba(255,255,255,.3);
+  transition:all .2s;
+}
+.vase-flower-slot:last-child{border-bottom:none;}
+.vase-label{
+  font-size:9px;font-weight:700;color:#9ca3af;
+}
+.vase-rim{
+  height:8px;
+  background:linear-gradient(90deg,#f8bbd0,#fce4ec,#f8bbd0);
+  border-radius:4px 4px 0 0;
+}
+
+/* Sort hint */
+.sort-hint{
+  background:rgba(255,255,255,.8);
+  border-radius:12px;margin:4px 16px;
+  padding:8px 12px;
+  font-size:11px;color:#6b7280;text-align:center;
+  border:1px solid rgba(255,182,193,.3);
+}
+
+/* Puzzle action bar */
+.puzzle-actions{
+  display:flex;gap:8px;margin:8px 16px;
+}
+.action-btn{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+  background:white;border:1.5px solid #e5e7eb;
+  border-radius:12px;padding:10px 8px;
+  font-size:11px;font-weight:700;color:#374151;
+  cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+.action-btn .cost{
+  font-size:9px;color:#9ca3af;font-weight:500;
+}
+
+/* Win preview bar */
+.win-preview{
+  margin:8px 16px;
+  background:linear-gradient(135deg,rgba(110,231,183,.15),rgba(110,231,183,.05));
+  border:1.5px solid rgba(110,231,183,.4);
+  border-radius:12px;padding:10px 14px;
+  display:flex;align-items:center;gap:8px;
+}
+.win-preview .win-label{
+  font-size:10px;font-weight:700;color:#065f46;
+}
+.win-reward{
+  display:flex;align-items:center;gap:8px;margin-top:4px;
+}
+.reward-chip{
+  display:flex;align-items:center;gap:3px;
+  background:white;border-radius:20px;padding:3px 8px;
+  font-size:10px;font-weight:700;color:#374151;
+  border:1px solid #e5e7eb;
+}
+
+/* ══════════════════════════════
+   SCREEN 3 — TRỒNG CÂY MODAL
+══════════════════════════════ */
+.s3-bg{
+  background:linear-gradient(180deg,#e8f5e0 0%,#c8e6c9 100%);
+  flex:1;display:flex;flex-direction:column;
+}
+.modal-overlay{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,.35);
+  display:flex;align-items:flex-end;
+  padding-bottom:0;
+}
+.modal-sheet{
+  width:100%;
+  background:white;
+  border-radius:24px 24px 0 0;
+  padding:20px 16px 32px;
+  box-shadow:0 -8px 40px rgba(0,0,0,.2);
+}
+.modal-handle{
+  width:40px;height:4px;background:#e5e7eb;
+  border-radius:2px;margin:0 auto 16px;
+}
+.modal-title{
+  font-size:16px;font-weight:800;color:#1a1a2e;
+  margin-bottom:4px;
+}
+.modal-sub{
+  font-size:11px;color:#9ca3af;margin-bottom:16px;
+  display:flex;align-items:center;gap:4px;
+}
+.water-balance{
+  display:flex;align-items:center;gap:6px;
+  background:linear-gradient(135deg,#e0f7fa,#b2ebf2);
+  border-radius:12px;padding:8px 12px;
+  margin-bottom:14px;border:1px solid #80deea;
+}
+.water-balance .wb-label{font-size:10px;color:#006064;font-weight:700;}
+.water-balance .wb-amount{font-size:18px;font-weight:900;color:#00838f;}
+.plant-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.plant-item{
+  display:flex;align-items:center;gap:12px;
+  background:#fafafa;border:2px solid #e5e7eb;
+  border-radius:14px;padding:10px 14px;
+  cursor:pointer;transition:all .15s;
+  position:relative;
+}
+.plant-item:hover{border-color:#FFB6C1;background:#fff5f7;}
+.plant-item.selected-plant{
+  border-color:#ff6b9d;
+  background:linear-gradient(135deg,#fff0f3,#ffe4ec);
+  box-shadow:0 2px 12px rgba(255,107,157,.2);
+}
+.plant-item.rare-plant{
+  border-color:#c084fc;
+  background:linear-gradient(135deg,#faf5ff,#f3e8ff);
+}
+.plant-emoji{font-size:28px;}
+.plant-info{flex:1;}
+.plant-name{font-size:13px;font-weight:700;color:#1a1a2e;}
+.plant-desc{font-size:10px;color:#9ca3af;margin-top:1px;}
+.plant-cost{
+  display:flex;align-items:center;gap:3px;
+  font-size:13px;font-weight:800;color:#0891b2;
+}
+.recommend-badge{
+  position:absolute;top:-6px;right:8px;
+  background:linear-gradient(135deg,#ff6b9d,#FFB6C1);
+  color:white;font-size:8px;font-weight:800;
+  padding:2px 6px;border-radius:8px;letter-spacing:.04em;
+}
+.rare-badge{
+  position:absolute;top:-6px;right:8px;
+  background:linear-gradient(135deg,#a855f7,#c084fc);
+  color:white;font-size:8px;font-weight:800;
+  padding:2px 6px;border-radius:8px;letter-spacing:.04em;
+}
+.modal-actions{
+  display:flex;gap:10px;
+}
+.btn-cancel{
+  flex:1;padding:13px;border-radius:14px;
+  background:#f3f4f6;border:none;
+  font-size:14px;font-weight:700;color:#6b7280;cursor:pointer;
+  font-family:'Be Vietnam Pro',sans-serif;
+}
+.btn-confirm{
+  flex:2;padding:13px;border-radius:14px;
+  background:linear-gradient(135deg,#ff6b9d,#FFB6C1);
+  border:none;font-size:14px;font-weight:800;color:white;
+  cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;
+  box-shadow:0 4px 16px rgba(255,107,157,.4);
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+
+/* Hub BG for modal */
+.modal-garden-bg{
+  flex:1;
+  background:linear-gradient(180deg,#b8e8ff 0%,#d4f5e9 40%,#c8e6c9 100%);
+  position:relative;
+  padding:38px 16px 12px;
+  min-height:340px;
+}
+.pot-selected-indicator{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+}
+.pot-glow{
+  width:72px;height:80px;
+  background:linear-gradient(135deg,#d7ccc8,#bcaaa4);
+  border-radius:8px 8px 16px 16px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;
+  box-shadow:0 0 30px rgba(255,107,157,.5),0 0 0 3px #ff6b9d;
+  border:2px solid #ff6b9d;
+  animation:pulse-glow 1.5s ease-in-out infinite;
+}
+@keyframes pulse-glow{
+  0%,100%{box-shadow:0 0 20px rgba(255,107,157,.4),0 0 0 3px #ff6b9d;}
+  50%{box-shadow:0 0 40px rgba(255,107,157,.7),0 0 0 4px #ff6b9d;}
+}
+.pot-select-label{
+  background:white;border-radius:20px;padding:4px 12px;
+  font-size:11px;font-weight:700;color:#ff6b9d;
+  box-shadow:0 2px 10px rgba(0,0,0,.1);
+}
+
+/* ══════════════════════════════
+   SCREEN 4 — TRẢ ĐƠN MODAL
+══════════════════════════════ */
+.s4-bg{
+  background:linear-gradient(180deg,#e8f5e0 0%,#c8e6c9 100%);
+  flex:1;
+}
+.order-modal-sheet{
+  width:100%;background:white;
+  border-radius:24px 24px 0 0;
+  padding:20px 16px 32px;
+  box-shadow:0 -8px 40px rgba(0,0,0,.2);
+}
+.order-header{
+  display:flex;align-items:center;gap:12px;margin-bottom:16px;
+}
+.owl-avatar{
+  width:52px;height:52px;border-radius:50%;
+  background:linear-gradient(135deg,#fff3cd,#ffe082);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;border:2px solid #fdd835;
+  box-shadow:0 4px 12px rgba(253,216,53,.3);
+}
+.order-header-text .order-title{
+  font-size:16px;font-weight:800;color:#1a1a2e;
+}
+.order-header-text .order-sub{
+  font-size:10px;color:#9ca3af;margin-top:2px;
+}
+.checklist{margin-bottom:16px;}
+.checklist-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 0;border-bottom:1px solid #f3f4f6;
+}
+.checklist-item:last-child{border-bottom:none;}
+.check-icon{
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;flex-shrink:0;
+}
+.check-ok{background:#d1fae5;color:#065f46;}
+.check-fail{background:#fee2e2;color:#991b1b;}
+.check-label{flex:1;font-size:12px;font-weight:600;color:#374151;}
+.check-status{font-size:10px;color:#9ca3af;}
+.check-status.ok{color:#10b981;font-weight:700;}
+.check-status.fail{color:#ef4444;font-weight:700;}
+.reward-section{
+  background:linear-gradient(135deg,#fffbeb,#fef3c7);
+  border:1.5px solid #fde68a;
+  border-radius:14px;padding:12px;
+  margin-bottom:14px;
+}
+.reward-section .reward-title{
+  font-size:10px;font-weight:800;color:#92400e;
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;
+}
+.reward-items{display:flex;gap:8px;flex-wrap:wrap;}
+.reward-item{
+  display:flex;align-items:center;gap:4px;
+  background:white;border-radius:10px;padding:5px 10px;
+  font-size:12px;font-weight:700;color:#374151;
+  border:1px solid #fde68a;
+}
+.order-btn-row{display:flex;gap:10px;}
+.btn-skip{
+  flex:1;padding:13px;border-radius:14px;
+  background:#f3f4f6;border:none;
+  font-size:13px;font-weight:700;color:#6b7280;cursor:pointer;
+  font-family:'Be Vietnam Pro',sans-serif;
+}
+.btn-order-disabled{
+  flex:2;padding:13px;border-radius:14px;
+  background:#e5e7eb;border:none;
+  font-size:13px;font-weight:800;color:#9ca3af;cursor:not-allowed;
+  font-family:'Be Vietnam Pro',sans-serif;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.btn-order-ready{
+  flex:2;padding:13px;border-radius:14px;
+  background:linear-gradient(135deg,#10b981,#34d399);
+  border:none;font-size:13px;font-weight:800;color:white;
+  cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;
+  box-shadow:0 4px 16px rgba(16,185,129,.4);
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.missing-hint{
+  background:#fff1f2;border:1px solid #fecdd3;
+  border-radius:10px;padding:8px 12px;margin-bottom:12px;
+  font-size:11px;color:#9f1239;display:flex;align-items:center;gap:6px;
+}
+
+/* ══════════════════════════════
+   SCREEN 5 — DECOR MODE
+══════════════════════════════ */
+.s5-bg{
+  background:linear-gradient(180deg,#e8eaf6 0%,#d1c4e9 40%,#b39ddb 100%);
+  flex:1;
+}
+.decor-topbar{
+  display:flex;align-items:center;
+  padding:36px 14px 10px;
+  background:linear-gradient(180deg,rgba(232,234,246,.95),rgba(232,234,246,.7));
+  gap:8px;
+}
+.decor-title{
+  flex:1;text-align:center;font-size:14px;font-weight:800;color:#1a1a2e;
+}
+.save-btn{
+  background:linear-gradient(135deg,#7c3aed,#a78bfa);
+  color:white;border:none;border-radius:20px;
+  padding:6px 14px;font-size:11px;font-weight:700;
+  cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;
+  box-shadow:0 2px 10px rgba(124,58,237,.3);
+}
+
+/* Score bar */
+.score-bar-container{
+  margin:0 16px 12px;
+  background:white;border-radius:14px;padding:10px 14px;
+  box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+.score-bar-header{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:6px;
+}
+.score-bar-label{font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;}
+.score-bar-value{font-size:14px;font-weight:800;color:#7c3aed;}
+.score-bar-track{
+  height:10px;background:#f3f4f6;border-radius:10px;
+  overflow:hidden;
+}
+.score-bar-fill{
+  height:100%;width:30%;
+  background:linear-gradient(90deg,#a78bfa,#7c3aed);
+  border-radius:10px;
+  position:relative;
+}
+.score-bar-fill::after{
+  content:'';position:absolute;right:0;top:0;bottom:0;width:6px;
+  background:rgba(255,255,255,.5);border-radius:0 10px 10px 0;
+}
+.score-milestones{
+  display:flex;justify-content:space-between;margin-top:4px;
+}
+.milestone{
+  font-size:9px;color:#9ca3af;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:1px;
+}
+.milestone.reached{color:#7c3aed;}
+.milestone-dot{
+  width:8px;height:8px;border-radius:50%;background:#e5e7eb;
+}
+.milestone.reached .milestone-dot{background:#7c3aed;}
+.milestone.next .milestone-dot{background:#c4b5fd;box-shadow:0 0 6px rgba(167,139,250,.5);}
+
+/* Isometric garden preview */
+.garden-iso{
+  flex:1;margin:0 16px;
+  background:linear-gradient(160deg,#e0f2fe,#f0fdf4,#e8f5e0);
+  border-radius:20px;
+  border:2px solid rgba(255,255,255,.5);
+  position:relative;overflow:hidden;
+  min-height:240px;
+  box-shadow:inset 0 2px 10px rgba(0,0,0,.06);
+}
+.iso-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:10px;padding:16px;
+}
+.iso-cell{
+  aspect-ratio:1;
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;
+  cursor:pointer;
+  transition:transform .15s;
+}
+.iso-cell:hover{transform:scale(1.1);}
+.iso-empty-cell{
+  background:rgba(255,255,255,.5);
+  border:2px dashed rgba(124,58,237,.3);
+  border-radius:10px;
+}
+.iso-placed{
+  background:rgba(255,255,255,.8);
+  border:1.5px solid rgba(255,255,255,.9);
+  box-shadow:0 4px 10px rgba(0,0,0,.08);
+}
+.drag-indicator{
+  position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:8px;pointer-events:none;
+}
+.drag-hint{
+  background:rgba(0,0,0,.5);color:white;
+  border-radius:20px;padding:4px 12px;font-size:10px;font-weight:700;
+}
+
+/* Inventory bottom */
+.inventory-bar{
+  background:white;border-radius:20px 20px 0 0;
+  padding:12px 16px 28px;
+  box-shadow:0 -4px 20px rgba(0,0,0,.1);
+}
+.inventory-bar-header{
+  font-size:11px;font-weight:800;color:#374151;
+  text-transform:uppercase;letter-spacing:.06em;
+  margin-bottom:10px;display:flex;align-items:center;gap:6px;
+}
+.inv-scroll{
+  display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;
+}
+.inv-scroll::-webkit-scrollbar{height:3px;}
+.inv-scroll::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:2px;}
+.inv-item{
+  flex-shrink:0;
+  width:64px;height:72px;
+  background:linear-gradient(135deg,#f3e8ff,#ede9fe);
+  border:2px solid #c4b5fd;
+  border-radius:14px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  cursor:grab;
+  transition:all .15s;
+}
+.inv-item:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(124,58,237,.2);}
+.inv-item .inv-emoji{font-size:24px;}
+.inv-item .inv-count{
+  font-size:9px;font-weight:800;color:#7c3aed;
+  background:white;border-radius:8px;padding:1px 5px;
+  border:1px solid #c4b5fd;
+}
+
+/* ══════════════════════════════
+   SCREEN 6 — STORY CUTSCENE
+══════════════════════════════ */
+.s6-bg{
+  background:linear-gradient(180deg,#1a1a3e 0%,#2d1b69 30%,#1e3a5f 60%,#0f2027 100%);
+  flex:1;position:relative;overflow:hidden;
+}
+.scene-bg-overlay{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 30%, rgba(100,149,237,.1) 0%, transparent 60%);
+  pointer-events:none;
+}
+.rain-effect{
+  position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    90deg,
+    transparent 0%,transparent 2px,
+    rgba(180,210,255,.03) 2px,rgba(180,210,255,.03) 3px
+  );
+  pointer-events:none;
+}
+.story-topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:36px 16px 12px;
+  position:relative;z-index:10;
+}
+.skip-btn{
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.8);border-radius:20px;
+  padding:5px 12px;font-size:11px;font-weight:700;
+  cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;
+  display:flex;align-items:center;gap:4px;
+}
+.chapter-badge{
+  font-size:10px;font-weight:700;color:rgba(255,255,255,.6);
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:20px;padding:4px 10px;
+}
+.beat-dots{
+  display:flex;gap:4px;align-items:center;
+}
+.beat-dot{
+  width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.2);
+}
+.beat-dot.active{background:#c084fc;box-shadow:0 0 6px rgba(192,132,252,.6);}
+.beat-dot.done{background:rgba(255,255,255,.5);}
+
+/* Characters on scene */
+.scene-characters{
+  flex:1;position:relative;z-index:5;
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:0 20px;min-height:320px;
+  gap:20px;
+}
+.char-figure{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.char-silhouette{
+  border-radius:16px 16px 4px 4px;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  padding:8px 12px;
+  position:relative;overflow:hidden;
+}
+.char-head{font-size:48px;line-height:1;}
+.char-body{
+  width:70px;height:90px;
+  border-radius:14px 14px 8px 8px;
+  margin-top:4px;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.char-mia .char-body{
+  background:linear-gradient(180deg,#fce4ec,#f8bbd0);
+  border:1.5px solid rgba(255,255,255,.4);
+}
+.char-leo .char-body{
+  background:linear-gradient(180deg,#e3f2fd,#bbdefb);
+  border:1.5px solid rgba(255,255,255,.4);
+}
+.char-name-tag{
+  font-size:10px;font-weight:800;color:rgba(255,255,255,.8);
+  background:rgba(0,0,0,.3);border-radius:8px;padding:2px 8px;
+  letter-spacing:.05em;
+}
+
+/* Cherry blossom petals */
+.petal{
+  position:absolute;font-size:14px;
+  animation:fall-petal linear infinite;
+  pointer-events:none;opacity:.7;
+}
+@keyframes fall-petal{
+  0%{transform:translateY(-20px) rotate(0deg);opacity:.7;}
+  100%{transform:translateY(400px) rotate(360deg);opacity:0;}
+}
+
+/* Dialog box */
+.dialog-box{
+  position:relative;z-index:10;
+  background:rgba(255,255,255,.95);
+  border-radius:20px 20px 0 0;
+  padding:16px 18px;
+  margin-top:auto;
+  box-shadow:0 -8px 40px rgba(0,0,0,.3);
+}
+.dialog-speaker{
+  font-size:11px;font-weight:800;color:#7c3aed;
+  text-transform:uppercase;letter-spacing:.08em;
+  margin-bottom:6px;display:flex;align-items:center;gap:6px;
+}
+.speaker-dot{width:8px;height:8px;border-radius:50%;background:#7c3aed;}
+.dialog-text{
+  font-size:14px;font-weight:500;color:#1a1a2e;line-height:1.7;
+  margin-bottom:12px;
+}
+.dialog-text em{
+  font-style:normal;font-weight:700;color:#7c3aed;
+}
+.dialog-tap{
+  display:flex;align-items:center;justify-content:flex-end;gap:4px;
+  font-size:10px;color:#9ca3af;font-weight:600;cursor:pointer;
+}
+.tap-arrow{
+  width:20px;height:20px;background:#7c3aed;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:white;
+  animation:pulse-arrow 1.5s ease-in-out infinite;
+}
+@keyframes pulse-arrow{
+  0%,100%{transform:scale(1);}
+  50%{transform:scale(1.15);}
+}
+
+/* ─── SCREENS VISIBILITY ─── */
+.screen-panel{display:none;}
+.screen-panel.active-screen{display:flex;flex-direction:column;}
+
+/* ─── UTILITY ─── */
+.flex-row{display:flex;gap:8px;align-items:center;}
+
+/* Shadow quality on phone */
+.phone-frame .screen{background:white;}
+</style>
+</head>
+<body>
+
+<!-- HELP BANNER -->
+<div class="mockup-help-banner" role="note">
+  <strong>KVTM 2.0 Mockup</strong> — 6 screens mobile portrait 390×844 &nbsp;|&nbsp;
+  <strong>Component Picker:</strong>
+  Giữ <kbd>Ctrl+C</kbd> / <kbd>Cmd+C</kbd> 200ms, click element để copy context vào clipboard.
+  <button class="mockup-help-dismiss" aria-label="Ẩn banner">×</button>
+</div>
+
+<div class="workspace">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" aria-label="Danh sách màn hình">
+    <div class="sidebar-title">KVTM 2.0 · 6 Screens</div>
+    <button class="sidebar-screen active" data-screen="s1" onclick="showScreen('s1',this)">
+      <span class="s-num">Screen 1</span>
+      🌸 Hub Garden
+    </button>
+    <button class="sidebar-screen" data-screen="s2" onclick="showScreen('s2',this)">
+      <span class="s-num">Screen 2</span>
+      🌺 Blossom Sort
+    </button>
+    <button class="sidebar-screen" data-screen="s3" onclick="showScreen('s3',this)">
+      <span class="s-num">Screen 3</span>
+      🌱 Trồng Cây Modal
+    </button>
+    <button class="sidebar-screen" data-screen="s4" onclick="showScreen('s4',this)">
+      <span class="s-num">Screen 4</span>
+      🦉 Trả Đơn Modal
+    </button>
+    <button class="sidebar-screen" data-screen="s5" onclick="showScreen('s5',this)">
+      <span class="s-num">Screen 5</span>
+      🎨 Decor Mode
+    </button>
+    <button class="sidebar-screen" data-screen="s6" onclick="showScreen('s6',this)">
+      <span class="s-num">Screen 6</span>
+      💬 Story Cutscene
+    </button>
+  </nav>
+
+  <!-- STAGE -->
+  <main class="stage">
+
+    <!-- PHONE FRAME -->
+    <div class="phone-frame" id="phone">
+      <div class="phone-notch"></div>
+
+      <!-- ══ SCREEN 1: HUB GARDEN ══ -->
+      <section class="screen-panel active-screen" id="s1" data-component="hub-garden-screen" aria-label="Hub Garden">
+        <div class="s1-bg screen" style="background:linear-gradient(180deg,#b8e8ff 0%,#d4f5e9 25%,#e8f5e0 55%,#c8e6c9 100%);">
+
+          <!-- Sky clouds -->
+          <div class="sky-clouds" style="top:70px;">
+            <span class="cloud">☁️</span>
+            <span class="cloud" style="margin-left:auto;">☁️</span>
+            <span class="cloud">☁️</span>
+          </div>
+
+          <!-- Top bar -->
+          <header class="top-bar" data-component="topbar" data-screen="hub">
+            <div style="position:relative;display:flex;align-items:center;">
+              <div class="tb-avatar" data-component="player-avatar" data-screen="hub">🌸</div>
+              <div class="tb-level">Lv12</div>
+            </div>
+            <div class="tb-currency" data-component="water-counter" data-screen="hub">
+              💧 <span>20</span>
+            </div>
+            <div class="tb-currency" data-component="gold-counter" data-screen="hub" style="color:#92400e;">
+              🪙 <span>500</span>
+            </div>
+            <div class="tb-spacer"></div>
+            <div class="tb-lives" data-component="lives-counter" data-screen="hub">
+              ❤️ <span>5</span>
+            </div>
+          </header>
+
+          <!-- Garden floors -->
+          <div class="garden-area" style="padding-top:4px;">
+
+            <!-- Tầng 2 (locked) -->
+            <div class="floor-label" data-component="floor2-label" data-screen="hub">
+              ☁️ Tầng 2 <span class="lock-badge">🔒 Unlock Ch.2</span>
+            </div>
+            <div class="floor-row" data-component="floor2-pots" data-screen="hub">
+              <div class="pot pot-locked" data-component="pot-locked" data-screen="hub">🔒</div>
+              <div class="pot pot-locked">🔒</div>
+              <div class="pot pot-locked">🔒</div>
+              <div class="pot pot-locked">🔒</div>
+              <div class="pot pot-locked">🔒</div>
+            </div>
+
+            <div class="floor-divider"></div>
+
+            <!-- Tầng 1 (active) -->
+            <div class="floor-label" data-component="floor1-label" data-screen="hub">
+              ☁️ Tầng 1 <span style="color:#10b981;font-weight:700;font-size:9px;">● Active</span>
+            </div>
+            <div class="floor-row" data-component="floor1-pots" data-screen="hub">
+              <div class="pot pot-empty" data-component="pot-empty" data-screen="hub" onclick="showScreen('s3', document.querySelector('[data-screen=s3]'))">＋</div>
+              <div class="pot pot-planted" data-component="pot-tomato" data-screen="hub">🍅</div>
+              <div class="pot pot-planted2" data-component="pot-sunflower" data-screen="hub">🌻</div>
+              <div class="pot pot-ready" data-component="pot-ready-harvest" data-screen="hub">🌹</div>
+              <div class="pot pot-empty" data-component="pot-empty-2" data-screen="hub">＋</div>
+            </div>
+
+            <div class="floor-divider"></div>
+
+            <!-- Hub / Ground area -->
+            <div class="hub-area" data-component="hub-ground" data-screen="hub">
+              <div class="order-badge" data-component="order-badge-owl" data-screen="hub" onclick="showScreen('s4', document.querySelector('[data-screen=s4]'))">
+                🦉 Đơn Cú <span>3 items</span>
+              </div>
+              <div class="order-badge" style="background:linear-gradient(135deg,#e0f7fa,#b2ebf2);border-color:#80deea;color:#006064;" data-component="order-badge-cow" data-screen="hub">
+                🐂 Đơn Bò <span>✓ Ready!</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Mochi cat -->
+          <div class="mochi-cat" data-component="mochi-cat" data-screen="hub">🐱</div>
+
+          <!-- Mia speech -->
+          <div class="mia-speech" data-component="mia-speech-bubble" data-screen="hub">
+            <span class="mia-emoji">🌸</span>
+            <div>
+              <div style="font-size:10px;font-weight:800;color:#ff6b9d;margin-bottom:1px;">Mia nói</div>
+              "Đơn Cú cần 5 cà chua! Chúng ta còn thiếu 💧 để trồng đó~"
+            </div>
+          </div>
+
+          <!-- Bottom navigation -->
+          <nav class="bottom-nav" data-component="bottom-nav" data-screen="hub">
+            <button class="nav-btn" data-component="nav-shop" data-screen="hub">
+              <span class="nav-icon">🛍️</span>
+              Shop
+            </button>
+            <button class="nav-btn" data-component="nav-inventory" data-screen="hub">
+              <span class="nav-icon">🎁</span>
+              Kho
+            </button>
+            <div class="nav-play-btn" data-component="nav-play-cta" data-screen="hub" onclick="showScreen('s2', document.querySelector('[data-screen=s2]'))">
+              <button class="nav-play-inner">🧩</button>
+              <div class="nav-play-label">PLAY</div>
+            </div>
+            <button class="nav-btn" data-component="nav-decor" data-screen="hub" onclick="showScreen('s5', document.querySelector('[data-screen=s5]'))">
+              <span class="nav-icon">🎨</span>
+              Decor
+            </button>
+            <button class="nav-btn" data-component="nav-friends" data-screen="hub">
+              <span class="nav-icon">👥</span>
+              Friends
+            </button>
+          </nav>
+
+        </div>
+      </section>
+
+      <!-- ══ SCREEN 2: BLOSSOM SORT ══ -->
+      <section class="screen-panel" id="s2" data-component="blossom-sort-screen" aria-label="Blossom Sort Puzzle">
+        <div class="s2-bg screen" style="display:flex;flex-direction:column;min-height:844px;">
+
+          <!-- Top bar -->
+          <header class="puzzle-topbar" data-component="puzzle-topbar" data-screen="blossom-sort">
+            <button class="back-btn" onclick="showScreen('s1',document.querySelector('[data-screen=s1]'))" data-component="back-to-hub" data-screen="blossom-sort">←</button>
+            <div class="level-info" data-component="level-info" data-screen="blossom-sort">
+              <div class="level-name">Level 5 — Vườn Hoa Hồng</div>
+              <div class="level-sub">Sort all vases to win 💧</div>
+            </div>
+            <button class="pause-btn" data-component="pause-btn" data-screen="blossom-sort">⏸</button>
+          </header>
+
+          <!-- Stats -->
+          <div class="puzzle-stats" data-component="puzzle-stats" data-screen="blossom-sort">
+            <div class="move-counter" data-component="move-counter" data-screen="blossom-sort">
+              <div>
+                <div class="move-num">12</div>
+                <div class="move-label">Moves left</div>
+              </div>
+            </div>
+            <div class="goal-hint" data-component="goal-hint" data-screen="blossom-sort">
+              🎯 Sort all → 1 vase = 1 colour
+            </div>
+          </div>
+
+          <!-- Vase grid (5 vases) -->
+          <div class="vase-grid" data-component="vase-grid" data-screen="blossom-sort">
+
+            <div class="vase-container" data-component="vase-1" data-screen="blossom-sort">
+              <div class="vase-rim"></div>
+              <div class="vase-body selected">
+                <div class="vase-flower-slot">🌹</div>
+                <div class="vase-flower-slot">🌻</div>
+                <div class="vase-flower-slot">🌹</div>
+                <div class="vase-flower-slot">🌷</div>
+              </div>
+              <span class="vase-label">Vase 1</span>
+            </div>
+
+            <div class="vase-container" data-component="vase-2" data-screen="blossom-sort">
+              <div class="vase-rim" style="background:linear-gradient(90deg,#fff9c4,#fffde7,#fff9c4);"></div>
+              <div class="vase-body" style="background:linear-gradient(180deg,#fff9c4,#fff59d);">
+                <div class="vase-flower-slot">🌻</div>
+                <div class="vase-flower-slot">🌹</div>
+                <div class="vase-flower-slot">🌷</div>
+                <div class="vase-flower-slot">🌻</div>
+              </div>
+              <span class="vase-label">Vase 2</span>
+            </div>
+
+            <div class="vase-container" data-component="vase-3" data-screen="blossom-sort">
+              <div class="vase-rim" style="background:linear-gradient(90deg,#e1bee7,#f3e5f5,#e1bee7);"></div>
+              <div class="vase-body" style="background:linear-gradient(180deg,#e1bee7,#ce93d8);">
+                <div class="vase-flower-slot">🌸</div>
+                <div class="vase-flower-slot">🌻</div>
+                <div class="vase-flower-slot">🌸</div>
+                <div class="vase-flower-slot">🌹</div>
+              </div>
+              <span class="vase-label">Vase 3</span>
+            </div>
+
+            <div class="vase-container" data-component="vase-4" data-screen="blossom-sort">
+              <div class="vase-rim" style="background:linear-gradient(90deg,#b2ebf2,#e0f7fa,#b2ebf2);"></div>
+              <div class="vase-body" style="background:linear-gradient(180deg,#b2ebf2,#80deea);">
+                <div class="vase-flower-slot">🌼</div>
+                <div class="vase-flower-slot">🌸</div>
+                <div class="vase-flower-slot">🌼</div>
+                <div class="vase-flower-slot">🌸</div>
+              </div>
+              <span class="vase-label">Vase 4</span>
+            </div>
+
+            <div class="vase-container" data-component="vase-5-empty" data-screen="blossom-sort">
+              <div class="vase-rim" style="background:linear-gradient(90deg,#e0e0e0,#f5f5f5,#e0e0e0);"></div>
+              <div class="vase-body empty-vase">
+                <div class="vase-flower-slot" style="opacity:.3;">—</div>
+                <div class="vase-flower-slot" style="opacity:.3;">—</div>
+                <div class="vase-flower-slot" style="opacity:.3;">—</div>
+                <div class="vase-flower-slot" style="opacity:.3;">—</div>
+              </div>
+              <span class="vase-label" style="color:#c084fc;">Empty ✓</span>
+            </div>
+
+          </div>
+
+          <!-- Sort hint -->
+          <div class="sort-hint" data-component="sort-hint" data-screen="blossom-sort">
+            Tap <strong>Vase 1</strong> (selected) → tap another vase to move top flower
+          </div>
+
+          <!-- Action buttons -->
+          <div class="puzzle-actions" data-component="puzzle-actions" data-screen="blossom-sort">
+            <button class="action-btn" data-component="undo-btn" data-screen="blossom-sort">
+              ↶ Undo <span class="cost">🪙10</span>
+            </button>
+            <button class="action-btn" data-component="shuffle-btn" data-screen="blossom-sort">
+              🔀 Shuffle <span class="cost">💎30</span>
+            </button>
+            <button class="action-btn" data-component="hint-btn" data-screen="blossom-sort">
+              💡 Hint <span class="cost">Free×3</span>
+            </button>
+          </div>
+
+          <!-- Win preview -->
+          <div class="win-preview" data-component="win-reward-preview" data-screen="blossom-sort">
+            <div>
+              <div class="win-label">✨ WIN REWARD</div>
+              <div class="win-reward">
+                <div class="reward-chip">💧 +20 Nước</div>
+                <div class="reward-chip">🪙 +50</div>
+                <div class="reward-chip">🎁 Decor</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Spacer to fill height -->
+          <div style="flex:1;"></div>
+
+        </div>
+      </section>
+
+      <!-- ══ SCREEN 3: TRỒNG CÂY ══ -->
+      <section class="screen-panel" id="s3" data-component="plant-modal-screen" aria-label="Trồng cây modal">
+        <div style="position:relative;min-height:844px;display:flex;flex-direction:column;background:linear-gradient(180deg,#b8e8ff 0%,#d4f5e9 30%,#c8e6c9 100%);">
+
+          <!-- Garden preview behind modal -->
+          <div class="modal-garden-bg" data-component="garden-preview-bg" data-screen="plant-modal">
+            <div class="sky-clouds" style="top:0px;position:relative;">
+              <span class="cloud" style="font-size:18px;">☁️</span>
+              <span class="cloud" style="font-size:14px;margin-left:auto;">☁️</span>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center;margin-top:20px;">
+              <div class="pot pot-planted" style="width:52px;height:62px;font-size:20px;">🍅</div>
+              <div class="pot-glow" data-component="selected-pot-indicator" data-screen="plant-modal">🪴</div>
+              <div class="pot pot-planted2" style="width:52px;height:62px;font-size:20px;">🌻</div>
+              <div class="pot pot-ready" style="width:52px;height:62px;font-size:20px;">🌹</div>
+              <div class="pot pot-empty" style="width:52px;height:62px;font-size:14px;">＋</div>
+            </div>
+            <div class="pot-select-label" style="margin-top:10px;display:inline-flex;">Chậu #2 đang chọn</div>
+          </div>
+
+          <!-- Bottom sheet modal -->
+          <div class="modal-overlay">
+            <div class="modal-sheet" data-component="plant-modal-sheet" data-screen="plant-modal">
+              <div class="modal-handle"></div>
+              <div class="modal-title">🌱 Trồng Cây</div>
+              <div class="modal-sub">
+                📍 Chậu #2 · Tầng 1
+              </div>
+
+              <!-- Water balance -->
+              <div class="water-balance" data-component="water-balance-bar" data-screen="plant-modal">
+                <span style="font-size:18px;">💧</span>
+                <div>
+                  <div class="wb-label">Nước hiện có</div>
+                  <div class="wb-amount">20</div>
+                </div>
+                <div style="margin-left:auto;font-size:10px;color:#006064;font-weight:600;">Đủ cho mọi loại</div>
+              </div>
+
+              <!-- Plant list -->
+              <div class="plant-list" data-component="plant-selection-list" data-screen="plant-modal">
+
+                <div class="plant-item selected-plant" data-component="plant-option-tomato" data-screen="plant-modal">
+                  <div class="recommend-badge">★ ĐỀ XUẤT</div>
+                  <div class="plant-emoji">🍅</div>
+                  <div class="plant-info">
+                    <div class="plant-name">Cà Chua</div>
+                    <div class="plant-desc">Đơn Cú cần · Harvest instant</div>
+                  </div>
+                  <div class="plant-cost">💧 3</div>
+                </div>
+
+                <div class="plant-item" data-component="plant-option-rose" data-screen="plant-modal">
+                  <div class="plant-emoji">🌹</div>
+                  <div class="plant-info">
+                    <div class="plant-name">Hoa Hồng</div>
+                    <div class="plant-desc">Decor value cao · rare drop</div>
+                  </div>
+                  <div class="plant-cost">💧 5</div>
+                </div>
+
+                <div class="plant-item" data-component="plant-option-sunflower" data-screen="plant-modal">
+                  <div class="plant-emoji">🌻</div>
+                  <div class="plant-info">
+                    <div class="plant-name">Hướng Dương</div>
+                    <div class="plant-desc">Multipurpose · 2 đơn nhận</div>
+                  </div>
+                  <div class="plant-cost">💧 4</div>
+                </div>
+
+                <div class="plant-item rare-plant" data-component="plant-option-tulip-rare" data-screen="plant-modal">
+                  <div class="rare-badge">💎 RARE</div>
+                  <div class="plant-emoji">🌷</div>
+                  <div class="plant-info">
+                    <div class="plant-name">Tulip Tím</div>
+                    <div class="plant-desc">Rare reward · Epic decor drop</div>
+                  </div>
+                  <div class="plant-cost" style="color:#a855f7;">💧 8</div>
+                </div>
+
+              </div>
+
+              <!-- Actions -->
+              <div class="modal-actions" data-component="plant-modal-actions" data-screen="plant-modal">
+                <button class="btn-cancel" onclick="showScreen('s1',document.querySelector('[data-screen=s1]'))">Huỷ</button>
+                <button class="btn-confirm" data-component="plant-confirm-btn" data-screen="plant-modal">
+                  🌱 Trồng Cà Chua · 💧3
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ══ SCREEN 4: TRẢ ĐƠN ══ -->
+      <section class="screen-panel" id="s4" data-component="order-modal-screen" aria-label="Trả đơn modal">
+        <div style="position:relative;min-height:844px;display:flex;flex-direction:column;background:linear-gradient(180deg,#b8e8ff 0%,#d4f5e9 30%,#c8e6c9 100%);">
+
+          <!-- Garden BG -->
+          <div style="flex:1;padding:38px 16px 12px;position:relative;">
+            <div class="sky-clouds" style="top:0;position:relative;">
+              <span class="cloud" style="font-size:16px;">☁️</span>
+              <span class="cloud" style="font-size:12px;margin-left:auto;">☁️</span>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center;margin-top:30px;">
+              <div class="pot pot-planted" style="width:52px;height:62px;font-size:20px;">🍅</div>
+              <div class="pot pot-planted2" style="width:52px;height:62px;font-size:20px;">🌻</div>
+              <div class="pot pot-ready" style="width:52px;height:62px;font-size:20px;">🌹</div>
+              <div class="pot pot-empty" style="width:52px;height:62px;font-size:14px;">＋</div>
+              <div class="pot pot-empty" style="width:52px;height:62px;font-size:14px;">＋</div>
+            </div>
+          </div>
+
+          <!-- Modal overlay -->
+          <div class="modal-overlay">
+            <div class="order-modal-sheet" data-component="order-modal-sheet" data-screen="order-modal">
+              <div class="modal-handle"></div>
+
+              <!-- Order header -->
+              <div class="order-header" data-component="order-header" data-screen="order-modal">
+                <div class="owl-avatar" data-component="owl-npc-avatar" data-screen="order-modal">🦉</div>
+                <div class="order-header-text">
+                  <div class="order-title">Đơn Hàng Cú</div>
+                  <div class="order-sub">Giao trong session này · hết hạn 23:47:12</div>
+                </div>
+              </div>
+
+              <!-- Missing hint (disabled state) -->
+              <div class="missing-hint" data-component="missing-item-hint" data-screen="order-modal">
+                ⚠️ Còn thiếu: <strong>2 Trứng Gà</strong> · Hãy nuôi 🐓 Gà thêm
+              </div>
+
+              <!-- Checklist -->
+              <div class="checklist" data-component="order-checklist" data-screen="order-modal">
+
+                <div class="checklist-item" data-component="checklist-tomato" data-screen="order-modal">
+                  <div class="check-icon check-ok">✓</div>
+                  <div style="font-size:22px;">🍅</div>
+                  <div class="check-label">5 Cà Chua<br><span style="font-size:10px;color:#9ca3af;">Có trong kho: 8</span></div>
+                  <div class="check-status ok">Đủ ✓</div>
+                </div>
+
+                <div class="checklist-item" data-component="checklist-egg" data-screen="order-modal">
+                  <div class="check-icon check-fail">✗</div>
+                  <div style="font-size:22px;">🥚</div>
+                  <div class="check-label">2 Trứng Gà<br><span style="font-size:10px;color:#ef4444;">Có trong kho: 0</span></div>
+                  <div class="check-status fail">Thiếu ✗</div>
+                </div>
+
+                <div class="checklist-item" data-component="checklist-flower" data-screen="order-modal">
+                  <div class="check-icon check-ok">✓</div>
+                  <div style="font-size:22px;">🌻</div>
+                  <div class="check-label">1 Hướng Dương<br><span style="font-size:10px;color:#9ca3af;">Có trong kho: 3</span></div>
+                  <div class="check-status ok">Đủ ✓</div>
+                </div>
+
+              </div>
+
+              <!-- Reward preview -->
+              <div class="reward-section" data-component="order-reward-preview" data-screen="order-modal">
+                <div class="reward-title">🎁 Phần Thưởng Khi Hoàn Thành</div>
+                <div class="reward-items">
+                  <div class="reward-item">🪙 +50</div>
+                  <div class="reward-item">🎁 Ghế Gỗ (Decor)</div>
+                  <div class="reward-item">⭐ +30 EXP</div>
+                </div>
+              </div>
+
+              <!-- Actions (disabled because missing items) -->
+              <div class="order-btn-row" data-component="order-action-buttons" data-screen="order-modal">
+                <button class="btn-skip">Bỏ Qua</button>
+                <button class="btn-order-disabled" disabled data-component="submit-order-btn-disabled" data-screen="order-modal">
+                  🦉 Trả Đơn (Thiếu 2🥚)
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ══ SCREEN 5: DECOR MODE ══ -->
+      <section class="screen-panel" id="s5" data-component="decor-mode-screen" aria-label="Decor Mode">
+        <div class="s5-bg screen" style="display:flex;flex-direction:column;min-height:844px;">
+
+          <!-- Top bar -->
+          <header class="decor-topbar" data-component="decor-topbar" data-screen="decor">
+            <button class="back-btn" onclick="showScreen('s1',document.querySelector('[data-screen=s1]'))" data-component="decor-back-btn" data-screen="decor">←</button>
+            <div class="decor-title">🎨 Trang Trí Vườn</div>
+            <button class="save-btn" data-component="decor-save-btn" data-screen="decor">Lưu ✓</button>
+          </header>
+
+          <!-- Score bar -->
+          <div class="score-bar-container" data-component="decor-score-bar" data-screen="decor">
+            <div class="score-bar-header">
+              <span class="score-bar-label">Decor Score</span>
+              <span class="score-bar-value">30%</span>
+            </div>
+            <div class="score-bar-track">
+              <div class="score-bar-fill"></div>
+            </div>
+            <div class="score-milestones">
+              <div class="milestone reached">
+                <div class="milestone-dot"></div>
+                <span>0%</span>
+              </div>
+              <div class="milestone next">
+                <div class="milestone-dot"></div>
+                <span>30% 🎬</span>
+              </div>
+              <div class="milestone">
+                <div class="milestone-dot"></div>
+                <span>60% 💌</span>
+              </div>
+              <div class="milestone">
+                <div class="milestone-dot"></div>
+                <span>100% 👑</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Isometric garden grid -->
+          <div class="garden-iso" data-component="isometric-garden" data-screen="decor">
+            <div class="iso-grid">
+              <div class="iso-cell iso-placed" data-component="placed-chair" data-screen="decor">🪑</div>
+              <div class="iso-cell iso-empty-cell" data-component="empty-cell-1" data-screen="decor"></div>
+              <div class="iso-cell iso-placed" data-component="placed-lantern" data-screen="decor">🪔</div>
+              <div class="iso-cell iso-empty-cell" data-component="empty-cell-2" data-screen="decor"></div>
+              <div class="iso-cell iso-placed" data-component="placed-rose" data-screen="decor">🌹</div>
+              <div class="iso-cell iso-empty-cell" data-component="empty-cell-3" data-screen="decor"></div>
+              <div class="iso-cell iso-placed" data-component="placed-bunny" data-screen="decor">🐰</div>
+              <div class="iso-cell iso-empty-cell" data-component="empty-cell-4" data-screen="decor"></div>
+              <div class="iso-cell iso-empty-cell" data-component="empty-cell-5" data-screen="decor"></div>
+            </div>
+            <div class="drag-indicator">
+              <div class="drag-hint">Kéo item từ kho vào ô trống</div>
+            </div>
+          </div>
+
+          <!-- Story milestone hint -->
+          <div style="margin:8px 16px;background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(124,58,237,.05));border:1.5px solid rgba(124,58,237,.3);border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:8px;" data-component="story-milestone-hint" data-screen="decor">
+            <span>🎬</span>
+            <div style="font-size:11px;color:#7c3aed;font-weight:700;">Đạt 30% → Mở khoá Story Cutscene tiếp theo!</div>
+          </div>
+
+          <!-- Inventory bottom bar -->
+          <div class="inventory-bar" data-component="inventory-bar" data-screen="decor">
+            <div class="inventory-bar-header">
+              📦 Kho Đồ Decor
+              <span style="font-size:10px;font-weight:500;color:#9ca3af;">(kéo vào vườn)</span>
+            </div>
+            <div class="inv-scroll" data-component="inventory-scroll" data-screen="decor">
+              <div class="inv-item" data-component="inv-chair" data-screen="decor">
+                <span class="inv-emoji">🪑</span>
+                <span class="inv-count">×2</span>
+              </div>
+              <div class="inv-item" data-component="inv-rose" data-screen="decor">
+                <span class="inv-emoji">🌹</span>
+                <span class="inv-count">×5</span>
+              </div>
+              <div class="inv-item" data-component="inv-lantern" data-screen="decor">
+                <span class="inv-emoji">🪔</span>
+                <span class="inv-count">×1</span>
+              </div>
+              <div class="inv-item" data-component="inv-bunny" data-screen="decor">
+                <span class="inv-emoji">🐰</span>
+                <span class="inv-count">×1</span>
+              </div>
+              <div class="inv-item" data-component="inv-fountain" data-screen="decor">
+                <span class="inv-emoji">⛲</span>
+                <span class="inv-count">×1</span>
+              </div>
+              <div class="inv-item" data-component="inv-birdhouse" data-screen="decor">
+                <span class="inv-emoji">🏠</span>
+                <span class="inv-count">×1</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ══ SCREEN 6: STORY CUTSCENE ══ -->
+      <section class="screen-panel" id="s6" data-component="story-cutscene-screen" aria-label="Story Cutscene">
+        <div class="s6-bg screen" style="display:flex;flex-direction:column;min-height:844px;">
+
+          <div class="scene-bg-overlay"></div>
+          <div class="rain-effect"></div>
+
+          <!-- Falling petals -->
+          <div class="petal" style="left:10%;animation-duration:4s;animation-delay:0s;">🌸</div>
+          <div class="petal" style="left:30%;animation-duration:5s;animation-delay:1s;">🌸</div>
+          <div class="petal" style="left:55%;animation-duration:3.5s;animation-delay:0.5s;">🌸</div>
+          <div class="petal" style="left:75%;animation-duration:4.5s;animation-delay:2s;">🌸</div>
+          <div class="petal" style="left:88%;animation-duration:6s;animation-delay:1.5s;">🌸</div>
+
+          <!-- Top bar -->
+          <header class="story-topbar" data-component="story-topbar" data-screen="cutscene">
+            <button class="skip-btn" onclick="showScreen('s1',document.querySelector('[data-screen=s1]'))" data-component="skip-btn" data-screen="cutscene">
+              Skip ▶
+            </button>
+            <div class="chapter-badge" data-component="chapter-progress" data-screen="cutscene">
+              Chapter 2 · Act 2
+            </div>
+            <div class="beat-dots" data-component="beat-dots" data-screen="cutscene">
+              <div class="beat-dot done"></div>
+              <div class="beat-dot done"></div>
+              <div class="beat-dot active"></div>
+              <div class="beat-dot"></div>
+              <div class="beat-dot"></div>
+            </div>
+          </header>
+
+          <!-- Scene: characters -->
+          <div class="scene-characters" data-component="scene-characters" data-screen="cutscene">
+
+            <!-- Background city/bridge overlay hint -->
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:.15;font-size:72px;">🌉</div>
+
+            <!-- Leo character -->
+            <div class="char-figure char-leo" style="margin-bottom:30px;" data-component="char-leo-figure" data-screen="cutscene">
+              <div class="char-head">🌟</div>
+              <div class="char-body" style="background:linear-gradient(180deg,#1e3a5f,#2d5986);border:2px solid rgba(255,255,255,.2);">
+                <span style="font-size:28px;opacity:.8;">🤵</span>
+              </div>
+              <div class="char-name-tag">Leo</div>
+            </div>
+
+            <!-- Mia character -->
+            <div class="char-figure char-mia" style="margin-bottom:8px;" data-component="char-mia-figure" data-screen="cutscene">
+              <div class="char-head">🌸</div>
+              <div class="char-body" style="background:linear-gradient(180deg,#fce4ec,#f8bbd0);border:2px solid rgba(255,255,255,.3);">
+                <span style="font-size:28px;">👒</span>
+              </div>
+              <div class="char-name-tag">Mia</div>
+            </div>
+
+          </div>
+
+          <!-- Dialog box -->
+          <div class="dialog-box" data-component="dialog-box" data-screen="cutscene">
+            <div class="dialog-speaker" data-component="dialog-speaker" data-screen="cutscene">
+              <div class="speaker-dot"></div>
+              Leo nói
+            </div>
+            <div class="dialog-text" data-component="dialog-text" data-screen="cutscene">
+              "Em không thể là Mia mãi được đâu.<br>
+              Anh đặt tên em là <em>Maya</em> — ảo ảnh đẹp nhất mà anh từng gặp."
+            </div>
+            <div class="dialog-tap" data-component="dialog-tap-to-continue" data-screen="cutscene">
+              Chạm để tiếp tục
+              <div class="tap-arrow">▶</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div><!-- /phone-frame -->
+
+    <!-- Annotation panel -->
+    <aside class="annotation-panel" id="annotation-panel" aria-label="Chú giải design pattern">
+      <h4 id="ann-title">Screen Notes</h4>
+      <div id="ann-content">
+        <div class="ann-item"><strong>Hub Garden</strong> — Main screen · open app = garden ngay (Gardenscapes pattern #1: Hub-first)</div>
+        <div class="ann-item"><strong>2 tầng × 5 chậu</strong> — Tầng 2 locked tạo progression goal rõ ràng</div>
+        <div class="ann-item"><strong>Mochi cat</strong> — Always present · moving animation · companion hook</div>
+        <div class="ann-item"><strong>Mia speech bubble</strong> — Always 1 task highlighted (pattern #2)</div>
+        <div class="ann-item"><strong>PLAY button</strong> — Raised center nav · primary CTA · clear bridge to minigame</div>
+        <div class="ann-item"><strong>Order badges</strong> — Visible từ hub · constant reminder of goal</div>
+      </div>
+    </aside>
+
+  </main>
+</div>
+
+<!-- dom-grab CDN for component picker -->
+<script src="https://unpkg.com/dom-grab"></script>
+
+<script>
+// ─── DISMISS BANNER ───
+document.querySelector('.mockup-help-dismiss')?.addEventListener('click', e => {
+  e.target.closest('.mockup-help-banner').style.display = 'none';
+});
+
+// ─── SCREEN ANNOTATIONS ───
+const annotations = {
+  s1: {
+    title: 'Hub Garden — Screen 1',
+    items: [
+      ['Hub-first pattern', 'Mở app = vườn ngay (Gardenscapes #1) · không splash screen'],
+      ['Top bar layout', 'Avatar · Level · 💧Nước · 🪙Vàng · ❤️Lives · compact 1 row'],
+      ['2 tầng isometric', 'Tầng 2 locked → progression goal · motivate play minigame'],
+      ['Pot states', '4 states: empty(tap to plant) / planted(growing) / ready(harvest) / locked'],
+      ['Mochi cat', 'Walking animation · companion hook · Heartopia plump pattern'],
+      ['Mia speech bubble', 'Always 1 next task · user never lost (Gardenscapes pattern #2)'],
+      ['PLAY center CTA', 'Raised pill button · primary action · bridge to Blossom Sort'],
+      ['Order badges', 'Visible từ hub · 🦉Cú/🐂Bò · tap to open order modal']
+    ]
+  },
+  s2: {
+    title: 'Blossom Sort — Screen 2',
+    items: [
+      ['Core mechanic', 'Sort hoa vào vase · tap vase A → tap vase B · top flower moves'],
+      ['5 vases layout', '4 vases mixed + 1 empty slot · allows movement'],
+      ['Move counter', 'Visible top-left · urgency mechanic · medium levels có limit 30'],
+      ['Goal hint', 'Always visible · "1 vase = 1 colour" · newbie friendly 5s learn'],
+      ['Colour coding', 'Each vase has distinct colour theme · visual clarity'],
+      ['Undo / Shuffle', 'Gold/gem cost · monetisation touch point · casual-friendly'],
+      ['Win reward preview', 'Always visible bottom · motivation to finish · 💧+20 bridge'],
+      ['Theme fit', 'Hoa theme 100% fit với garden world · KHÔNG match-3 (differentiation)']
+    ]
+  },
+  s3: {
+    title: 'Trồng Cây Modal — Screen 3',
+    items: [
+      ['Bottom sheet UX', 'Modal từ dưới lên · garden vẫn visible phía trên · spatial context'],
+      ['Selected pot glow', 'Chậu được chọn highlighted glow · user biết mình đang plant đâu'],
+      ['Water balance', 'Nước hiện có · prominently visible · direct cost comparison'],
+      ['Recommend badge', 'Star badge trên cà chua · guide new player · reduce decision fatigue'],
+      ['Rare item', 'Tulip rare với purple treatment · FOMO mechanic · different cost'],
+      ['Instant plant', 'Xác nhận = mọc ngay · no grow timer · key KVTM 2.0 design decision'],
+      ['Cost clarity', '💧 cost rõ ràng mỗi item · player tính được budget'],
+      ['Cancel always', 'Cancel button luôn visible · low-pressure UX']
+    ]
+  },
+  s4: {
+    title: 'Trả Đơn Modal — Screen 4',
+    items: [
+      ['Owl NPC avatar', '🦉 Cú character · friendly face · not abstract system'],
+      ['Checklist UX', 'Visual ✓/✗ per item · player thấy ngay cần gì còn thiếu'],
+      ['Missing hint banner', 'Prominent warning về item thiếu · actionable hint (nuôi gà)'],
+      ['Disabled CTA state', 'Button disabled khi thiếu items · gray treatment · explains WHY'],
+      ['Reward preview', 'Luôn show reward trước khi hoàn thành · motivation loop'],
+      ['Order timer', 'Countdown tạo urgency · soft FOMO (Gardenscapes pattern)'],
+      ['Inventory count', 'Show "có X" alongside requirement · reduces uncertainty'],
+      ['Skip option', 'Bỏ qua available · no forced play · reduces frustration']
+    ]
+  },
+  s5: {
+    title: 'Decor Mode — Screen 5',
+    items: [
+      ['Score bar progress', 'Visual 30% fill · milestone markers 30/60/100% · story gate'],
+      ['Story milestones', '30% / 60% / 100% → cutscene unlock · Gardenscapes story drip-feed'],
+      ['Isometric grid', 'CSS gradient garden feel · empty cells dashed · drag target visible'],
+      ['Inventory horizontal scroll', 'Bottom bar · items chip style · drag-to-place UX'],
+      ['Item count badges', '×2 ×5 etc · shows inventory depth'],
+      ['Save button', 'Explicit save · user control · purple brand treatment'],
+      ['Drag hint overlay', 'Instruction on first enter · "kéo item vào ô trống"'],
+      ['Back to hub', 'Always accessible · no dead end screen']
+    ]
+  },
+  s6: {
+    title: 'Story Cutscene — Screen 6',
+    items: [
+      ['Dark cinematic tone', 'Contrast với bright hub · signals "story mode" shift'],
+      ['Cherry blossom petals', 'Falling animation · romantic atmosphere · K-drama aesthetic'],
+      ['Beat dots progress', '5 dots · current beat highlighted · shows scene progress'],
+      ['Character positioning', 'Leo left · Mia right · natural conversation staging'],
+      ['Dialog box', 'White bg · high contrast · readable · speaker highlighted purple'],
+      ['Purple speaker accent', 'Brand lavender/purple for speaker identity'],
+      ['Skip button', 'Always available · respect player time (repeat players)'],
+      ['Rain + night aesthetic', 'Phố cổ mưa phùn setting từ Story Act 2 · matches script']
+    ]
+  }
+};
+
+// ─── SHOW SCREEN ───
+function showScreen(id, btn) {
+  // Hide all screens
+  document.querySelectorAll('.screen-panel').forEach(s => s.classList.remove('active-screen'));
+  // Show target
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active-screen');
+
+  // Update sidebar
+  document.querySelectorAll('.sidebar-screen').forEach(b => b.classList.remove('active'));
+  const sideBtn = document.querySelector(`.sidebar-screen[data-screen="${id}"]`);
+  if (sideBtn) sideBtn.classList.add('active');
+
+  // Update annotation panel
+  const ann = annotations[id];
+  if (ann) {
+    document.getElementById('ann-title').textContent = ann.title;
+    document.getElementById('ann-content').innerHTML = ann.items
+      .map(([k, v]) => `<div class="ann-item"><strong>${k}</strong> — ${v}</div>`)
+      .join('');
+  }
+
+  // Scroll phone back to top
+  const phone = document.getElementById('phone');
+  if (phone) phone.scrollTop = 0;
+}
+
+// Init annotation for first screen
+showScreen('s1', null);
+</script>
+</body>
+</html>

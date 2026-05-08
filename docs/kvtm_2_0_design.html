@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KVTM 2.0 — Design Doc v2.5 | Royal Match Pattern + K-Drama</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #0a0e1a; --bg-card: #171b28; --bg-card-hi: #262a37; --bg-card-lo: #12172a;
+    --border: rgba(255,255,255,.06); --border-hi: rgba(195,192,255,.2);
+    --text: #dfe2f3; --text-muted: #8b94b0; --text-dim: #5a637a;
+    --primary: #c3c0ff; --primary-strong: #4f46e5;
+    --gold: #fbbf24; --green: #6ee7b7; --pink: #f472b6; --red: #f87171; --orange: #fb923c; --blue: #60a5fa;
+  }
+  body { font-family: 'Be Vietnam Pro', sans-serif; background: var(--bg-base); color: var(--text); line-height: 1.65; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0; vertical-align: middle; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; }
+  .card-hi { background: var(--bg-card-hi); }
+  .gradient-spotlight { background: linear-gradient(135deg, rgba(195,192,255,.12), rgba(79,70,229,.04)); border: 1px solid rgba(195,192,255,.2); }
+  .gradient-gold { background: linear-gradient(135deg, rgba(251,191,36,.12), rgba(251,191,36,.02)); border: 1px solid rgba(251,191,36,.25); }
+  .gradient-pink { background: linear-gradient(135deg, rgba(244,114,182,.1), rgba(244,114,182,.02)); border: 1px solid rgba(244,114,182,.2); }
+  .gradient-blue { background: linear-gradient(135deg, rgba(96,165,250,.1), rgba(96,165,250,.02)); border: 1px solid rgba(96,165,250,.2); }
+  .gradient-green { background: linear-gradient(135deg, rgba(110,231,183,.1), rgba(110,231,183,.02)); border: 1px solid rgba(110,231,183,.2); }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] > summary .chevron { transform: rotate(90deg); }
+  .chevron { transition: transform .2s; }
+  table.data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  table.data-table th { background: var(--bg-card-lo); color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 10px; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  table.data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+  .tag-primary { background: rgba(195,192,255,.12); color: var(--primary); }
+  .tag-gold { background: rgba(251,191,36,.12); color: var(--gold); }
+  .tag-green { background: rgba(110,231,183,.12); color: var(--green); }
+  .tag-pink { background: rgba(244,114,182,.12); color: var(--pink); }
+  .tag-blue { background: rgba(96,165,250,.12); color: var(--blue); }
+  .tag-red { background: rgba(248,113,113,.12); color: var(--red); }
+  .tag-orange { background: rgba(251,146,60,.12); color: var(--orange); }
+  .tag-dim { background: rgba(255,255,255,.04); color: var(--text-dim); }
+  .section-num { display: inline-flex; width: 32px; height: 32px; border-radius: 8px; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 14px; background: var(--primary-strong); color: white; }
+  .stat-num { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 24px; line-height: 1; }
+  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); font-weight: 700; margin-top: 6px; }
+  .toc { position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; }
+  .toc::-webkit-scrollbar { width: 4px; }
+  .toc::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .toc a { display: block; padding: 8px 12px; font-size: 12px; color: var(--text-muted); border-radius: 6px; transition: all .15s; border-left: 2px solid transparent; }
+  .toc a:hover { background: var(--bg-card-hi); color: var(--text); }
+  .toc a.active { background: rgba(195,192,255,.08); color: var(--primary); border-left-color: var(--primary); }
+  .ascii-box { font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.5; color: var(--text-muted); background: var(--bg-card-lo); padding: 14px 16px; border-radius: 8px; border: 1px solid var(--border); white-space: pre; overflow-x: auto; }
+  .changelog-card { padding: 16px; border-radius: 12px; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<header class="border-b border-white/5 bg-[#0a0e1a]/95 backdrop-blur sticky top-0 z-40">
+  <div class="max-w-[1400px] mx-auto px-8 py-5 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, var(--pink), var(--primary));">
+        <span class="material-symbols-outlined" style="color: white; font-size: 22px;">crown</span>
+      </div>
+      <div>
+        <div class="text-xs uppercase tracking-widest mono font-bold" style="color: var(--text-muted);">KVTM 2.0 · Khu Vườn Trên Mây Reborn</div>
+        <div class="text-base font-extrabold tracking-tight">Design Document v2.5 · Royal Match Pattern + K-Drama · Sort water-sort fix</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 text-xs mono" style="color: var(--text-muted);">
+      <span class="tag tag-pink">v2.5</span>
+      <span class="tag tag-gold">FINAL</span>
+      <span>2026-05-07</span>
+    </div>
+  </div>
+</header>
+
+<div class="max-w-[1400px] mx-auto px-8 py-12 grid grid-cols-12 gap-8">
+
+  <aside class="col-span-12 lg:col-span-3">
+    <nav class="toc">
+      <div class="text-xs uppercase tracking-widest mono font-bold mb-3 px-3" style="color: var(--text-muted);">Mục lục</div>
+      <a href="#sec-0" class="active">0. Tổng quan</a>
+      <a href="#sec-1">1. Concept &amp; Pillars</a>
+      <a href="#sec-1b">1B. Art Direction 🎨</a>
+      <a href="#sec-1c">1C. UI/UX System 🎮</a>
+      <a href="#sec-2">2. Cast K-Drama</a>
+      <a href="#sec-3">3. Story Arc 4 Chapter</a>
+      <a href="#sec-4">4. Hub Dashboard Layout</a>
+      <a href="#sec-5">5. Core Game Loop</a>
+      <a href="#sec-5b">5B. Sort Mechanic 🌸</a>
+      <a href="#sec-5c">5C. Triple Tile 🎁</a>
+      <a href="#sec-5d">5D. 100 Map Variety</a>
+      <a href="#sec-6">6. Wireframe Screens</a>
+      <a href="#sec-7">7. Economy ⭐ Star</a>
+      <a href="#sec-8">8. Tech Stack</a>
+      <a href="#sec-9">9. Sound Design</a>
+      <a href="#sec-10">10. Level Editor Tool</a>
+      <a href="#sec-11">11. Roadmap</a>
+    </nav>
+  </aside>
+
+  <main class="col-span-12 lg:col-span-9 space-y-16">
+
+    <!-- CHANGELOG -->
+    <section>
+      <div class="card p-6 gradient-gold">
+        <div class="flex items-start gap-3 mb-4">
+          <span class="material-symbols-outlined" style="color: var(--gold); font-size: 24px;">history</span>
+          <div>
+            <div class="text-xs mono uppercase tracking-widest font-bold" style="color: var(--gold);">CHANGELOG v1.1 → v2.5</div>
+            <div class="text-sm mt-1">11 questions confirmed by Tommy · pivot lớn · re-align entire doc · <strong style="color:var(--red);">v2.3: Sort Vase = water-sort · v2.4: Royal Match HUD (rejected) · v2.5: PIVOT to <em>Cozy Match-3 / Diary Game</em> design system — warm paper/ink + handwritten fonts + rotation + diary loop. Royal Match style abandoned.</strong></div>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Q</th><th>Decision</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag tag-red">Q1</span></td><td><strong>Bỏ farm sim hoàn toàn</strong></td><td>Remove chậu · máy · trồng cây · giao đơn</td></tr>
+            <tr><td><span class="tag tag-blue">Q2</span></td><td>Sequential mechanic · config per map</td><td>Each map fixed mechanic</td></tr>
+            <tr><td><span class="tag tag-pink">Q3</span></td><td>Variety + Addictive + Challenge</td><td>3 design pillars</td></tr>
+            <tr><td><span class="tag tag-green">Q3+</span></td><td>2 mechanic: Sort + Triple</td><td>Combine Blossom + Goods → Sort</td></tr>
+            <tr><td><span class="tag tag-red">Q4</span></td><td><strong>Bỏ 💧 Nước · dùng ⭐ Star</strong></td><td>Royal Match bridge currency</td></tr>
+            <tr><td><span class="tag tag-blue">Q5</span></td><td>Hub = Progress Dashboard Royal Match</td><td>Hub không có farming interaction</td></tr>
+            <tr><td><span class="tag tag-blue">Q6</span></td><td>Makeover = Royal Match (1 task = 1⭐ auto-spend cinematic)</td><td>Linear task highlighted</td></tr>
+            <tr><td><span class="tag tag-orange">Q7</span></td><td>Tool config per level (JSON schema)</td><td>Level Editor system</td></tr>
+            <tr><td><span class="tag tag-pink">Q8</span></td><td>Voice Hybrid AI gen MVP → real voice scale</td><td>ElevenLabs Phase 0</td></tr>
+            <tr><td><span class="tag tag-green">Q9</span></td><td>K-drama pacing OK</td><td>Cutscene 30%/60%/100%</td></tr>
+            <tr><td><span class="tag tag-orange">Q10</span></td><td><strong>HTML5 prototype trước · Unity sau</strong></td><td>Tech stack phase</td></tr>
+            <tr><td><span class="tag tag-orange">Q11</span></td><td><strong>Mobile portrait only</strong> (390×844)</td><td>Vertical lock · thumb zone</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 0 -->
+    <section id="sec-0">
+      <div class="card p-10 gradient-spotlight">
+        <div class="text-xs uppercase tracking-widest mono font-bold mb-3" style="color: var(--primary);">Royal Match Pattern · K-Drama Romance · Mobile Portrait</div>
+        <h1 class="text-5xl font-black tracking-tight mb-4" style="letter-spacing: -.02em;">
+          KVTM 2.0
+          <span class="block text-2xl font-bold mt-2" style="color: var(--text-muted); letter-spacing: 0;">Sort + Triple puzzle · ⭐ Star bridge · 100+ thế giới hoa · Mia × Leo drama</span>
+        </h1>
+        <p class="text-base mb-6">
+          Cozy puzzle + makeover + K-drama. Pattern <strong style="color: var(--primary);">Royal Match</strong> (puzzle → ⭐ Star → auto-spend decor task → cinematic transformation). 2 mechanic puzzle (Sort + Triple Tile) cấu hình theo 100+ map theme hoa. Story 4 chapter Mia × Leo × Elena drama. Female 22-35 SEA + Anglo.
+        </p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="card-hi rounded-lg p-4">
+            <div class="stat-num" style="color: var(--primary);">2</div>
+            <div class="stat-label">Mechanic puzzle</div>
+          </div>
+          <div class="card-hi rounded-lg p-4">
+            <div class="stat-num" style="color: var(--gold);">100+</div>
+            <div class="stat-label">Map · thế giới hoa</div>
+          </div>
+          <div class="card-hi rounded-lg p-4">
+            <div class="stat-num" style="color: var(--green);">⭐</div>
+            <div class="stat-label">Star bridge currency</div>
+          </div>
+          <div class="card-hi rounded-lg p-4">
+            <div class="stat-num" style="color: var(--pink);">4</div>
+            <div class="stat-label">K-Drama Chapter</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1 -->
+    <section id="sec-1">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">01</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Concept &amp; Pillars</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Pattern Reference</div>
+        <table class="data-table">
+          <thead><tr><th>Reference</th><th>Học gì</th><th>KVTM 2.0 apply</th></tr></thead>
+          <tbody>
+            <tr><td><strong>👑 Royal Match</strong> ($3B+)</td><td>Hub progress dashboard + ⭐ Star auto-spend + cinematic per task</td><td><strong>BACKBONE 75%</strong></td></tr>
+            <tr><td><strong>🌹 Gardenscapes</strong> ($3B+)</td><td>Story narrative driven + female audience</td><td>Story arc 4 chapter</td></tr>
+            <tr><td><strong>🌸 Heartopia</strong> ($250K/day)</td><td>Cozy aesthetic K-pop · cute customization · plump squish</td><td>Visual aesthetic · Mochi cat</td></tr>
+            <tr><td><strong>🎁 3 Tiles / Match 3D</strong></td><td>Triple tile pile → slot pattern</td><td>Mechanic Triple Tile</td></tr>
+            <tr><td><strong>🌺 Blossom Sort</strong></td><td>Sort flowers vào vase · calm puzzle</td><td>Mechanic Sort variant 1</td></tr>
+            <tr><td><strong>🛒 Goods Sort</strong></td><td>Sort items vào shelves</td><td>Mechanic Sort variant 2</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="card p-5 gradient-pink">
+          <div class="font-bold text-sm mb-2" style="color: var(--pink);">🎯 5 PILLARS CHÍNH</div>
+          <ul class="text-sm space-y-2">
+            <li>1. <strong>Royal Match Hub</strong> — Garden dashboard · 1 task highlighted</li>
+            <li>2. <strong>2 Mechanic Variety</strong> — Sort + Triple · config per map</li>
+            <li>3. <strong>⭐ Star Bridge</strong> — puzzle win → star → auto-spend decor task</li>
+            <li>4. <strong>Cinematic Makeover</strong> — Mia work · 2-3s before/after per task</li>
+            <li>5. <strong>K-Drama Story</strong> — 4 chapter Mia × Leo · cutscene 30%/60%/100%</li>
+          </ul>
+        </div>
+        <div class="card p-5 gradient-gold">
+          <div class="font-bold text-sm mb-2" style="color: var(--gold);">🌟 3 DESIGN PILLAR (Q3)</div>
+          <ul class="text-sm space-y-2">
+            <li>🔄 <strong>Variety</strong> — đỡ chán · 2 mechanic rotate theo map theme</li>
+            <li>🎰 <strong>Addictive</strong> — compulsion loop · variable reward · combo arpeggio</li>
+            <li>⚔️ <strong>Challenge</strong> — skill ceiling per level · move limit · obstacles</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1B: ART DIRECTION -->
+    <section id="sec-1b">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--pink);">1B</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Art Direction · Color · Style · Reference</h2>
+      </div>
+
+      <div class="card p-6 mb-6 gradient-gold">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--gold);">Visual Philosophy · ROYAL MATCH STYLE</div>
+        <p class="text-sm"><strong>Same as Royal Match</strong> — Bright cartoon · 3D Pixar-style · vibrant high contrast · glossy bevel UI · slapstick humor · cinematic camera. NO pastel cute K-pop · NO folk Vietnamese · NO dark fantasy · NO hyper-realistic.</p>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">🎨 Color Palette · Royal Match Bright Cartoon</div>
+        <table class="data-table">
+          <thead><tr><th>Color</th><th>Hex</th><th>Usage</th></tr></thead>
+          <tbody>
+            <tr><td>👑 <strong>Royal Red</strong></td><td class="mono">#C8302E</td><td>King outfit · royal banner · accent</td></tr>
+            <tr><td>💛 <strong>Gold Royal</strong></td><td class="mono">#FFD700</td><td>⭐ Star · CTA · premium · crown · trophy</td></tr>
+            <tr><td>💙 <strong>Royal Blue</strong></td><td class="mono">#2E5F99</td><td>Banner · castle accent · button secondary</td></tr>
+            <tr><td>🌳 <strong>Garden Green</strong></td><td class="mono">#6BBF59</td><td>Grass · vegetation · nature · health</td></tr>
+            <tr><td>🌅 <strong>Sky Bright</strong></td><td class="mono">#87CEEB</td><td>Sky daytime · calm background</td></tr>
+            <tr><td>🪨 <strong>Castle Stone</strong></td><td class="mono">#A8A8A8</td><td>Wall · path · architecture</td></tr>
+            <tr><td>🌾 <strong>Cream Light</strong></td><td class="mono">#F5E8D0</td><td>UI panel · card background</td></tr>
+            <tr><td>🤎 <strong>Wood Warm</strong></td><td class="mono">#8B5A1A</td><td>Wood beam · button outline · grounding</td></tr>
+            <tr><td>🤍 <strong>Pure White</strong></td><td class="mono">#FFFFFF</td><td>Highlight · text on dark · sparkle</td></tr>
+            <tr><td>🖤 <strong>Outline Dark</strong></td><td class="mono">#2D1810</td><td>Cartoon outline · text body · contrast</td></tr>
+          </tbody>
+        </table>
+        <div class="text-xs mt-3" style="color: var(--text-muted);">→ <strong>High contrast · vibrant saturation</strong> · NOT pastel · NOT muted</div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">👥 Character Style Guide · 3D Pixar-style Cartoon (Royal Match)</div>
+        <table class="data-table">
+          <thead><tr><th>Char</th><th>Body</th><th>Hair</th><th>Eyes</th><th>Outfit</th><th>Vibe</th></tr></thead>
+          <tbody>
+            <tr><td><strong>🌸 Mia</strong></td><td>Chunky cartoon · 4-5 head · plump · big head</td><td>Wavy short · brown chestnut · big volume</td><td>Big round · expressive · warm brown</td><td>Cute farmer · apron · pastel · vibrant accent</td><td>Cute determined · innocent · slapstick</td></tr>
+            <tr><td><strong>🌟 Leo</strong></td><td>Chunky tall · 5-6 head · plump cartoon</td><td>Slick clean · jet black · cartoon volume</td><td>Big round · friendly</td><td>Royal navy suit · gold trim · cartoon polish</td><td>Cool warm · slight goofy · CEO</td></tr>
+            <tr><td><strong>👑 Elena</strong></td><td>Plump elegant · 4-5 head · mature</td><td>Updo grand · silver-white</td><td>Sharp pierce · brown</td><td>Royal gown · pearl · gold ornate</td><td>Stern royal · slapstick when surprised</td></tr>
+            <tr><td><strong>🐱 Mochi</strong></td><td>SUPER plump · 2 head/body · ball-like</td><td>White fluff · cartoon thick</td><td>Huge round · sparkle</td><td>Pink ribbon · gold bell</td><td>Cute squishable · meme-able</td></tr>
+            <tr><td><strong>3 Rivals</strong></td><td>Chunky chic · 5 head</td><td>Each different · vibrant cartoon color</td><td>Sharp catty · big lashes</td><td>Royal extra · branded · cartoon over-the-top</td><td>Mean girl slapstick · drama queen</td></tr>
+          </tbody>
+        </table>
+        <div class="text-xs mt-3" style="color: var(--text-muted);">→ <strong>3D Pixar-style</strong> · NOT anime chibi · NOT realistic · plump volumetric với big expressive features</div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">🏠 Decor Item Style · Royal Match Cartoon 3D</div>
+        <ul class="text-sm space-y-2">
+          <li>• <strong>Style</strong>: Bright cartoon 3D · glossy plastic-like · NOT realistic · NOT minimalist</li>
+          <li>• <strong>Shape</strong>: Chunky volumetric · rounded soft · slight exaggeration · cute proportions</li>
+          <li>• <strong>Color saturation</strong>: HIGH vibrant saturation · NOT muted · NOT pastel</li>
+          <li>• <strong>Outline</strong>: Thick dark outline #2D1810 · cel-shaded cartoon</li>
+          <li>• <strong>Lighting</strong>: Strong rim light · bold shadow drop · cartoon highlight (not realistic)</li>
+          <li>• <strong>Materials</strong>: Glossy plastic · polished gold · vibrant fabric · cartoon stone</li>
+          <li>• <strong>Animation</strong>: Bouncy squash & stretch · cartoon physics · particle bursts</li>
+        </ul>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">🎬 UI/UX Style · Royal Match Polish</div>
+        <table class="data-table">
+          <thead><tr><th>Element</th><th>Style</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Buttons</strong></td><td>Glossy 3D bevel · thick dark outline · gradient highlight top · drop shadow · click bounce animation</td></tr>
+            <tr><td><strong>CTA Primary</strong></td><td>Gold #FFD700 với pulse glow · scale 1.05 idle · shake on idle 5s</td></tr>
+            <tr><td><strong>Modals</strong></td><td>Cream panel · gold ornate border · scale-in cinematic · drop shadow heavy</td></tr>
+            <tr><td><strong>Reward popup</strong></td><td>Cinematic burst · particle gold · sparkle stars · big numbers · "+X⭐" text overshoot animation</td></tr>
+            <tr><td><strong>Cinematic transition</strong></td><td>Camera pan smooth · zoom in to detail · slow-mo moments · screen flash gold</td></tr>
+            <tr><td><strong>Tap feedback</strong></td><td>Strong haptic · bold ripple · sound chime layered · particle splash</td></tr>
+            <tr><td><strong>Typography</strong></td><td>Bold display · thick stroke · cartoon-like · 2px outline · gradient fill</td></tr>
+            <tr><td><strong>Icons</strong></td><td>Chunky 3D-style · gradient · outlined · plump shapes</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">📸 Reference Moodboard · Royal Match Pure</div>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="card-hi p-4 rounded-lg" style="border: 1px solid var(--gold);">
+            <div class="font-bold text-xs mb-2" style="color: var(--gold);">PRIMARY (95% reference)</div>
+            <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+              <li>• 👑 <strong>Royal Match</strong> (Dream Games) — main</li>
+              <li>• 👑 Royal Kingdom (Dream Games)</li>
+              <li>• 🍯 Honey Town (similar style)</li>
+              <li>→ Visual + UI + character + animation</li>
+            </ul>
+          </div>
+          <div class="card-hi p-4 rounded-lg">
+            <div class="font-bold text-xs mb-2" style="color: var(--blue);">SUPPORTING (5%)</div>
+            <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+              <li>• Gardenscapes (decor pattern reference)</li>
+              <li>• Toon Blast (cartoon polish)</li>
+              <li>• Pet Master (cute character ref)</li>
+            </ul>
+          </div>
+          <div class="card-hi p-4 rounded-lg">
+            <div class="font-bold text-xs mb-2" style="color: var(--green);">SEARCH KEYWORDS</div>
+            <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+              <li>• "Royal Match gameplay screenshot"</li>
+              <li>• "Royal Match character design"</li>
+              <li>• "Royal Match castle room transformation"</li>
+              <li>• "Royal Match button UI"</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-6 gradient-gold">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--gold);">⛔ KHÔNG LÀM (anti-pattern · KVTM 2.0 = Royal Match style)</div>
+        <ul class="text-sm space-y-1">
+          <li>✗ <strong>Pastel cute K-pop / Heartopia</strong> — direction cũ · không phải Royal Match</li>
+          <li>✗ <strong>Anime chibi · Love Nikki style</strong> — character flat 2D · NOT Royal Match 3D plump</li>
+          <li>✗ Áo dài · cau · trầu · folk Vietnamese (không scale global)</li>
+          <li>✗ Dark fantasy gothic (Mortal Kombat · Diablo)</li>
+          <li>✗ Hyper-realistic 3D photo (Frostpunk · Forza)</li>
+          <li>✗ Pixel art retro (Stardew Valley)</li>
+          <li>✗ Flat minimalist Apple-style — quá lạnh</li>
+          <li>✗ Anime sharp angular (Genshin · Honkai)</li>
+          <li>✗ Muted pastel saturation — KVTM 2.0 cần HIGH contrast vibrant</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 1C — UI/UX SYSTEM v2.5 (Cozy Match-3 Design System) -->
+    <section id="sec-1c">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: #d28464;">1C</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">UI/UX System · Cozy Match-3 / Diary Game (v2.5 PIVOT)</h2>
+      </div>
+
+      <div class="card p-4 mb-6" style="background:rgba(210,132,100,.1);border-left:4px solid #d28464;">
+        <div class="text-xs"><strong style="color:#d28464;">⚠️ v2.5 PIVOT:</strong> Royal Match navy/gold + Lilita One direction (v2.4) ABANDONED. New canonical: <em>Cozy Match-3 / Diary Game Design System</em>. Source of truth: <code style="background:#222;padding:2px 6px;border-radius:3px;color:#FFD700;">kvtm_2_0_design_system.md</code></div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--gold);">📜 6 DESIGN PRINCIPLES (canonical)</div>
+        <ol class="text-sm space-y-2">
+          <li><strong>1. Cozy, not loud</strong> — Desaturated warm palette. No pure white, no pure black, no high-saturation primaries.</li>
+          <li><strong>2. Handwritten, not typeset</strong> — Display + body fonts handwritten. Slight rotation -1° to +1° on every interactive element. Personal journal feel.</li>
+          <li><strong>3. Chunky silhouettes</strong> — Every interactive surface: thick warm-brown stroke + hard drop shadow + pillow highlight. NO flat web buttons.</li>
+          <li><strong>4. One color, one job</strong> — Each accent owns exactly one role. Don't mix roles.</li>
+          <li><strong>5. Scene is the hero</strong> — UI hugs edges. Illustration owns the middle.</li>
+          <li><strong>6. Diary mood</strong> — Narration is part of loop. Reward = a line in the diary, not just a coin number.</li>
+        </ol>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--gold);">🎨 COLOR TOKENS · Warm Paper + 4 Accents</div>
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <div class="text-xs font-bold mb-2" style="color: var(--text-muted);">PAPER + INK (warm, never pure)</div>
+            <table class="data-table" style="font-size:11px;">
+              <tr><td>--paper</td><td><code>#f6efe1</code></td><td>Aged cream · primary bg</td></tr>
+              <tr><td>--paper-2</td><td><code>#ebe0c8</code></td><td>Card stage · panel fills</td></tr>
+              <tr><td>--paper-3</td><td><code>#ddd0b3</code></td><td>Locked · disabled</td></tr>
+              <tr><td>--cream</td><td><code>#f8efd8</code></td><td>Chip top · nav center base</td></tr>
+              <tr><td>--ink</td><td><code>#3a2a1c</code></td><td>Warm dark brown · strokes</td></tr>
+              <tr><td>--ink-soft</td><td><code>#6b5642</code></td><td>Subtle dark accents</td></tr>
+              <tr><td>--muted</td><td><code>#8a7560</code></td><td>Body copy · captions</td></tr>
+            </table>
+          </div>
+          <div>
+            <div class="text-xs font-bold mb-2" style="color: var(--text-muted);">4 ACCENTS · STRICT ROLES</div>
+            <table class="data-table" style="font-size:11px;">
+              <tr><td><strong>Moss</strong></td><td><code>#8aa872</code></td><td><strong>PRIMARY · PLAY</strong> Level / Continue</td></tr>
+              <tr><td><strong>Mustard</strong></td><td><code>#e3b25a</code></td><td><strong>SECONDARY · BUILD</strong> Tasks / stars / coins</td></tr>
+              <tr><td><strong>Terracotta</strong></td><td><code>#d28464</code></td><td><strong>ALERT · LIVES</strong> Hearts / badges / "!"</td></tr>
+              <tr><td><strong>Denim</strong></td><td><code>#7a92a8</code></td><td><strong>NAV · INFO</strong> Bottom nav / modals</td></tr>
+              <tr><td>Sage</td><td><code>#b8c8a8</code></td><td>Decoration only</td></tr>
+              <tr><td>Rose</td><td><code>#d8a8a0</code></td><td>Decoration only</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="text-xs" style="color:var(--red);"><strong>RULE:</strong> moss=play · mustard=build · terra=alert · denim=nav. Do NOT mix jobs. Each color owns ONE role.</div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--gold);">🔤 TYPOGRAPHY · 4 Handwritten Fonts</div>
+        <table class="data-table">
+          <thead><tr><th>Family</th><th>Weight</th><th>Used for</th><th>Sizes</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Caveat Brush</strong></td><td>400</td><td>Display: page titles, card labels, button text, swatch labels</td><td>24-46px</td></tr>
+            <tr><td><strong>Gloria Hallelujah</strong></td><td>400</td><td>Body: descriptions, narration, legends, tab labels</td><td>15-22px</td></tr>
+            <tr><td><strong>Kalam</strong></td><td>700</td><td>Numbers in HUD chips, micro-UI numerics</td><td>16-18px</td></tr>
+            <tr><td><strong>Patrick Hand</strong></td><td>400</td><td>Fallback for body when Gloria too tall</td><td>15-17px</td></tr>
+          </tbody>
+        </table>
+        <div class="text-xs mt-3" style="color:var(--red);"><strong>NEVER</strong> use system sans (Inter / Roboto / Helvetica) for player-facing copy.</div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--gold);">🔄 ROTATION SYSTEM (apply to EVERY element)</div>
+        <table class="data-table">
+          <thead><tr><th>Element</th><th>Rotation</th></tr></thead>
+          <tbody>
+            <tr><td>Page title</td><td>rotate(-1deg)</td></tr>
+            <tr><td>Section heading</td><td>rotate(-0.6deg)</td></tr>
+            <tr><td>Cards</td><td>alternate -0.3° / +0.4° / -0.2° (nth-child)</td></tr>
+            <tr><td>Buttons</td><td>-0.8° base, alternate +1° / -0.4° (nth-of-type)</td></tr>
+            <tr><td>Chips</td><td>alternate -0.5° / +0.7° / -0.3°</td></tr>
+            <tr><td>Tabs</td><td>alternate -1° / +1.2° / -0.6° / +0.8°</td></tr>
+            <tr><td>Banners</td><td>-0.5° and -0.3°</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--gold);">🔘 BUTTON ANATOMY</div>
+        <div class="ascii-box" style="font-size:11px;">.cz-btn {
+  border: 2.5px solid var(--ink);     /* warm brown stroke */
+  border-radius: 16px;
+  padding: 12px 26px 8px;
+  font-family: 'Caveat Brush', cursive;
+  font-size: 28px;
+  color: var(--paper);
+  text-shadow: 0 2px 0 rgba(58,42,28,.4);
+  box-shadow:
+    0 4px 0 var(--ink),                  /* hard offset shadow (NO blur!) */
+    inset 0 -5px 0 rgba(58,42,28,.18),   /* pillow bottom */
+    inset 0 3px 0 rgba(255,255,255,.28); /* highlight top */
+  transform: rotate(-.8deg);
+}
+.cz-btn:active {
+  transform: translateY(3px) rotate(-.8deg);
+  box-shadow: 0 1px 0 var(--ink), inset 0 -3px 0 rgba(58,42,28,.2);
+}
+
+VARIANTS (gradient 180deg light → base → dark):
+- .cz-btn.moss     #a3c08a → #8aa872 → #5e7c4a   PLAY
+- .cz-btn.mustard  #efc97a → #e3b25a → #b88830   BUILD
+- .cz-btn.terra    #e8a088 → #d28464 → #a85a3e   ALERT
+- .cz-btn.denim    #9aaec0 → #7a92a8 → #4f6a82   NAV</div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--gold);">💎 HUD CHIPS (resource pills)</div>
+        <div class="ascii-box" style="font-size:11px;">.cz-chip {
+  bg: linear-gradient(180deg, var(--cream), var(--paper-2));
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  padding: 4px 16px 4px 4px;       /* small left padding — icon pokes out */
+  font: 'Kalam' 700 16-18px;
+  box-shadow: 0 3px 0 var(--ink);
+  rotate(-.5deg) alternate +.7° -.3°;
+}
+.cz-chip .ic {                     /* icon "sticker" */
+  size: 30×30, radius 50%;
+  border: 2.5px solid var(--ink);  /* its own stroke — sits ON TOP */
+  background: gradient by resource:
+    coin:  #f4d99a → #b88830 (mustard radial)
+    heart: #e8a088 → #a85a3e (terra)
+    star:  #f4d99a → #b88830 (mustard)
+    leaf:  #b8c8a8 → #5e7c4a (moss)
+}</div>
+        <div class="text-xs mt-2" style="color: var(--text-muted);">Icon has own border → reads as "stuck on" rather than "inside" the pill.</div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--gold);">📱 BOTTOM NAV</div>
+        <table class="data-table">
+          <tbody>
+            <tr><td>Bar</td><td>54px height · denim gradient · 2.5px ink border-top · flex space-around</td></tr>
+            <tr><td>Side items</td><td>36×36 · 2px ink border · radius 8px · denim gradient · cream text</td></tr>
+            <tr><td>Center HOME pedestal</td><td>50×50 · radius 14px · cream→mustard gradient (only hot color in bar) · margin-top -16px · ink color · 22px</td></tr>
+            <tr><td>5 tabs order</td><td>★ Areas · 🏆 Trophies · ⌂ Home (center) · 👥 Friends · ⚙ Settings</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--gold);">📔 DIARY LOOP (cozy game core)</div>
+        <ol class="text-sm space-y-2">
+          <li><strong>1. Morning page</strong> — Caveat Brush chapter title + Gloria Hallelujah narration on banner card. Sets today's task.</li>
+          <li><strong>2. Play</strong> — Sort/Triple board. Pieces higher saturation than UI but stay in cozy hue family.</li>
+          <li><strong>3. Reward = a line in diary</strong> — NOT just "+50 coins". Win screen reveals one new line of narration.</li>
+          <li><strong>4. Decoration unlock</strong> — placing object triggers sticker animation in diary.</li>
+          <li><strong>5. Mood marker</strong> — end of session player picks 1 of 5 stickers (sun/rain/heart/flower/star) = "rate this session".</li>
+        </ol>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--gold);">🗣️ TONE OF VOICE</div>
+        <div class="grid md:grid-cols-2 gap-3 text-sm">
+          <div class="card-hi p-4 rounded-lg" style="border-left:3px solid #8aa872;">
+            <div class="font-bold mb-2" style="color:#8aa872;">✅ DO</div>
+            <div class="text-xs">"Day 12. The fountain finally works. Mira left a note on the porch."</div>
+            <div class="text-xs mt-1">"Tap to plant the lavender →"</div>
+            <div class="text-xs mt-2" style="color:var(--text-muted);">Conversational · present-tense · gentle. Player narrates as themselves. Numbers exist but never the headline — line of story is.</div>
+          </div>
+          <div class="card-hi p-4 rounded-lg" style="border-left:3px solid #d28464;">
+            <div class="font-bold mb-2" style="color:#d28464;">❌ DON'T</div>
+            <div class="text-xs">"DAILY DEAL — 50% OFF — ENDS SOON"</div>
+            <div class="text-xs mt-1">"VICTORY! +500 XP"</div>
+            <div class="text-xs mt-2" style="color:var(--text-muted);">Friendly, never urgent. NO LIMITED TIME · BUY NOW · all-caps urgency.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-6" style="background:rgba(210,132,100,.1);">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: #d28464;">❌ DON'T LIST (enforce strictly)</div>
+        <ul class="text-sm space-y-1">
+          <li>❌ Pure white #fff or pure black #000 anywhere</li>
+          <li>❌ System sans-serif (Inter / Roboto / Helvetica) for player-facing copy</li>
+          <li>❌ Saturated brand-gamey blue/red — keep palette warm + muted</li>
+          <li>❌ Perfectly straight elements — always nudge ±0.3 to ±1.2 degrees</li>
+          <li>❌ Multiple accent colors competing for the same role</li>
+          <li>❌ Blurred shadows — only hard offset shadows</li>
+          <li>❌ Web-style flat buttons or material elevation</li>
+          <li>❌ Filler content / data slop — every element earns its place</li>
+        </ul>
+      </div>
+
+      <div class="card p-4 mt-4" style="background:rgba(80,200,120,.1);border-left:4px solid var(--green);">
+        <div class="text-xs"><strong style="color:var(--green);">📂 IMPLEMENTATION REFERENCE:</strong> Full canonical spec in <code style="background:#222;padding:2px 6px;border-radius:3px;color:#FFD700;">kvtm_2_0_design_system.md</code> (15 sections · color tokens · type scale · button anatomy · CSS recipes · scene illustrations · don't list). Live implementation in <code style="background:#222;padding:2px 6px;border-radius:3px;color:#FFD700;">kvtm_2_0_game.html</code> (rebuilt v2.5).</div>
+      </div>
+    </section>
+
+    <!-- SECTION 2 -->
+    <section id="sec-2">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--pink);">02</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Cast · K-Drama Modern</h2>
+      </div>
+      <div class="card p-6">
+        <table class="data-table">
+          <thead><tr><th>Role</th><th>Name</th><th>Profile</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag tag-pink">PROTAGONIST</span></td><td><strong>🌸 Mia (Maya)</strong> · 23</td><td>Sinh viên Hortikultura · ông ngoại mất · K-fashion · pet Mochi cat</td></tr>
+            <tr><td><span class="tag tag-blue">LOVE INTEREST</span></td><td><strong>🌟 Leo (Theo)</strong> · 28</td><td>CEO Eco-Tech self-made · twist quý tộc Map 4 · sharp suit warm</td></tr>
+            <tr><td><span class="tag tag-red">FINAL ANTAGONIST</span></td><td><strong>👑 Madame Elena</strong> · 55</td><td>Mẹ Leo · quý tộc traditional · climax đột quỵ → accept</td></tr>
+            <tr><td><span class="tag tag-orange">RIVAL · Map 3</span></td><td>🍷 Chloe · 25</td><td>Đại tiểu thư Châu Âu · leader rival</td></tr>
+            <tr><td><span class="tag tag-orange">RIVAL · Map 3</span></td><td>🌹 Daria · 24</td><td>Model dramatic gaslight</td></tr>
+            <tr><td><span class="tag tag-orange">RIVAL · Map 3</span></td><td>💎 Vivienne · 26</td><td>Influencer · vu oan jewelry</td></tr>
+            <tr><td><span class="tag tag-green">SUPPORT</span></td><td>☀️ Zoe · 22</td><td>Best friend TikToker · advice romance</td></tr>
+            <tr><td><span class="tag tag-green">MENTOR</span></td><td>🌾 Grandpa Oliver · 70</td><td>Hàng xóm wise (alive) · dạy Mia trồng cây tuổi nhỏ flashback</td></tr>
+            <tr><td><span class="tag tag-pink">PET COMPANION</span></td><td>🐱 Mochi</td><td>Mèo trắng plump squish · always at Mia side · cute reaction</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 3 -->
+    <section id="sec-3">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--gold);">03</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Story Arc · 4 Chapter</h2>
+      </div>
+      <div class="card p-6">
+        <div class="ascii-box">🩸 PROLOGUE
+   Mia 23 · sinh viên Hortikultura
+   Ông ngoại Oliver-Senior qua đời · để lại nhà + vườn cũ
+   (Mochi cat = ông ngoại để lại)
+
+         ↓ CHAPTER 1 ↓
+
+🏙️  ACT 1 — VILLA MANSION THÀNH PHỐ
+    • Mia làm part-time chăm vườn cho gia đình giàu
+    • Bị xem thường · bạn trai bỏ "công việc thấp kém"
+    • Hàng xóm Grandpa Oliver mới chuyển đến
+    EMOTION: tủi thân → tự lập → hy vọng
+
+         ↓ CHAPTER 2 ↓
+
+🏮  ACT 2 — VƯỜN PHỐ CỔ
+    • Bạn trai cũ bỏ qua tin nhắn lạnh
+    • Gia chủ chuyển Mia ra chi nhánh phố cổ Hà Nội/Hội An
+    • LEO xuất hiện · CEO Eco-Tech · curious
+    • Leo đặt tên đẹp: "Maya" (Sanskrit · ảo ảnh đẹp)
+    • Romance dưới mưa phùn cầu cổ
+    EMOTION: đau khổ → bất ngờ → bối rối → rung động
+
+         ↓ CHAPTER 3 ↓
+
+🏛️  ACT 3 — BIỆT THỰ ĐỒNG QUÊ
+    • 3 rival (Chloe · Daria · Vivienne) gaslight Mia
+    • Vivienne vu oan jewelry → camera giải oan
+    • Leo PHÁ SẢN THẬT · PR scandal
+    • Rival bỏ chạy hết
+    • CHỈ MIA theo Leo về biệt thự đồng quê
+    EMOTION: bị bắt nạt → trung thành → loyal love
+
+         ↓ CHAPTER 4 ↓
+
+👑  ACT 4 — CUNG ĐIỆN ECLECTIC
+    • Leo self-made vực dậy · IPO thành công
+    • TWIST: Leo dòng dõi quý tộc Châu Âu cổ
+    • MADAME ELENA xuất hiện · ép chia tay
+    • CLIMAX 1: Elena đột quỵ
+    • CLIMAX 2: Leo công ty crisis · đối thủ tấn công
+    • Mia chăm Elena 24/7 · kế ý tưởng "organic eco-tech" cứu Leo
+    • Elena: "Cô là người tôi chọn"
+    • Đám cưới hoàng gia · 3 thế hệ đoàn tụ
+
+EPILOGUE
+═════════
+Mia 60 · vẫn cầm chổi quét vườn cung điện
+Title vĩnh viễn: "Garden Queen Forever"
+Post-credit: Ông ngoại Oliver-Senior trên thiên đàng mỉm cười
+Mochi cat (đã già) ngủ bên Mia</div>
+      </div>
+    </section>
+
+    <!-- SECTION 4 -->
+    <section id="sec-4">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--blue);">04</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Hub Dashboard Layout · Royal Match Pattern</h2>
+      </div>
+
+      <div class="card p-6 mb-6 gradient-blue">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--blue);">Hub = Progress Dashboard (Q5)</div>
+        <p class="text-sm">Mở app = vào HUB GARDEN current map. Pattern Royal Match: top resources · center garden ruin/mid/glorious state · highlight task next (1 task at a time) · Mia + Mochi animated · bottom PLAY raised CTA. <strong>KHÔNG có chậu/máy interaction</strong> — tầng mây chỉ là visual decoration.</p>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Hub Wireframe · Mobile Portrait 390×844</div>
+        <div class="ascii-box">┌─────────────────────────────────┐
+│ Map 1 · Chapter 1            [⚙]│ ← Map title top
+│ ⭐ 12  ❤️ 5  💎 100              │ ← Resources top bar
+├─────────────────────────────────┤
+│                                  │
+│   🌹 GARDEN CURRENT STATE 🌹    │
+│   (vườn isometric · animated     │
+│    ruin → mid → glorious)        │
+│                                  │
+│   👒 Mia walking + 🐱 Mochi      │ ← Character anim
+│                                  │
+│   ✨ Highlight: Đèn vườn vỡ      │ ← Task next
+│      Arrow + glow pulse          │   (1 task only)
+│      "Cần 1⭐ để thay"           │
+│                                  │
+├─────────────────────────────────┤
+│ 💬 Mia: "Vườn này cần em chăm!"  │ ← Speech bubble
+├─────────────────────────────────┤
+│ [🛍️] [🎁] [▶ PLAY] [📖] [👥]    │ ← Bottom nav
+└─────────────────────────────────┘</div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--gold);">TOP BAR</div>
+          <div class="text-sm">Resources: ⭐ Star (primary · big icon) · ❤️ Lives (5 max) · 💎 KC · settings</div>
+        </div>
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--blue);">CENTER</div>
+          <div class="text-sm">Garden isometric view · current decor state · Mia + Mochi walking · highlight 1 task next</div>
+        </div>
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--pink);">BOTTOM NAV</div>
+          <div class="text-sm">5 nút: Shop · Inventory · ▶ PLAY (raised) · Story · Friend</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5 -->
+    <section id="sec-5">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--green);">05</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Core Game Loop · Royal Match Auto-Spend</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="ascii-box">USER FLOW · 5-step · 5-10 phút/session
+═══════════════════════════════════════
+[1] Mở app → Hub Dashboard
+       Mia bubble: "Cần thay đèn vườn (-1⭐)"
+       Highlight đèn vỡ với arrow + glow
+       ↓
+[2] Tap ▶ PLAY → Sort/Triple level
+       Mechanic config theo map (sequential)
+       Solve puzzle 60-90s
+       ↓
+[3] Win → +1-3⭐ Star earn
+       Popup: "Level Complete! +2⭐"
+       ↓
+[4] AUTO-SPEND ⭐ vào task highlighted
+       Cinematic 2-3s:
+       · Mia walks to lamp
+       · Lamp transform (vỡ → mới · particle)
+       · "+1🪙 vàng bonus"
+       ↓
+[5] Next task auto-highlighted
+       (vd: thay ghế gỗ -1⭐)
+       Loop tiếp · 10-15 task/map
+
+STORY GATE:
+═══════════
+Decor reach 30% / 60% / 100% map
+       ↓
+STORY CUTSCENE (Mia × Leo · K-drama)
+       ↓
+Map 100% → unlock next map
+
+═══════════════════════════════════════════════════
+LOSE STATE FLOW (NEW v2.2) — KC sink chính
+═══════════════════════════════════════════════════
+USER LOSE (hết move / hết time / slot full):
+       ↓
+LOSE POPUP appear (1.5s sau lose moment):
+   - Mia/Mochi sad face animation
+   - "Out of Moves · Try again?"
+   - 3 CTA options:
+     [A] +5 moves         · 50 KC  (BOOSTER)
+     [B] Continue play    · 100 KC (full retry)
+     [C] Quit             · -1 ❤️  (free · lose life)
+       ↓
+NẾU CHỌN A · B (paid):
+   - Spend KC · resume level từ state hiện tại
+   - +5 moves hoặc reset full
+       ↓
+NẾU CHỌN C (quit):
+   - -1 ❤️ life · trở về Hub
+   - Hết 5 ❤️ → "Out of lives" popup
+     · Wait 30 phút regen 1 ❤️ FREE
+     · Skip cooldown 50 KC mỗi life
+     · IAP "5 lives pack" 100 KC
+
+→ ROYAL MATCH PATTERN: 80% revenue đến từ lose-state booster
+   Đây là MOMENT VÀNG cho whale</div>
+      </div>
+
+      <div class="card p-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">7 Key UX Principles (Royal Match)</div>
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Principle</th><th>Apply KVTM 2.0</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><strong>Hub-first</strong></td><td>Mở app = thấy garden progress ngay</td></tr>
+            <tr><td>2</td><td><strong>1 task highlighted</strong></td><td>Mia chỉ task next · linear · không lost</td></tr>
+            <tr><td>3</td><td><strong>Auto-spend ⭐</strong></td><td>Win level → ⭐ tự tiêu vào task → cinematic</td></tr>
+            <tr><td>4</td><td><strong>Cinematic per task</strong></td><td>2-3s before/after · Mia work animation</td></tr>
+            <tr><td>5</td><td><strong>Lives gate ❤️</strong></td><td>5 lives max · regen 30 phút · KC sink skip</td></tr>
+            <tr><td>6</td><td><strong>Story drip-feed</strong></td><td>Cutscene 30%/60%/100% · gentle drama</td></tr>
+            <tr><td>7</td><td><strong>30s onboarding</strong></td><td>First action ≤30s · skip-able tutorial</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 5B -->
+    <section id="sec-5b">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--pink);">5B</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Sort Mechanic · Vase + Shelf Variants</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">2 Variants of Sort (cùng category mind user)</div>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="card-hi p-5 rounded-xl border-l-4" style="border-left-color: var(--pink);">
+            <div class="font-bold text-sm mb-2" style="color: var(--pink);">🌸 VARIANT 1: VASE SORT (Water-Sort Pattern · FIX v2.5)</div>
+            <div class="text-xs mb-3" style="color: var(--text-muted);">Reference: Blossom Sort® · Flower Sort: Bloom Puzzle · Bloom Sort</div>
+            <div class="ascii-box" style="font-size: 10px;">VASE = LIFO STACK (cap 4)
+┌─🌹─┐ ┌─🌻─┐ ┌────┐
+│ 🌻 │ │ 🌹 │ │    │
+│ 🌹 │ │ 🌻 │ │    │
+│ 🌻 │ │ 🌹 │ │    │
+└────┘ └────┘ └────┘
+  V1     V2    V3(empty)
+
+MOVE RULE (water-sort):
+- Tap A → Tap B
+- VALID nếu B empty HOẶC top(B)==top(A)
+- Pour ALL bông cùng màu liên tiếp từ top A → B
+- Mono-color full vase = LOCK ✓ (gold sparkle)
+
+WIN: tất cả màu lock vào mono vase
+LOSE: hết move HOẶC dead-lock (auto-detect)</div>
+            <div class="text-xs mt-2" style="color: var(--green);">Map theme: Hoa cổ điển · mùa · nhân vật</div>
+            <div class="text-xs mt-1" style="color: var(--red);">⚠️ v2.5 FIX: KHÔNG phải free-placement. Stack-based đúng chuẩn Blossom Sort.</div>
+          </div>
+          <div class="card-hi p-5 rounded-xl border-l-4" style="border-left-color: var(--blue);">
+            <div class="font-bold text-sm mb-2" style="color: var(--blue);">🛒 VARIANT 2: SHELF SORT (Goods Sort)</div>
+            <div class="text-xs mb-3" style="color: var(--text-muted);">Horizontal · 3 same items/row → match · shelves clear</div>
+            <div class="ascii-box" style="font-size: 10px;">┌──────────────┐
+│ 🍎 🍌 🍎 │ shelf 1
+│ 🍌 🍎 🍌 │
+│ 🍓 🍓 🍓 │ ← MATCH! 💥
+└──────────────┘
+Drag items giữa shelves
+Win: clear hết shelves</div>
+            <div class="text-xs mt-2" style="color: var(--green);">Map theme: Văn hóa · ẩm thực · kỳ quan</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Difficulty Curve</div>
+        <table class="data-table">
+          <thead><tr><th>Range</th><th>Difficulty</th><th>Setup</th><th>Variant</th></tr></thead>
+          <tbody>
+            <tr><td>Map 1-20</td><td><span class="tag tag-green">EASY</span></td><td>3-4 vase · 3 màu · NO move limit</td><td>Onboard friendly</td></tr>
+            <tr><td>Map 21-50</td><td><span class="tag tag-blue">MID</span></td><td>5-6 vase · 4 màu · move limit 30</td><td>+ Buds (chưa nở)</td></tr>
+            <tr><td>Map 51-80</td><td><span class="tag tag-orange">HARD</span></td><td>7-8 vase · 5 màu · move limit 25</td><td>+ Frozen flower · Lock vase</td></tr>
+            <tr><td>Map 81-100</td><td><span class="tag tag-red">PRO</span></td><td><strong>MAX 8 vase per row · 2 rows nếu cần (FIX 44pt)</strong> · 6 màu · move limit 20 + time</td><td>+ Multi-color buds · Mystery</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Sort Shelf Difficulty Curve (NEW v2.2)</div>
+        <table class="data-table">
+          <thead><tr><th>Range</th><th>Difficulty</th><th>Setup</th><th>Variants</th></tr></thead>
+          <tbody>
+            <tr><td>Map 26-35</td><td><span class="tag tag-green">EASY</span></td><td>2-3 shelves · 3 row each · 3 type · NO move limit</td><td>Pure sort · onboard friendly</td></tr>
+            <tr><td>Map 56-65</td><td><span class="tag tag-blue">MID</span></td><td>4-5 shelves · 3 row each · 4 type · move 25</td><td>+ Layered shelves (multi tier)</td></tr>
+            <tr><td>Map 66-75</td><td><span class="tag tag-orange">HARD</span></td><td>5-6 shelves · 3 row each · 5 type · move 20</td><td>+ Obstacle items (block 1 cell)</td></tr>
+            <tr><td>Map 86-95 (mix)</td><td><span class="tag tag-red">PRO</span></td><td>6-7 shelves · 3 row each · 6 type · move 18 + time</td><td>+ Locked shelf · gradient sort</td></tr>
+          </tbody>
+        </table>
+        <div class="text-xs mt-3" style="color: var(--text-muted);">→ Touch target: shelf cell width = 390/3 = 130px (✓ &gt; 44pt)</div>
+      </div>
+
+      <div class="card p-6 gradient-gold">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--gold);">Variable Reward (Addictive pillar)</div>
+        <ul class="text-sm space-y-2">
+          <li>• <strong>5%</strong> chance "✨ Mầm vàng" → +50% star bonus + sound đặc biệt</li>
+          <li>• <strong>1%</strong> chance "🌈 Cầu vồng" → +100% star + rare decor drop</li>
+          <li>• <strong>Combo streak 5+</strong>: arpeggio pitch C-D-E-F-G... fanfare ngắn</li>
+          <li>• <strong>Perfect (sort dùng &lt;50% move limit)</strong>: 3⭐ tier max</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 5C -->
+    <section id="sec-5c">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--orange);">5C</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Triple Tile Mechanic · Pile to Slot</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="ascii-box">PATTERN: 3 Tiles / Match 3D / Triple Match
+══════════════════════════════════════════
+LAYOUT:
+┌──────────────────────────────┐
+│ TOP: ❤️5 · ⏱️3:00 · level 12  │
+├──────────────────────────────┤
+│   🌹  🪴  🦋                 │
+│  🪴 🌻 🦋 🌹                 │  ← Đống đồ
+│ 🌹  🦋  🪴 🌻               │     chồng lộn xộn
+│  🌻 🪴 🌹  🦋               │
+├──────────────────────────────┤
+│ SLOT BOTTOM (7 ô):           │
+│ [🌹][🌹][🌹][🦋][🌻][ ][ ]  │
+│  ↑ 3 hoa hồng = MATCH 💥    │
+└──────────────────────────────┘
+
+USER LOOP:
+══════════
+[1] Tap tile trên đống → bay xuống slot
+[2] 3 tile cùng loại trong slot = match · biến mất + chime
+[3] Slot full 7 ô mà chưa match được = LOSE
+[4] Clear hết đống = WIN
+
+VARIANTS:
+═════════
+- Lock tile (cần unlock)
+- Hidden tile (lộn ngược · reveal khi tap)
+- Time pressure mode
+- Booster: undo · clear 1 slot · shuffle</div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Triple Tile Difficulty Curve (NEW v2.2)</div>
+        <table class="data-table">
+          <thead><tr><th>Range</th><th>Difficulty</th><th>Setup</th><th>Variants</th></tr></thead>
+          <tbody>
+            <tr><td>Map 36-45</td><td><span class="tag tag-green">EASY</span></td><td>15-20 tile · 4 type · 7 slot · NO time</td><td>Pure pile · clear simple</td></tr>
+            <tr><td>Map 46-55</td><td><span class="tag tag-blue">MID</span></td><td>25-30 tile · 5 type · 7 slot · time 4:00</td><td>+ Hidden tile (lộn ngược)</td></tr>
+            <tr><td>Map 71-80</td><td><span class="tag tag-orange">HARD</span></td><td>35-40 tile · 6 type · 6 slot · time 3:00</td><td>+ Lock tile (cần unlock) · obstacle</td></tr>
+            <tr><td>Map 86-95</td><td><span class="tag tag-red">PRO</span></td><td>45-50 tile · 7 type · 5 slot · time 2:30</td><td>+ Mystery tile (random) · multi-layer pile</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card p-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Map Theme cho Triple Tile</div>
+        <div class="grid md:grid-cols-3 gap-3">
+          <div class="card-hi p-4 rounded-lg">
+            <div class="font-bold text-xs mb-2" style="color: var(--pink);">Map 31-40 Fantasy</div>
+            <div class="text-xs" style="color: var(--text-muted);">🧙 Phù thủy · 🐉 Rồng · 💎 Pha lê · 🦄 Unicorn</div>
+          </div>
+          <div class="card-hi p-4 rounded-lg">
+            <div class="font-bold text-xs mb-2" style="color: var(--blue);">Map 41-50 Sci-fi</div>
+            <div class="text-xs" style="color: var(--text-muted);">🚀 Cyberpunk · 🛸 Space · 🤖 Robot · 🌌 Galaxy</div>
+          </div>
+          <div class="card-hi p-4 rounded-lg">
+            <div class="font-bold text-xs mb-2" style="color: var(--green);">Map 71-80 Động vật</div>
+            <div class="text-xs" style="color: var(--text-muted);">🦋 Bướm · 🐝 Ong · 🦩 Flamingo · 🦚 Công</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5D -->
+    <section id="sec-5d">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--gold);">5D</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">100 Map · Mechanic Variety Mapping</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Sequential Config per Map (Q2)</div>
+        <table class="data-table">
+          <thead><tr><th>Range</th><th>Tier Theme</th><th>Mechanic</th><th>Sample Maps</th></tr></thead>
+          <tbody>
+            <tr><td>Map 1-15</td><td>Hoa cổ điển</td><td><span class="tag tag-pink">🌸 Sort Vase</span></td><td>Hoa hồng · Tulip · Lan · Hướng dương · Cẩm tú cầu</td></tr>
+            <tr><td>Map 16-25</td><td>Theo mùa</td><td><span class="tag tag-pink">🌸 Sort Vase</span></td><td>Anh đào · Đào Tết · Mai vàng · Lá phong · Tuyết hoa</td></tr>
+            <tr><td>Map 26-35</td><td>Văn hóa thế giới</td><td><span class="tag tag-blue">🛒 Sort Shelf</span></td><td>Zen Nhật · Cottage Anh · Versailles Pháp · Cung Đình Huế</td></tr>
+            <tr><td>Map 36-45</td><td>Fantasy</td><td><span class="tag tag-orange">🎁 Triple Tile</span></td><td>Phù thủy · Thần tiên · Rồng · Unicorn · Phượng hoàng</td></tr>
+            <tr><td>Map 46-55</td><td>Sci-fi</td><td><span class="tag tag-orange">🎁 Triple Tile</span></td><td>Cyberpunk · Sao Hỏa · Vũ trụ · AI Robot · Galaxy</td></tr>
+            <tr><td>Map 56-65</td><td>Kỳ quan</td><td><span class="tag tag-blue">🛒 Sort Shelf</span></td><td>Eiffel · Big Ben · Taj Mahal · Hạ Long · Santorini</td></tr>
+            <tr><td>Map 66-75</td><td>Ẩm thực</td><td><span class="tag tag-blue">🛒 Sort Shelf</span></td><td>Cà phê · Trà Nhật · Vải · Dâu Đà Lạt · Olive</td></tr>
+            <tr><td>Map 76-85</td><td>Động vật</td><td><span class="tag tag-orange">🎁 Triple Tile</span></td><td>Bướm · Ong · Cá Koi · Flamingo · Công</td></tr>
+            <tr><td>Map 86-95</td><td>Nhân vật mix</td><td>Sort + Triple alternate</td><td>Mia tuổi thơ · Leo office · Elena mansion · Chloe vintage</td></tr>
+            <tr><td>Map 96-100</td><td>Endgame Master</td><td><span class="tag tag-red">🎁 Triple Master</span></td><td>Đám cưới · Anniversary · Garden Queen ENDING</td></tr>
+          </tbody>
+        </table>
+        <div class="mt-3 text-xs" style="color: var(--text-muted);">→ <strong>~60% map = Sort</strong> · ~40% map = Triple Tile · variety theo theme phù hợp</div>
+      </div>
+    </section>
+
+    <!-- SECTION 6 -->
+    <section id="sec-6">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">06</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Wireframe · 6 Screens (Mobile Portrait 390×844)</h2>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="card p-5">
+          <div class="font-bold mb-2 flex items-center gap-2"><span class="tag tag-primary">1</span> HUB DASHBOARD</div>
+          <div class="ascii-box">┌─────────────────────────┐
+│ Map 1 · Ch 1        [⚙]│
+│ ⭐12 ❤️5 💎100          │
+├─────────────────────────┤
+│  GARDEN VIEW            │
+│  isometric animated     │
+│  Mia + Mochi walking    │
+│  ✨ Highlight: Đèn vỡ    │
+│  arrow + glow           │
+│  "-1⭐"                 │
+├─────────────────────────┤
+│ 💬 Mia: "Cần em chăm!" │
+├─────────────────────────┤
+│[🛍][🎁][▶PLAY][📖][👥]│
+└─────────────────────────┘</div>
+        </div>
+
+        <div class="card p-5">
+          <div class="font-bold mb-2 flex items-center gap-2"><span class="tag tag-pink">2</span> SORT (Vase variant)</div>
+          <div class="ascii-box">┌─────────────────────────┐
+│[← Back] Lvl 5  [⏸]      │
+│ Move: 12  Goal: sort    │
+├─────────────────────────┤
+│  🌸 🌹 🌻 🌷 🌼        │
+│  ┌─┐┌─┐┌─┐┌─┐┌─┐       │
+│  │🌹││🌻││🌹││🌷││ │   │
+│  │🌻││🌹││🌷││🌻││ │   │
+│  │🌹││🌷││🌻││🌹││ │   │
+│  └─┘└─┘└─┘└─┘└─┘       │
+│   1  2  3  4  5         │
+│  Tap A → tap B          │
+├─────────────────────────┤
+│[↶Undo🪙10][🔀Shuf💎30] │
+└─────────────────────────┘</div>
+        </div>
+
+        <div class="card p-5">
+          <div class="font-bold mb-2 flex items-center gap-2"><span class="tag tag-blue">3</span> SORT (Shelf variant)</div>
+          <div class="ascii-box">┌─────────────────────────┐
+│[← Back] Lvl 12 [⏸]      │
+│ Move: 18 Clear shelves │
+├─────────────────────────┤
+│ ┌─────────────┐         │
+│ │🍎 🍌 🍎 │ shelf 1   │
+│ │🍌 🍎 🍌 │           │
+│ │🍓 🍓 🍓 │ MATCH! 💥 │
+│ └─────────────┘         │
+│ ┌─────────────┐         │
+│ │🍇 🍊 🍇 │ shelf 2   │
+│ └─────────────┘         │
+│  Drag items giữa shelves│
+├─────────────────────────┤
+│[↶Undo][🔀Shuffle]      │
+└─────────────────────────┘</div>
+        </div>
+
+        <div class="card p-5">
+          <div class="font-bold mb-2 flex items-center gap-2"><span class="tag tag-orange">4</span> TRIPLE TILE</div>
+          <div class="ascii-box">┌─────────────────────────┐
+│[← Back] Lvl 25 [⏸]      │
+│ ❤️5 ⏱️3:00              │
+├─────────────────────────┤
+│  PILE (lộn xộn):        │
+│   🧙  💎  🐉            │
+│  💎 🌟 🐉 🧙            │
+│ 🧙  🐉  💎 🌟          │
+│  🌟 💎 🧙  🐉          │
+│                          │
+│  Tap tile → bay slot    │
+├─────────────────────────┤
+│ SLOT (7):               │
+│ [🧙][🧙][🧙][💎][🌟][_][_]│
+│  ↑ MATCH 3 phù thủy 💥  │
+├─────────────────────────┤
+│[↶Undo][🗑Clear][🔀]    │
+└─────────────────────────┘</div>
+        </div>
+
+        <div class="card p-5">
+          <div class="font-bold mb-2 flex items-center gap-2"><span class="tag tag-green">5</span> WIN POPUP + MAKEOVER CINEMATIC</div>
+          <div class="ascii-box">┌─────────────────────────┐
+│   🎉 LEVEL COMPLETE! 🎉 │
+│                          │
+│       ⭐ +2  🪙 +50      │
+│                          │
+│   ↓ Auto-spend ⭐        │
+│                          │
+│  CINEMATIC 2-3s:         │
+│  · Mia walks to lamp     │
+│  · Lamp transform        │
+│    (vỡ → mới)            │
+│  · particle gold burst   │
+│  · "+1🪙 bonus"           │
+│                          │
+│  Next task: Ghế gỗ -1⭐  │
+├─────────────────────────┤
+│       [Continue ▶]       │
+└─────────────────────────┘</div>
+        </div>
+
+        <div class="card p-5">
+          <div class="font-bold mb-2 flex items-center gap-2"><span class="tag tag-red">5B</span> LOSE POPUP (NEW v2.2)</div>
+          <div class="ascii-box">┌─────────────────────────┐
+│   💔 OUT OF MOVES! 💔   │
+│                          │
+│  🐱 Mochi sad face anim │
+│  👒 Mia: "Đừng bỏ cuộc!"│
+│                          │
+│  Try again with:         │
+│                          │
+│  [+5 moves · 50 KC]      │ ← Booster
+│  [Continue · 100 KC]     │ ← Full retry
+│  [Quit · -1 ❤️]         │ ← Free quit
+│                          │
+│  💡 Tip: Sort theo màu  │
+│      cùng vase trước     │
+└─────────────────────────┘
+→ 80% revenue đến từ moment này
+→ KC sink chính (whale)</div>
+        </div>
+
+        <div class="card p-5">
+          <div class="font-bold mb-2 flex items-center gap-2"><span class="tag tag-red">6</span> STORY CUTSCENE</div>
+          <div class="ascii-box">┌─────────────────────────┐
+│[Skip ▶] Ch 2 · Beat 3/10│
+├─────────────────────────┤
+│  Background: phố cổ     │
+│  mưa phùn falling petals│
+│                          │
+│   👨 Leo                │
+│   👒 Mia                │
+│                          │
+│ ┌──────────────────────┐│
+│ │ Leo: "Em không thể   ││
+│ │ là Mia mãi. Anh đặt  ││
+│ │ tên em là Maya."     ││
+│ └──────────────────────┘│
+│                          │
+│  💜 Voice play (AI gen)  │
+│  [Tap continue ▶]        │
+└─────────────────────────┘</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 7 -->
+    <section id="sec-7">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">07</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Economy · ⭐ Star Bridge Currency</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Currency Flow (Royal Match Pattern)</div>
+        <div class="ascii-box">EARN ⭐ STAR                  SPEND ⭐ STAR
+═════════════                ════════════
+✓ Sort win:    +1-3⭐         ✗ Decor task: -1⭐ (auto-spend)
+✓ Triple win:  +1-3⭐
+✓ Streak combo: +bonus        SPEND 🪙 VÀNG
+✓ Daily login: +5⭐           ════════════
+✓ Story milestone: +10⭐      ✗ Booster: undo · shuffle · hint
+✓ IAP pack:    +50-500⭐      ✗ Skip wait
+                              ✗ Buy decor item premium
+EARN 🪙 VÀNG
+═════════════                 SPEND 💎 KC (premium)
+✓ Sort/Triple win: +50🪙      ════════════
+✓ Cinematic bonus: +1🪙       ✗ Skip ❤️ lives cooldown
+✓ Achievement                 ✗ Buy ⭐ pack 100/500/1000
+                              ✗ Battle Pass 199KC
+EARN 💎 KC (premium)          ✗ Skin gacha 30KC/pull
+═════════════                 ✗ VIP subscription 999KC/tháng
+✓ IAP only</div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4 mb-6">
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--green);">FREE PATH</div>
+          <div class="text-sm">5 lives/30 phút regen · ~10⭐/day · finish Map 1 trong 2 tuần</div>
+        </div>
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--gold);">PAID MID</div>
+          <div class="text-sm">Buy ⭐ pack · skip lives · ~30⭐/day · Map 1 trong 1 tuần</div>
+        </div>
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--pink);">WHALE</div>
+          <div class="text-sm">Battle Pass + VIP · unlimited lives · 4 chapter trong 2 tuần</div>
+        </div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">💰 IAP Price Ladder · VND (NEW v2.2)</div>
+        <table class="data-table">
+          <thead><tr><th>Pack</th><th>KC</th><th>VND</th><th>USD</th><th>Target tier</th></tr></thead>
+          <tbody>
+            <tr><td>Newbie Pack (limited 7d)</td><td class="mono">200 KC</td><td class="mono">22,000₫</td><td class="mono">$0.99</td><td>F_1-24 first-pay hook</td></tr>
+            <tr><td>Small Pack</td><td class="mono">500 KC</td><td class="mono">50,000₫</td><td class="mono">$1.99</td><td>P_1-34 mass</td></tr>
+            <tr><td>Medium Pack</td><td class="mono">1,200 KC</td><td class="mono">110,000₫</td><td class="mono">$4.99</td><td>P_35-49 mid</td></tr>
+            <tr><td>Battle Pass</td><td class="mono">199 KC</td><td class="mono">22,000₫/cycle</td><td class="mono">$0.99/cycle</td><td>Mass conversion · recurring</td></tr>
+            <tr><td>Large Pack</td><td class="mono">3,000 KC</td><td class="mono">220,000₫</td><td class="mono">$9.99</td><td>P_50-69 mid-whale</td></tr>
+            <tr><td>Mega Pack</td><td class="mono">7,000 KC</td><td class="mono">499,000₫</td><td class="mono">$24.99</td><td>P_70-MAX whale</td></tr>
+            <tr><td>Whale Bundle</td><td class="mono">20,000 KC</td><td class="mono">1,490,000₫</td><td class="mono">$74.99</td><td>P_70-MAX top</td></tr>
+            <tr><td>VIP Subscription</td><td class="mono">999 KC/month</td><td class="mono">99,000₫/month</td><td class="mono">$4.99/month</td><td>Recurring whale</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">⭐ Decor Task Cost Tier (NEW v2.2)</div>
+        <table class="data-table">
+          <thead><tr><th>Task Tier</th><th>Cost</th><th>Examples</th><th>Frequency/Map</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag tag-green">Tier 1 · Quick</span></td><td class="mono">1 ⭐</td><td>Quét lá · trồng cây nhỏ · thay khăn</td><td>4-5 task/map (early)</td></tr>
+            <tr><td><span class="tag tag-blue">Tier 2 · Medium</span></td><td class="mono">2 ⭐</td><td>Sửa đèn · thay ghế · trồng bụi hoa</td><td>4-5 task/map (mid)</td></tr>
+            <tr><td><span class="tag tag-orange">Tier 3 · Major</span></td><td class="mono">3 ⭐</td><td>Tu sửa cổng · đặt fountain · centerpiece</td><td>2-3 task/map (late)</td></tr>
+            <tr><td><span class="tag tag-pink">Tier 4 · Cinematic</span></td><td class="mono">5 ⭐</td><td>Story trigger · transformation finale</td><td>1 task/map (final)</td></tr>
+          </tbody>
+        </table>
+        <div class="text-xs mt-3" style="color: var(--text-muted);">→ Total per map: ~25-30⭐ · 10-15 task average</div>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">⏱️ F2P Timeline · Detailed (NEW v2.2)</div>
+        <table class="data-table">
+          <thead><tr><th>User Type</th><th>⭐/day</th><th>Sessions/day</th><th>Map 1</th><th>All 100 maps</th><th>ARPDAU target</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag tag-green">F2P Casual</span></td><td class="mono">~10⭐</td><td class="mono">2-3</td><td class="mono">~14 ngày</td><td class="mono">~12 tháng</td><td class="mono">0₫</td></tr>
+            <tr><td><span class="tag tag-blue">F2P Active</span></td><td class="mono">~25⭐</td><td class="mono">5-6</td><td class="mono">~7 ngày</td><td class="mono">~6 tháng</td><td class="mono">0₫</td></tr>
+            <tr><td><span class="tag tag-orange">Paid Mid</span></td><td class="mono">~50⭐</td><td class="mono">5-6</td><td class="mono">~3 ngày</td><td class="mono">~3 tháng</td><td class="mono">2,000-5,000₫</td></tr>
+            <tr><td><span class="tag tag-pink">Paid High</span></td><td class="mono">~100⭐</td><td class="mono">8-10</td><td class="mono">~1 ngày</td><td class="mono">~6 tuần</td><td class="mono">5,000-15,000₫</td></tr>
+            <tr><td><span class="tag tag-red">Whale</span></td><td class="mono">unlimited</td><td class="mono">10+</td><td class="mono">12 giờ</td><td class="mono">~3 tuần</td><td class="mono">50,000+₫</td></tr>
+          </tbody>
+        </table>
+        <div class="text-xs mt-3" style="color: var(--text-muted);">→ <strong>Average ARPDAU target</strong>: 3,500-4,000₫ · <strong>Whale ratio</strong>: 3% payer = 40% revenue</div>
+      </div>
+
+      <div class="card p-6 gradient-gold">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--gold);">🔑 KC Sink Distribution (revenue split target)</div>
+        <table class="data-table">
+          <thead><tr><th>Sink</th><th>% Revenue</th><th>Trigger moment</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Lose state booster</strong> (+5 moves · continue)</td><td class="mono">40%</td><td>Royal Match pattern · whale moment vàng</td></tr>
+            <tr><td><strong>Battle Pass</strong> (199 KC/cycle)</td><td class="mono">25%</td><td>Mass conversion · recurring</td></tr>
+            <tr><td><strong>VIP Subscription</strong> (999 KC/month)</td><td class="mono">15%</td><td>Whale recurring</td></tr>
+            <tr><td><strong>⭐ Star pack direct</strong></td><td class="mono">10%</td><td>Stuck mid-task</td></tr>
+            <tr><td><strong>Skin/Outfit gacha</strong></td><td class="mono">5%</td><td>Cosmetic vanity</td></tr>
+            <tr><td><strong>Lives skip + decor premium</strong></td><td class="mono">5%</td><td>Convenience</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 8 -->
+    <section id="sec-8">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--orange);">08</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Tech Stack · HTML5 → Unity Phase</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">2-Phase Strategy (Q10)</div>
+        <table class="data-table">
+          <thead><tr><th>Phase</th><th>Stack</th><th>Time</th><th>Output</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="tag tag-green">Phase 0 · MVP</span></td>
+              <td><strong>HTML5 + Vanilla JS + Tailwind CSS</strong><br>Web Audio API · CSS Animations · LocalStorage save</td>
+              <td>2-3 tháng</td>
+              <td>Playable web prototype · validate gameplay · soft-launch web</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-gold">Phase 1 · Scale</span></td>
+              <td><strong>Unity 2022 LTS + C#</strong><br>Mobile build iOS + Android · IAP · Analytics · Cloud save</td>
+              <td>4-6 tháng dev</td>
+              <td>Native mobile app · App Store · Play Store</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card p-6 gradient-blue">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--blue);">Mobile Portrait Constraint (Q11)</div>
+        <ul class="text-sm space-y-2">
+          <li>✓ <strong>390×844 viewport</strong> (iPhone 14 base · scale up cho iPad)</li>
+          <li>✓ <strong>Vertical orientation lock</strong> · NO landscape</li>
+          <li>✓ <strong>Thumb-zone CTAs</strong> (bottom 1/3 màn)</li>
+          <li>✓ <strong>Touch target ≥44pt</strong> (Apple HIG)</li>
+          <li>✓ <strong>Safe area insets</strong> · notch + home indicator</li>
+          <li>✓ <strong>60 FPS animation</strong> · CSS transform · GPU accelerated</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECTION 9 -->
+    <section id="sec-9">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--pink);">09</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Sound Design · AI Voice Hybrid</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">3-Phase Voice Strategy (Q8)</div>
+        <table class="data-table">
+          <thead><tr><th>Phase</th><th>Approach</th><th>Cost</th><th>Quality</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag tag-green">Phase 0 · MVP</span></td><td>ElevenLabs AI gen · 50 clips × 5 character</td><td>$22-50/tháng</td><td>Good for prototype</td></tr>
+            <tr><td><span class="tag tag-gold">Phase 1 · Scale</span></td><td>Real voice top 20 most-played clips · 3 actors</td><td>$250-1,000 + studio</td><td>Better emotional</td></tr>
+            <tr><td><span class="tag tag-pink">Phase 2 · Multi-lang</span></td><td>VI · EN · KO · TH localized</td><td>×2-4 per language</td><td>Global market</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card p-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-4" style="color: var(--text-muted);">Sound Asset Library</div>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <div class="font-bold text-sm mb-2" style="color: var(--blue);">SFX (Sort/Triple feedback)</div>
+            <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+              <li>• Match chime (12 pitch variation)</li>
+              <li>• Combo arpeggio C-D-E-F-G</li>
+              <li>• Win fanfare 4-note</li>
+              <li>• Lose buzz</li>
+              <li>• Star ding when earned</li>
+              <li>• Cinematic transformation chime</li>
+            </ul>
+          </div>
+          <div>
+            <div class="font-bold text-sm mb-2" style="color: var(--pink);">Voice Lines (50 clips MVP)</div>
+            <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+              <li>• Mia (10): chào · vui · buồn · ngạc nhiên · cảm ơn...</li>
+              <li>• Leo (10): chào Mia · serious · tỏ tình · cười</li>
+              <li>• Elena (10): cold · approve · xúc động · accept</li>
+              <li>• Mochi (10): meow · purr · cute giggle</li>
+              <li>• Side (10): rivals + Zoe + Oliver</li>
+            </ul>
+          </div>
+          <div>
+            <div class="font-bold text-sm mb-2" style="color: var(--gold);">BGM (5 tracks)</div>
+            <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+              <li>• Hub Garden cozy theme</li>
+              <li>• Sort puzzle calm theme</li>
+              <li>• Triple Tile fast theme</li>
+              <li>• Story romantic theme</li>
+              <li>• Ending hoàng gia theme</li>
+            </ul>
+          </div>
+          <div>
+            <div class="font-bold text-sm mb-2" style="color: var(--green);">Ambient Loop</div>
+            <ul class="text-xs space-y-1" style="color: var(--text-muted);">
+              <li>• Hub: bird chirp · gentle wind</li>
+              <li>• Sort: piano · spa-like</li>
+              <li>• Story: rain · countryside</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 10 -->
+    <section id="sec-10">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num" style="background: var(--green);">10</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Level Editor Tool · JSON Schema</h2>
+      </div>
+
+      <div class="card p-6 mb-6">
+        <div class="text-xs mono uppercase tracking-widest font-bold mb-3" style="color: var(--text-muted);">Config per Level (Q7)</div>
+        <p class="text-sm mb-3">Each of 100+ levels có 1 JSON config file. Designer chỉnh JSON → push CDN → game fetch · không cần app update.</p>
+        <div class="ascii-box">{
+  "level_id": "map_01_lvl_05",
+  "map": {
+    "id": 1,
+    "theme": "vuon_hoa_hong",
+    "name_vi": "Vườn Hoa Hồng",
+    "chapter": 1
+  },
+  "mechanic": {
+    "type": "sort_vase",
+    "variants": ["sort_vase", "sort_shelf", "triple_tile"]
+  },
+  "difficulty": {
+    "vase_count": 5,
+    "color_count": 4,
+    "items_per_vase": 6,
+    "move_limit": 30,
+    "time_limit_sec": null
+  },
+  "items": [
+    { "type": "rose_red", "count": 6 },
+    { "type": "rose_pink", "count": 6 },
+    { "type": "rose_white", "count": 4 },
+    { "type": "rose_gold", "count": 2 }
+  ],
+  "obstacles": {
+    "frozen_flower": 0,
+    "lock_vase": 0,
+    "mystery_tile": 0
+  },
+  "reward": {
+    "stars_min": 1,
+    "stars_max": 3,
+    "gold": 50,
+    "rare_drop_rate": 0.05
+  },
+  "decor_task_unlock": "task_lamp_repair"
+}</div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--green);">Phase 0 · MVP</div>
+          <div class="text-sm">JSON manual edit · git repo · VS Code · review qua PR · zero cost</div>
+        </div>
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--gold);">Phase 1 · Web UI</div>
+          <div class="text-sm">React + Tailwind · live preview · save back JSON · ~1 dev × 1 tuần</div>
+        </div>
+        <div class="card-hi p-5 rounded-xl">
+          <div class="text-xs mono uppercase font-bold mb-2" style="color: var(--pink);">Phase 2 · Full Tool</div>
+          <div class="text-sm">A/B variant · live ops dashboard · cloud sync · multi-user · 2-3 tuần</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 11 -->
+    <section id="sec-11">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="section-num">11</span>
+        <h2 class="text-2xl font-extrabold tracking-tight">Roadmap</h2>
+      </div>
+      <div class="card p-6">
+        <div class="ascii-box">PHASE 0 — DESIGN + PROTOTYPE (4-6 tuần)
+══════════════════════════════════════════
+W1-2: Finalize doc v2.2 · Cast lock · Story script
+W3-4: Wireframe · UX flow · Asset list · 50 voice clips AI gen
+W5-6: HTML5 prototype playable
+       · Map 1-5 · Sort + Triple · Hub Dashboard
+       · Cinematic per task · Story cutscene 1
+
+PHASE 1 — CORE DEV UNITY (4-6 tháng)
+═════════════════════════════════════
+M1: Port HTML5 → Unity · core engine
+M2: Sort + Triple mechanic · 50 levels
+M3: Story system · cutscene framework · 4 chapter
+M4: Decor cinematic · ⭐ Star economy · IAP
+M5: Polish · balance · soft-launch 5%
+M6: Full launch · monitor
+
+PHASE 2 — LIVE OPS (Ongoing)
+═════════════════════════════
+- New map every 2 weeks (live config)
+- Seasonal theme (Tết · Hè · Trung Thu · Noel)
+- Battle Pass cycle · 199KC
+- Daily challenge widget
+- Voice real recording top 20 clips
+
+PHASE 3 — SCALE (12+ tháng)
+═══════════════════════════
+- Multiplayer co-op (Heartopia trend)
+- Avatar customization deep (50 → 200 outfit)
+- Multi-language localization
+- Spin-off (Garden Coloring · Khăn Đỏ event)</div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-white/5 pt-8 mt-16">
+      <div class="flex items-center justify-between text-xs mono" style="color: var(--text-muted);">
+        <div>
+          <strong style="color: var(--text);">KVTM 2.0 · Design Doc v2.2</strong><br>
+          Royal Match Pattern + K-Drama · Mobile Portrait HTML5→Unity · 2026-05-07
+        </div>
+        <div class="text-right">
+          <strong style="color: var(--pink);">FINAL DRAFT</strong><br>
+          11 Q&amp;A confirmed · Cast: Mia · Leo · Elena · Mochi · 3 rivals · Zoe · Oliver
+        </div>
+      </div>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        document.querySelectorAll('.toc a').forEach(a => a.classList.remove('active'));
+        const link = document.querySelector(`.toc a[href="#${id}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
