@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>KVTM 2.0 — Sort Blossom Level Editor v2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a1f2e;
+    color: #e8e4d8;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    background: #2a2f3e;
+    border-bottom: 1px solid #3a3f4e;
+    padding: 10px 16px;
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  }
+  .toolbar h1 {
+    font-size: 16px; color: #FFD700; margin-right: 12px; letter-spacing: 0.5px;
+  }
+  .toolbar button {
+    background: #3a3f4e; color: #e8e4d8; border: 1px solid #4a4f5e;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    font-size: 13px; font-family: inherit;
+  }
+  .toolbar button:hover { background: #4a4f5e; }
+  .toolbar button.primary { background: #FFD700; color: #1a1f2e; font-weight: 700; border-color: #FFD700; }
+  .toolbar .sep { width: 1px; height: 24px; background: #4a4f5e; margin: 0 4px; }
+
+  /* ── MAIN ── */
+  .main { display: grid; grid-template-columns: 1fr 340px; overflow: hidden; }
+  .editor-area { background: #243340; overflow-y: auto; padding: 24px; position: relative; }
+  .pots-grid {
+    display: flex; flex-wrap: wrap; gap: 24px 18px;
+    justify-content: center; align-items: flex-end;
+    max-width: 820px; margin: 0 auto;
+  }
+
+  /* ── POT CELL ── */
+  .pot-cell {
+    position: relative;
+    width: 160px;
+    cursor: default;
+    transition: transform .15s ease;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .pot-cell:hover { transform: translateY(-2px); }
+  .pot-cell .pot-index {
+    font-size: 11px; color: #ccc; padding: 2px 6px; background: rgba(0,0,0,.4);
+    border-radius: 4px; margin-bottom: 4px; font-weight: 700;
+  }
+  .pot-cell .delete-btn {
+    position: absolute; top: -4px; right: -4px;
+    width: 20px; height: 20px; background: #E74C3C; color: white;
+    border: none; border-radius: 50%; cursor: pointer; font-size: 12px;
+    line-height: 1; display: none; z-index: 50;
+  }
+  .pot-cell:hover .delete-btn { display: block; }
+
+  /* Pot visual: 3-layer (back / flowers / front) + queue strip below */
+  .pot-visual {
+    position: relative;
+    width: 160px;
+    height: 290px;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .pot-back, .pot-front {
+    position: absolute;
+    width: 150px;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .pot-back { z-index: 1; }
+  .pot-front { z-index: 30; }
+
+  /* Active slots: 3 zones L/C/R, clickable */
+  /* Visual flower layer: stems converge at pot center, blooms fan out */
+  /* ┌───────────────────────────────────────────────┐
+     │ TUNING — chỉnh các biến này để sửa layout hoa │
+     └───────────────────────────────────────────────┘ */
+  :root {
+    --stem-x:         10px;   /* ★ DỜI TÂM hội tụ X (- = sang trái, + = sang phải, 0 = giữa pot) */
+    --stem-spread:    5px;    /* ★ KHOẢNG RỘNG hội tụ chân stems (0=hội tụ 1 điểm, lớn=xòe rộng) */
+    --flower-bottom:  70px;   /* vị trí Y chân stem (cao = lên trên pot) */
+    --flower-w-side:  170px;  /* size hoa L và R */
+    --flower-w-mid:   180px;  /* size hoa C (giữa) */
+    --flower-angle:   22deg;  /* độ nghiêng L/R */
+  }
+
+  .active-flowers {
+    position: absolute;
+    left: 0; right: 0; bottom: var(--flower-bottom);
+    height: 220px;
+    z-index: 20;
+    pointer-events: none;
+  }
+  .active-flowers img {
+    position: absolute;
+    bottom: 0;
+    height: auto;
+    transform-origin: 50% 95%;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.45));
+  }
+  /* Fan: stems anchor at slightly different X (--stem-spread), then rotate around base */
+  .active-flowers img[data-pos="0"] {
+    left: calc(50% + var(--stem-x) - var(--stem-spread));
+    width: var(--flower-w-side);
+    transform: translateX(-50%) rotate(calc(-1 * var(--flower-angle)));
+    z-index: 1;
+  }
+  .active-flowers img[data-pos="1"] {
+    left: calc(50% + var(--stem-x));
+    width: var(--flower-w-mid);
+    transform: translateX(-50%) rotate(0deg);
+    z-index: 3;
+  }
+  .active-flowers img[data-pos="2"] {
+    left: calc(50% + var(--stem-x) + var(--stem-spread));
+    width: var(--flower-w-side);
+    transform: translateX(-50%) rotate(var(--flower-angle));
+    z-index: 2;
+  }
+  .active-flowers img.lifted[data-pos="0"] { transform: translateX(-50%) translateY(-14px) rotate(-22deg) scale(1.06); }
+  .active-flowers img.lifted[data-pos="1"] { transform: translateX(-50%) translateY(-14px) rotate(0deg) scale(1.06); }
+  .active-flowers img.lifted[data-pos="2"] { transform: translateX(-50%) translateY(-14px) rotate(22deg) scale(1.06); }
+  .active-flowers img { transition: transform .18s cubic-bezier(.34,1.56,.64,1); }
+
+  /* Invisible click hit zones (above flowers) */
+  .active-row {
+    position: absolute;
+    left: 0; right: 0; bottom: 70px;
+    height: 220px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    z-index: 25;
+  }
+  .active-slot {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 4px;
+    transition: background .12s ease;
+    position: relative;
+  }
+  .active-slot:hover { background: rgba(255,215,0,0.10); }
+  .active-slot .pos-label {
+    position: absolute;
+    top: -2px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px; color: rgba(255,215,0,0.45);
+    font-family: monospace;
+    pointer-events: none;
+  }
+
+  /* Queue strip below pot */
+  .queue-strip {
+    margin-top: 6px;
+    width: 160px;
+    min-height: 38px;
+    background: rgba(0,0,0,0.25);
+    border: 1px dashed #4a4f5e;
+    border-radius: 6px;
+    padding: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    justify-content: center;
+    align-items: center;
+  }
+  .queue-strip .queue-flower {
+    width: 26px; height: 26px;
+    cursor: pointer;
+    position: relative;
+  }
+  .queue-strip .queue-flower img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    opacity: 0.55;
+    filter: brightness(0.85);
+  }
+  .queue-strip .queue-flower:hover img { opacity: 1; filter: none; }
+  .queue-strip .queue-empty {
+    width: 26px; height: 26px;
+    border: 1px dashed #5a5f6e;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #5a5f6e;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .queue-strip .queue-empty:hover { border-color: #FFD700; color: #FFD700; }
+  .queue-strip .queue-label {
+    width: 100%; text-align: center; color: #6a6f7e;
+    font-size: 9px; font-family: monospace; margin-bottom: 2px;
+  }
+
+  .pot-cell.add-pot {
+    width: 130px;
+    height: 224px;
+    border: 2px dashed #4a4f5e; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: #6a6f7e; font-size: 36px; cursor: pointer;
+    background: rgba(255,255,255,0.02);
+  }
+  .pot-cell.add-pot:hover { border-color: #FFD700; color: #FFD700; }
+
+  /* ── SIDE PANEL ── */
+  .side {
+    background: #2a2f3e; border-left: 1px solid #3a3f4e;
+    overflow-y: auto; padding: 14px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .panel { background: #1f2433; border: 1px solid #3a3f4e; border-radius: 8px; padding: 12px; }
+  .panel h3 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    color: #FFD700; margin-bottom: 10px;
+  }
+  .field {
+    display: grid; grid-template-columns: 100px 1fr; gap: 8px;
+    align-items: center; margin-bottom: 8px; font-size: 13px;
+  }
+  .field label { color: #a8a8a8; font-size: 12px; }
+  .field input {
+    background: #3a3f4e; color: #e8e4d8; border: 1px solid #4a4f5e;
+    padding: 5px 8px; border-radius: 4px; font-size: 13px; width: 100%;
+  }
+  .stat {
+    display: grid; grid-template-columns: 1fr auto; gap: 6px;
+    padding: 6px 0; border-bottom: 1px dashed #3a3f4e; font-size: 13px;
+  }
+  .stat:last-child { border-bottom: none; }
+  .stat .v { color: #FFD700; font-weight: 700; font-family: monospace; }
+  .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .swatch {
+    background: #3a3f4e; border: 2px solid transparent; border-radius: 8px;
+    padding: 6px 4px; cursor: pointer; text-align: center;
+    transition: transform .12s ease;
+  }
+  .swatch:hover { transform: scale(1.06); border-color: #4a4f5e; }
+  .swatch.active { border-color: #FFD700; background: #4a4f5e; }
+  .swatch img { width: 36px; height: 36px; object-fit: contain; display: block; margin: 0 auto 2px; }
+  .swatch .lbl { font-size: 10px; color: #ccc; font-family: monospace; }
+  .tool-mode { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+  .tool-mode button {
+    flex: 1; background: #3a3f4e; border: 1px solid #4a4f5e; color: #ccc;
+    padding: 6px 4px; border-radius: 4px; cursor: pointer; font-size: 11px;
+  }
+  .tool-mode button.active { background: #FFD700; color: #1a1f2e; border-color: #FFD700; font-weight: 700; }
+
+  .difficulty-meter { height: 8px; background: #3a3f4e; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+  .difficulty-meter .fill { height: 100%; background: linear-gradient(90deg,#4ade80,#facc15,#ef4444); transition: width .25s ease; }
+  .log {
+    background: #0f1422; color: #80ff80; font-family: monospace;
+    font-size: 11px; padding: 8px; border-radius: 4px;
+    max-height: 120px; overflow-y: auto; line-height: 1.4;
+  }
+
+  /* ── PLAY OVERLAY ── */
+  .play-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .play-overlay.show { display: flex; }
+  .play-frame {
+    background: #243340; border-radius: 16px; padding: 20px;
+    width: 480px; max-height: 90vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.6);
+  }
+  .play-frame h3 { color: #FFD700; margin-bottom: 4px; }
+  .play-stats {
+    display: flex; justify-content: space-between; color: #ccc;
+    font-size: 13px; margin-bottom: 12px; padding-bottom: 12px;
+    border-bottom: 1px solid #3a3f4e;
+  }
+  .play-pots {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    justify-content: center; align-items: flex-end;
+    flex: 1; overflow-y: auto; padding: 16px 4px;
+  }
+  .play-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .play-actions button {
+    flex: 1; background: #3a3f4e; color: #e8e4d8; border: 1px solid #4a4f5e;
+    padding: 8px; border-radius: 6px; cursor: pointer; font-size: 13px;
+  }
+  .play-actions button.primary { background: #FFD700; color: #1a1f2e; border-color: #FFD700; font-weight: 700; }
+
+  .pot-cell.selected .pot-back { filter: drop-shadow(0 0 12px rgba(255,215,0,0.6)); }
+  .vanish { animation: vanishAnim .4s ease forwards; }
+  @keyframes vanishAnim {
+    0% { opacity: 1; transform: translateX(-50%) scale(1); }
+    100% { opacity: 0; transform: translateX(-50%) scale(1.4); }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="toolbar">
+    <h1>🌹 Sort Blossom — Level Editor v2</h1>
+    <button id="btn-new">📄 New</button>
+    <button id="btn-load">📂 Load</button>
+    <button id="btn-save" class="primary">💾 Save JSON</button>
+    <button id="btn-export-clip">📋 Copy</button>
+    <div class="sep"></div>
+    <button id="btn-solve">🧠 Solve</button>
+    <button id="btn-play" class="primary">▶ Test Play</button>
+    <div class="sep"></div>
+    <button id="btn-validate">✔ Validate</button>
+  </div>
+
+  <div class="main">
+
+    <div class="editor-area">
+      <div class="pots-grid" id="pots-grid"></div>
+    </div>
+
+    <div class="side">
+
+      <div class="panel">
+        <h3>📋 Properties</h3>
+        <div class="field"><label>ID</label><input id="f-id" type="number" min="1" value="1"></div>
+        <div class="field"><label>Name</label><input id="f-name" type="text" value="New Level"></div>
+        <div class="field"><label>Move Limit</label><input id="f-moves" type="number" min="1" value="15"></div>
+      </div>
+
+      <div class="panel">
+        <h3>⭐ Star Thresholds</h3>
+        <div class="field"><label>3⭐ ≤</label><input id="f-star3" type="number" min="1" value="6"></div>
+        <div class="field"><label>2⭐ ≤</label><input id="f-star2" type="number" min="1" value="9"></div>
+        <div class="field"><label>1⭐ ≤</label><input id="f-star1" type="number" min="1" value="12"></div>
+      </div>
+
+      <div class="panel">
+        <h3>🎨 Flower Palette</h3>
+        <div class="tool-mode">
+          <button id="mode-add" class="active">➕ Add</button>
+          <button id="mode-remove">🗑 Remove</button>
+        </div>
+        <div class="palette" id="palette"></div>
+        <div style="font-size:11px;color:#888;margin-top:8px;line-height:1.4;">
+          Click vào <b>active slot</b> (L/C/R trên pot) hoặc <b>queue cell</b> (vùng dưới pot) để add/remove.
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>🧠 Solver</h3>
+        <div class="stat"><span>Min moves</span><span class="v" id="s-min">–</span></div>
+        <div class="stat"><span>Solvable</span><span class="v" id="s-solvable">–</span></div>
+        <div class="stat"><span>States explored</span><span class="v" id="s-states">–</span></div>
+        <div class="stat"><span>Difficulty</span><span class="v" id="s-diff">–</span></div>
+        <div class="difficulty-meter"><div class="fill" id="s-meter" style="width:0%"></div></div>
+        <button id="btn-apply-stars" style="margin-top:10px;width:100%;background:#3a3f4e;color:#FFD700;border:1px dashed #FFD700;padding:6px;border-radius:4px;cursor:pointer;font-size:12px;">Apply suggested stars</button>
+      </div>
+
+      <div class="panel">
+        <h3>📜 Log</h3>
+        <div class="log" id="log"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="play-overlay" id="play-overlay">
+  <div class="play-frame">
+    <h3 id="play-title">Test Play</h3>
+    <div class="play-stats">
+      <span>Moves: <strong id="play-moves">0</strong> / <span id="play-limit">0</span></span>
+      <span>Stars: <strong id="play-stars">★★★</strong></span>
+    </div>
+    <div class="play-pots" id="play-pots"></div>
+    <div class="play-actions">
+      <button id="play-reset">🔄 Reset</button>
+      <button id="play-undo">↶ Undo</button>
+      <button id="play-close" class="primary">✖ Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+// ════ ASSETS ════
+// ════════════════════════════════════════════════
+const ASSETS = '../assets/sort_blossom/';
+const COLORS = {
+  R: { name: 'Red',      img: 'flower_red.png'      },
+  P: { name: 'Pink',     img: 'flower_pink.png'     },
+  Y: { name: 'Yellow',   img: 'flower_yellow.png'   },
+  V: { name: 'Purple',   img: 'flower_purple.png'   },
+  W: { name: 'White',    img: 'flower_white.png'    },
+  O: { name: 'Orange',   img: 'flower_orange.png'   },
+  B: { name: 'Blue',     img: 'flower_blue.png'     },
+  C: { name: 'Camellia', img: 'flower_camellia.png' },
+};
+const COLOR_KEYS = Object.keys(COLORS);
+
+const QUEUE_MAX = 6;     // max queue slots per pot (so total = 3 active + 6 queue = 9)
+const ACTIVE_SLOTS = 3;  // L, C, R
+
+// ════════════════════════════════════════════════
+// ════ STATE ════
+// ════════════════════════════════════════════════
+let level = newLevel();
+let mode = 'add';
+let activeColor = 'R';
+
+function newLevel() {
+  return {
+    id: 1,
+    name: 'New Level',
+    pots: [
+      { active: ['R', 'P', 'R'], queue: ['P','R','P'] },
+      { active: ['P', 'R', 'P'], queue: ['R','P','R'] },
+      { active: [null, null, null], queue: [] },
+    ],
+    moveLimit: 12,
+    starThresholds: [4, 7, 10],
+    tutorial: false,
+  };
+}
+
+// ════════════════════════════════════════════════
+// ════ DOM REFS ════
+// ════════════════════════════════════════════════
+const grid = document.getElementById('pots-grid');
+const palette = document.getElementById('palette');
+const logEl = document.getElementById('log');
+
+// ════════════════════════════════════════════════
+// ════ RENDER ════
+// ════════════════════════════════════════════════
+function render() {
+  document.getElementById('f-id').value = level.id;
+  document.getElementById('f-name').value = level.name;
+  document.getElementById('f-moves').value = level.moveLimit;
+  document.getElementById('f-star3').value = level.starThresholds[0];
+  document.getElementById('f-star2').value = level.starThresholds[1];
+  document.getElementById('f-star1').value = level.starThresholds[2];
+  renderGrid();
+  renderPalette();
+}
+
+function renderGrid() {
+  grid.innerHTML = '';
+  level.pots.forEach((pot, idx) => {
+    const cell = document.createElement('div');
+    cell.className = 'pot-cell';
+    cell.dataset.idx = idx;
+    // Build active flowers visual layer (stems converge, blooms fan)
+    const flowersHTML = [0,1,2].map(p => {
+      const f = pot.active[p];
+      if (!f) return '';
+      return `<img src="${ASSETS}${COLORS[f].img}" data-pos="${p}" draggable="false">`;
+    }).join('');
+
+    cell.innerHTML = `
+      <span class="pot-index">Pot #${idx}</span>
+      <button class="delete-btn" data-del="${idx}">×</button>
+      <div class="pot-visual">
+        <img class="pot-back" src="${ASSETS}pot_empty.png" draggable="false">
+        <div class="active-flowers">${flowersHTML}</div>
+        <div class="active-row">
+          ${[0,1,2].map(p => `
+            <div class="active-slot" data-pot="${idx}" data-pos="${p}">
+              <span class="pos-label">${['L','C','R'][p]}</span>
+            </div>
+          `).join('')}
+        </div>
+        <img class="pot-front" src="${ASSETS}pot_front.png" draggable="false">
+      </div>
+      <div class="queue-strip" data-pot="${idx}">
+        <div class="queue-label">Queue (${pot.queue.length}/${QUEUE_MAX})</div>
+        ${renderQueueCells(pot.queue, idx)}
+      </div>
+    `;
+    grid.appendChild(cell);
+
+    [0,1,2].forEach(p => {
+      const slotEl = cell.querySelector(`.active-slot[data-pos="${p}"]`);
+      slotEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onActiveClick(idx, p);
+      });
+    });
+
+    // Queue clicks
+    cell.querySelectorAll('.queue-flower, .queue-empty').forEach(qEl => {
+      qEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const qIdx = parseInt(qEl.dataset.qidx, 10);
+        onQueueClick(idx, qIdx);
+      });
+    });
+
+    // Delete pot
+    cell.querySelector('.delete-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deletePot(idx);
+    });
+  });
+
+  // Add pot
+  const addBtn = document.createElement('div');
+  addBtn.className = 'pot-cell add-pot';
+  addBtn.textContent = '+';
+  addBtn.title = 'Add empty pot';
+  addBtn.addEventListener('click', addPot);
+  grid.appendChild(addBtn);
+}
+
+function renderQueueCells(queue, potIdx) {
+  let html = '';
+  for (let i = 0; i < QUEUE_MAX; i++) {
+    if (i < queue.length) {
+      const c = COLORS[queue[i]];
+      html += `<div class="queue-flower" data-qidx="${i}"><img src="${ASSETS}${c.img}" draggable="false"></div>`;
+    } else {
+      html += `<div class="queue-empty" data-qidx="${i}">+</div>`;
+    }
+  }
+  return html;
+}
+
+function renderPalette() {
+  palette.innerHTML = '';
+  COLOR_KEYS.forEach(key => {
+    const c = COLORS[key];
+    const el = document.createElement('div');
+    el.className = 'swatch' + (activeColor === key ? ' active' : '');
+    el.innerHTML = `<img src="${ASSETS}${c.img}" draggable="false"><div class="lbl">${key}</div>`;
+    el.addEventListener('click', () => { activeColor = key; renderPalette(); });
+    palette.appendChild(el);
+  });
+}
+
+// ════════════════════════════════════════════════
+// ════ EDITOR ACTIONS ════
+// ════════════════════════════════════════════════
+function onActiveClick(potIdx, pos) {
+  const pot = level.pots[potIdx];
+  if (mode === 'add') {
+    pot.active[pos] = activeColor;
+    log(`+ ${activeColor} → pot #${potIdx} active[${['L','C','R'][pos]}]`);
+  } else {
+    if (pot.active[pos]) {
+      log(`- removed ${pot.active[pos]} from pot #${potIdx} active[${['L','C','R'][pos]}]`);
+      pot.active[pos] = null;
+    }
+  }
+  renderGrid();
+}
+
+function onQueueClick(potIdx, qIdx) {
+  const pot = level.pots[potIdx];
+  if (mode === 'add') {
+    if (pot.queue.length < QUEUE_MAX) {
+      // Insert at qIdx if it's an empty slot, else replace
+      if (qIdx < pot.queue.length) {
+        pot.queue[qIdx] = activeColor;
+      } else {
+        pot.queue.push(activeColor);
+      }
+      log(`+ ${activeColor} → pot #${potIdx} queue[${qIdx}]`);
+    }
+  } else {
+    if (qIdx < pot.queue.length) {
+      log(`- removed ${pot.queue[qIdx]} from pot #${potIdx} queue[${qIdx}]`);
+      pot.queue.splice(qIdx, 1);
+    }
+  }
+  renderGrid();
+}
+
+function addPot() {
+  level.pots.push({ active: [null, null, null], queue: [] });
+  log(`+ Added pot #${level.pots.length - 1}`);
+  renderGrid();
+}
+
+function deletePot(idx) {
+  if (level.pots.length <= 2) { log('✗ Need ≥2 pots'); return; }
+  level.pots.splice(idx, 1);
+  log(`- Deleted pot #${idx}`);
+  renderGrid();
+}
+
+// ════════════════════════════════════════════════
+// ════ ENGINE LOGIC (used by solver + test play) ════
+// ════════════════════════════════════════════════
+
+// Apply move from (potA, posA) → (potB, posB). Mutates state.
+// Returns: { ok, vanished } or { ok:false }
+function tryMove(state, a, posA, b, posB) {
+  const A = state[a], B = state[b];
+  if (!A || !B) return { ok: false };
+  if (a === b && posA === posB) return { ok: false };
+  const flower = A.active[posA];
+  if (!flower) return { ok: false };
+  if (B.active[posB] !== null && B.active[posB] !== undefined) return { ok: false };
+  // Move
+  B.active[posB] = flower;
+  A.active[posA] = null;
+  // Vanish check on B
+  let vanished = false;
+  if (B.active[0] && B.active[0] === B.active[1] && B.active[1] === B.active[2]) {
+    B.active = [null, null, null];
+    promote(B);
+    vanished = true;
+  }
+  // Also auto-promote A if it became all-empty
+  if (A.active.every(x => x === null)) promote(A);
+  return { ok: true, vanished };
+}
+
+function promote(pot) {
+  // Shift up to 3 from queue head into active L/C/R (only if all 3 active are empty)
+  if (!pot.active.every(x => x === null)) return;
+  for (let i = 0; i < 3 && pot.queue.length > 0; i++) {
+    pot.active[i] = pot.queue.shift();
+  }
+}
+
+function isWon(state) {
+  // All pots empty (no active, no queue)
+  return state.every(p => p.active.every(x => x === null) && p.queue.length === 0);
+}
+
+function cloneState(pots) {
+  return pots.map(p => ({ active: [...p.active], queue: [...p.queue] }));
+}
+
+function encode(state) {
+  return state.map(p => p.active.map(x => x || '_').join('') + '|' + p.queue.join('')).join('#');
+}
+
+// ════════════════════════════════════════════════
+// ════ SOLVER (BFS) ════
+// ════════════════════════════════════════════════
+function bfsSolve(initialPots, maxStates = 200000) {
+  const start = cloneState(initialPots);
+  // Apply initial promotions if any pot has empty active but queue waiting
+  start.forEach(promote);
+  if (isWon(start)) return { moves: 0, states: 1, solvable: true };
+  const visited = new Set();
+  visited.add(encode(start));
+  const queue = [{ state: start, moves: 0 }];
+  let states = 1;
+  while (queue.length) {
+    if (states > maxStates) return { moves: -1, states, timeout: true, solvable: false };
+    const { state, moves } = queue.shift();
+    const N = state.length;
+    for (let a = 0; a < N; a++) {
+      for (let posA = 0; posA < 3; posA++) {
+        if (!state[a].active[posA]) continue;
+        for (let b = 0; b < N; b++) {
+          for (let posB = 0; posB < 3; posB++) {
+            if (a === b && posA === posB) continue;
+            if (state[b].active[posB]) continue;
+            const newState = cloneState(state);
+            const r = tryMove(newState, a, posA, b, posB);
+            if (!r.ok) continue;
+            const k = encode(newState);
+            if (visited.has(k)) continue;
+            visited.add(k);
+            states++;
+            if (isWon(newState)) {
+              return { moves: moves + 1, states, solvable: true };
+            }
+            queue.push({ state: newState, moves: moves + 1 });
+          }
+        }
+      }
+    }
+  }
+  return { moves: -1, states, solvable: false };
+}
+
+// ════════════════════════════════════════════════
+// ════ ACTIONS ════
+// ════════════════════════════════════════════════
+function doSolve() {
+  syncFromForm();
+  log('Solving...');
+  const t0 = performance.now();
+  setTimeout(() => {
+    const r = bfsSolve(level.pots);
+    const ms = Math.round(performance.now() - t0);
+    document.getElementById('s-min').textContent = r.solvable ? r.moves : (r.timeout ? 'timeout' : '∞');
+    document.getElementById('s-solvable').textContent = r.solvable ? '✓' : '✗';
+    document.getElementById('s-states').textContent = r.states.toLocaleString();
+    if (r.solvable) {
+      const colors = countColors();
+      const diff = difficultyScore(r.moves, level.moveLimit, colors, level.pots.length);
+      document.getElementById('s-diff').textContent = diff.toFixed(2);
+      document.getElementById('s-meter').style.width = (diff * 100) + '%';
+      log(`✓ Min ${r.moves} moves, ${r.states.toLocaleString()} states (${ms}ms), diff ${diff.toFixed(2)}`);
+      const sug = [r.moves + 1, r.moves + 3, r.moves + 6];
+      document.getElementById('btn-apply-stars').dataset.stars = JSON.stringify(sug);
+      document.getElementById('btn-apply-stars').textContent = `Apply ⭐ [${sug.join(', ')}]`;
+    } else {
+      document.getElementById('s-diff').textContent = '–';
+      document.getElementById('s-meter').style.width = '100%';
+      log(`✗ Unsolvable (${r.states.toLocaleString()} states checked, ${ms}ms)`);
+    }
+  }, 30);
+}
+
+function difficultyScore(minMoves, moveLimit, colorCount, vasesCount) {
+  if (minMoves < 0) return 1.0;
+  const ratio = minMoves / Math.max(1, moveLimit);
+  const colorTerm = Math.min(1, colorCount / 6) * 0.3;
+  const vaseTerm = Math.min(1, vasesCount / 8) * 0.2;
+  const moveTerm = Math.min(1, ratio) * 0.5;
+  return Math.min(1, colorTerm + vaseTerm + moveTerm);
+}
+
+function countColors() {
+  const set = new Set();
+  level.pots.forEach(p => {
+    p.active.forEach(x => x && set.add(x));
+    p.queue.forEach(x => set.add(x));
+  });
+  return set.size;
+}
+
+function applySuggestedStars() {
+  const data = document.getElementById('btn-apply-stars').dataset.stars;
+  if (!data) { log('Run Solve first'); return; }
+  const sug = JSON.parse(data);
+  level.starThresholds = sug;
+  level.moveLimit = Math.max(level.moveLimit, sug[2] + 2);
+  render();
+  log(`Stars set to [${sug.join(', ')}]`);
+}
+
+function doValidate() {
+  syncFromForm();
+  const errors = [];
+  const counts = {};
+  level.pots.forEach(p => {
+    p.active.forEach(x => { if (x) counts[x] = (counts[x] || 0) + 1; });
+    p.queue.forEach(x => counts[x] = (counts[x] || 0) + 1);
+  });
+  for (const [k, n] of Object.entries(counts)) {
+    if (n % 3 !== 0) errors.push(`Color ${k}: ${n} flowers (must be multiple of 3)`);
+  }
+  if (level.pots.length < 2) errors.push('Need ≥2 pots');
+  // At least one move possible from start?
+  if (errors.length === 0) {
+    const hasEmptyActiveSlot = level.pots.some(p => p.active.some(x => x === null));
+    if (!hasEmptyActiveSlot) errors.push('No empty active slot — first move impossible');
+  }
+  if (errors.length === 0) log('✓ Valid');
+  else errors.forEach(e => log('✗ ' + e));
+}
+
+function doExport() {
+  syncFromForm();
+  return {
+    id: level.id,
+    name: level.name,
+    pots: level.pots,
+    moveLimit: level.moveLimit,
+    starThresholds: level.starThresholds,
+    ...(level.tutorial ? { tutorial: true } : {}),
+    schemaVersion: 2,
+  };
+}
+
+function doSave() {
+  const out = doExport();
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `level_${out.id}_${out.name.replace(/\s+/g,'_').toLowerCase()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  log(`💾 Saved level_${out.id}.json`);
+}
+
+function doCopy() {
+  const out = doExport();
+  navigator.clipboard.writeText(JSON.stringify(out, null, 2));
+  log('📋 Copied to clipboard');
+}
+
+function doLoad() {
+  const txt = prompt('Paste level JSON (schemaVersion 2):');
+  if (!txt) return;
+  try {
+    const obj = JSON.parse(txt);
+    if (!obj.pots) throw new Error('Missing pots[]; this is the v2 schema');
+    level = {
+      id: obj.id || 1,
+      name: obj.name || 'Loaded',
+      pots: obj.pots,
+      moveLimit: obj.moveLimit || 15,
+      starThresholds: obj.starThresholds || [5,8,12],
+      tutorial: !!obj.tutorial,
+    };
+    render();
+    log(`📂 Loaded level ${level.id}: ${level.name}`);
+  } catch(e) { log('✗ Invalid JSON: ' + e.message); }
+}
+
+function doNew() {
+  if (!confirm('Discard current level?')) return;
+  level = newLevel();
+  render();
+  log('📄 New level');
+}
+
+function syncFromForm() {
+  level.id = parseInt(document.getElementById('f-id').value, 10) || 1;
+  level.name = document.getElementById('f-name').value || 'Level';
+  level.moveLimit = parseInt(document.getElementById('f-moves').value, 10) || 15;
+  level.starThresholds = [
+    parseInt(document.getElementById('f-star3').value, 10) || 5,
+    parseInt(document.getElementById('f-star2').value, 10) || 8,
+    parseInt(document.getElementById('f-star1').value, 10) || 12,
+  ];
+}
+
+function log(msg) {
+  const t = new Date().toLocaleTimeString();
+  logEl.innerHTML = `<div>[${t}] ${msg}</div>` + logEl.innerHTML;
+}
+
+// ════════════════════════════════════════════════
+// ════ TEST PLAY ════
+// ════════════════════════════════════════════════
+let playState = null;
+function openPlay() {
+  syncFromForm();
+  playState = {
+    pots: cloneState(level.pots),
+    moveLimit: level.moveLimit,
+    moves: 0,
+    selected: null,         // { pot, pos }
+    history: [],
+    starThr: level.starThresholds,
+    won: false,
+  };
+  // Initial promotion if needed
+  playState.pots.forEach(promote);
+  document.getElementById('play-title').textContent = `▶ ${level.name} (#${level.id})`;
+  document.getElementById('play-limit').textContent = level.moveLimit;
+  document.getElementById('play-overlay').classList.add('show');
+  renderPlay();
+}
+
+function closePlay() {
+  document.getElementById('play-overlay').classList.remove('show');
+}
+
+function renderPlay() {
+  const container = document.getElementById('play-pots');
+  container.innerHTML = '';
+  playState.pots.forEach((pot, idx) => {
+    const cell = document.createElement('div');
+    cell.className = 'pot-cell';
+    if (playState.selected && playState.selected.pot === idx) cell.classList.add('selected');
+    // Active flowers — fanned bouquet
+    const flowersHTML = [0,1,2].map(p => {
+      const f = pot.active[p];
+      if (!f) return '';
+      const sel = playState.selected && playState.selected.pot === idx && playState.selected.pos === p;
+      const cls = sel ? ' class="lifted"' : '';
+      return `<img${cls} src="${ASSETS}${COLORS[f].img}" data-pos="${p}" draggable="false">`;
+    }).join('');
+
+    cell.innerHTML = `
+      <div class="pot-visual">
+        <img class="pot-back" src="${ASSETS}pot_empty.png" draggable="false">
+        <div class="active-flowers">${flowersHTML}</div>
+        <div class="active-row">
+          ${[0,1,2].map(p => `<div class="active-slot" data-pot="${idx}" data-pos="${p}"></div>`).join('')}
+        </div>
+        <img class="pot-front" src="${ASSETS}pot_front.png" draggable="false">
+      </div>
+      <div class="queue-strip" style="background:rgba(0,0,0,0.4);border-color:#333;">
+        ${pot.queue.length === 0 ? '<div class="queue-label">empty</div>' :
+          pot.queue.map(c => `<div class="queue-flower"><img src="${ASSETS}${COLORS[c].img}" draggable="false"></div>`).join('')}
+      </div>
+    `;
+    container.appendChild(cell);
+    [0,1,2].forEach(p => {
+      const slotEl = cell.querySelector(`.active-slot[data-pos="${p}"]`);
+      slotEl.addEventListener('click', () => onPlayTap(idx, p));
+    });
+  });
+  document.getElementById('play-moves').textContent = playState.moves;
+  const t = playState.starThr, m = playState.moves;
+  const stars = m <= t[0] ? 3 : m <= t[1] ? 2 : m <= t[2] ? 1 : 0;
+  document.getElementById('play-stars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+}
+
+function onPlayTap(potIdx, pos) {
+  if (playState.won) return;
+  const pot = playState.pots[potIdx];
+  if (!playState.selected) {
+    if (!pot.active[pos]) return;
+    playState.selected = { pot: potIdx, pos };
+  } else if (playState.selected.pot === potIdx && playState.selected.pos === pos) {
+    playState.selected = null;
+  } else {
+    if (pot.active[pos]) { // dest must be empty
+      playState.selected = null;
+      renderPlay();
+      return;
+    }
+    // Try move
+    playState.history.push(cloneState(playState.pots));
+    const r = tryMove(playState.pots, playState.selected.pot, playState.selected.pos, potIdx, pos);
+    if (r.ok) {
+      playState.moves++;
+      playState.selected = null;
+      if (isWon(playState.pots)) {
+        playState.won = true;
+        renderPlay();
+        setTimeout(() => alert(`🌸 Cleared in ${playState.moves} moves!`), 100);
+        return;
+      }
+    } else {
+      playState.history.pop();
+      playState.selected = null;
+    }
+  }
+  renderPlay();
+}
+
+function playUndo() {
+  if (!playState.history.length) return;
+  playState.pots = playState.history.pop();
+  playState.moves = Math.max(0, playState.moves - 1);
+  playState.won = false;
+  playState.selected = null;
+  renderPlay();
+}
+
+function playReset() {
+  playState.pots = cloneState(level.pots);
+  playState.pots.forEach(promote);
+  playState.moves = 0;
+  playState.selected = null;
+  playState.history = [];
+  playState.won = false;
+  renderPlay();
+}
+
+// ════════════════════════════════════════════════
+// ════ WIRE EVENTS ════
+// ════════════════════════════════════════════════
+document.getElementById('btn-new').addEventListener('click', doNew);
+document.getElementById('btn-load').addEventListener('click', doLoad);
+document.getElementById('btn-save').addEventListener('click', doSave);
+document.getElementById('btn-export-clip').addEventListener('click', doCopy);
+document.getElementById('btn-solve').addEventListener('click', doSolve);
+document.getElementById('btn-validate').addEventListener('click', doValidate);
+document.getElementById('btn-play').addEventListener('click', openPlay);
+document.getElementById('btn-apply-stars').addEventListener('click', applySuggestedStars);
+
+document.getElementById('mode-add').addEventListener('click', () => {
+  mode = 'add';
+  document.getElementById('mode-add').classList.add('active');
+  document.getElementById('mode-remove').classList.remove('active');
+});
+document.getElementById('mode-remove').addEventListener('click', () => {
+  mode = 'remove';
+  document.getElementById('mode-remove').classList.add('active');
+  document.getElementById('mode-add').classList.remove('active');
+});
+
+['f-id','f-name','f-moves','f-star3','f-star2','f-star1'].forEach(id => {
+  document.getElementById(id).addEventListener('input', syncFromForm);
+});
+
+document.getElementById('play-close').addEventListener('click', closePlay);
+document.getElementById('play-undo').addEventListener('click', playUndo);
+document.getElementById('play-reset').addEventListener('click', playReset);
+
+log('Editor v2 ready. Rule: 3 active slots (L/C/R) + queue ≤6. Match-3 vanish.');
+render();
+</script>
+
+</body>
+</html>
