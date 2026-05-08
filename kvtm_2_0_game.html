@@ -94,9 +94,18 @@
   /* ── STAGE ── */
   #stage {
     position: absolute;
-    inset: 0;
+    top: 0; left: 0; right: 0;
+    bottom: var(--hud-h, 0px);
     overflow: hidden;
   }
+  /* ── PERSISTENT HUD (bottom nav) ── */
+  #persistent-hud {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 62px;
+    z-index: 500;
+  }
+  #persistent-hud[hidden] { display: none; }
 
   /* ── SCENE WRAPPER ── */
   .scene {
@@ -1041,12 +1050,54 @@
   }
   .rm-bnav-tab:hover { opacity: 0.9; }
   .rm-bnav-active { opacity: 1; }
+
+  /* Animations on icon + label */
+  .rm-bnav-tab .rm-bnav-icon,
+  .rm-bnav-tab .rm-bnav-icon-wrap {
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+    position: relative; z-index: 1;
+  }
+  .rm-bnav-tab .rm-bnav-label {
+    transition: color .2s ease, font-weight .2s;
+  }
+
+  /* Active plate (non-home tabs) — sits BEHIND icon */
+  .rm-bnav-tab.rm-bnav-active:not(.rm-bnav-home)::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    width: 40px; height: 32px;
+    background: rgba(255,235,180,0.22);
+    border: 1.5px solid rgba(255,235,180,0.45);
+    border-radius: 12px;
+    z-index: 0;
+    animation: rmTabPop .28s cubic-bezier(.34,1.56,.64,1);
+    transform: translateX(-50%);
+  }
+  .rm-bnav-tab.rm-bnav-active:not(.rm-bnav-home) .rm-bnav-icon {
+    transform: scale(1.18);
+    filter: drop-shadow(0 1px 0 rgba(58,42,28,.35));
+  }
+  .rm-bnav-tab.rm-bnav-active:not(.rm-bnav-home) .rm-bnav-label {
+    color: var(--mustard);
+    font-weight: 700;
+  }
+  /* Home tab when active — extra glow on plate, no flatten */
+  .rm-bnav-tab.rm-bnav-active.rm-bnav-home .rm-bnav-icon-wrap {
+    box-shadow: 0 3px 0 var(--ink), inset 0 3px 0 rgba(255,255,255,.28),
+                0 0 0 3px rgba(255,235,180,.45);
+  }
+  @keyframes rmTabPop {
+    from { transform: translateX(-50%) scale(0.55); opacity: 0; }
+    to   { transform: translateX(-50%) scale(1);    opacity: 1; }
+  }
   .rm-bnav-home {
-    transform: translateY(-12px);
+    transform: translateY(-2px);
     opacity: 1;
   }
   .rm-bnav-home .rm-bnav-icon-wrap {
-    width: 50px; height: 50px;
+    width: 40px; height: 40px;
     background: linear-gradient(180deg, var(--cream), var(--mustard));
     border: 2.5px solid var(--ink);
     border-radius: 14px;
@@ -1440,6 +1491,63 @@
   }
   .lv-vc.lv-locked .lv-lock-badge { display: flex; }
   .lv-vsvg { display: block; transition: transform 0.18s ease, filter 0.18s ease; }
+
+  /* ── PNG-based pot + flower stack ── */
+  .lv-pot-wrap {
+    position: relative;
+    width: 84px;
+    height: 130px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .lv-pot-img {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    width: 84px;
+    height: auto;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+    transition: transform 0.18s ease, filter 0.18s ease;
+  }
+  .lv-pot-back  { z-index: 1; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.35)); }
+  .lv-pot-front { z-index: 30; }
+  .lv-pot-wrap .lv-flower-group {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 100%;
+    pointer-events: none;
+  }
+  .lv-flower-img {
+    position: absolute;
+    left: 50%;
+    width: 60px;
+    height: auto;
+    transform: translateX(-50%);
+    transition: transform 0.2s cubic-bezier(.34,1.56,.64,1), bottom 0.2s ease;
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.30));
+    pointer-events: none;
+    -webkit-user-drag: none;
+  }
+  .lv-flower-img.lv-flower-lifted {
+    transform: translateX(-50%) translateY(-12px);
+  }
+  .lv-vc.lv-selected .lv-pot-img {
+    transform: translateY(-3px);
+  }
+  .lv-vc.lv-locked .lv-pot-img {
+    filter: drop-shadow(0 0 10px rgba(255,210,80,0.85));
+  }
+  .lv-vc.lv-hint-glow .lv-pot-img {
+    filter: drop-shadow(0 0 10px rgba(255,255,150,0.9));
+  }
+  .lv-fly-img {
+    pointer-events: none;
+    -webkit-user-drag: none;
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.30));
+  }
 
   /* Animation layer */
   .lv-anim-layer {
@@ -1894,7 +2002,7 @@
   /* ── TOAST (Cozy) ── */
   #toast {
     position: absolute;
-    bottom: 70px;
+    top: 110px;
     left: 50%;
     transform: translateX(-50%) rotate(-.5deg);
     background: var(--paper-2);
@@ -1908,12 +2016,14 @@
     z-index: 999;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.2s;
-    white-space: nowrap;
-    max-width: 340px;
+    transition: opacity 3s ease;  /* fade-OUT speed (default state) */
+    white-space: normal;
+    word-wrap: break-word;
+    max-width: 280px;
     text-align: center;
+    line-height: 1.45;
   }
-  #toast.show { opacity: 1; }
+  #toast.show { opacity: 1; transition: opacity 0.3s ease; }  /* fade-IN speed */
 </style>
 </head>
 <body>
@@ -1921,6 +2031,8 @@
 <div id="phone-frame">
   <!-- Stage: scenes mount here -->
   <div id="stage"></div>
+  <!-- Persistent bottom HUD: rendered once, never destroyed -->
+  <div id="persistent-hud" hidden></div>
 
   <!-- Dev dot (top-right, always visible) -->
   <div id="dev-dot" title="Dev Console"></div>
@@ -1986,7 +2098,8 @@ const SAVE_KEY = 'kvtm2_save_v1';
 
 const DEFAULT_SAVE = {
   player: {
-    name: 'Mia',
+    name: '',
+    gender: '',          // 'female' | 'male' | 'other'
     createdAt: null,
     lastLogin: null,
     dayStreak: 1
@@ -2374,6 +2487,7 @@ const Game = (() => {
 
     _currentScene = sceneName;
     Game.currentScene = sceneName;
+    if (typeof PersistentHUD !== 'undefined') PersistentHUD.update(sceneName);
     _history.push({ scene: sceneName, params });
 
     // Keep history bounded
@@ -3095,13 +3209,16 @@ function triggerVib(ms) {
 // ════ SORT VASE LEVEL CONFIGS ════
 // ════════════════════════════════════════════════
 
+const SORT_BLOSSOM_PATH = 'assets/sort_blossom/';
 const SORT_COLORS = {
-  R: { hex:'#C8302E', light:'#F08080', name:'Red'    },
-  P: { hex:'#FF6B9D', light:'#FFB3CF', name:'Pink'   },
-  Y: { hex:'#FFD700', light:'#FFF176', name:'Yellow' },
-  V: { hex:'#9B59B6', light:'#CE93D8', name:'Purple' },
-  W: { hex:'#F0EAD6', light:'#FFFFF0', name:'White'  },
-  O: { hex:'#FF8C00', light:'#FFD080', name:'Orange' }
+  R: { hex:'#C8302E', light:'#F08080', name:'Red',    img:'flower_red.png'    },
+  P: { hex:'#FF6B9D', light:'#FFB3CF', name:'Pink',   img:'flower_pink.png'   },
+  Y: { hex:'#FFD700', light:'#FFF176', name:'Yellow', img:'flower_yellow.png' },
+  V: { hex:'#9B59B6', light:'#CE93D8', name:'Purple', img:'flower_purple.png' },
+  W: { hex:'#F0EAD6', light:'#FFFFF0', name:'White',  img:'flower_white.png'  },
+  O: { hex:'#FF8C00', light:'#FFD080', name:'Orange', img:'flower_orange.png' },
+  B: { hex:'#4A90E2', light:'#80B0F0', name:'Blue',   img:'flower_blue.png'   },
+  C: { hex:'#A52A2A', light:'#D08080', name:'Camellia', img:'flower_camellia.png' }
 };
 
 const SORT_VASE_LEVELS = [
@@ -3606,45 +3723,56 @@ const SortVase = (() => {
     updateFlowers(i);
   }
 
+  // Fan layouts — stems converge at pot rim, blooms spread radially.
+  // Index 0 = back/bottom of LIFO, last index = TOP (front-center, liftable).
+  const FAN_LAYOUT = {
+    1: { ang:[0],               scl:[1.00],             bot:[42] },
+    2: { ang:[-18, 14],          scl:[0.92, 1.00],       bot:[34, 42] },
+    3: { ang:[-24, 22, -2],      scl:[0.88, 0.88, 1.00], bot:[30, 30, 44] },
+    4: { ang:[-28, 26, -12, 6],  scl:[0.84, 0.84, 0.92, 1.00], bot:[26, 26, 32, 44] },
+  };
+
   function updateFlowers(idx) {
-    const svg = document.getElementById('lv-vsvg-'+idx);
-    if (!svg) return;
-    const g = svg.querySelector('.lv-flower-group');
-    if (!g) return;
-    while (g.firstChild) g.removeChild(g.firstChild);
-    const ns = 'http://www.w3.org/2000/svg';
+    const wrap = document.getElementById('lv-vsvg-'+idx);
+    if (!wrap) return;
+    const stack = wrap.querySelector('.lv-flower-group');
+    if (!stack) return;
+    while (stack.firstChild) stack.removeChild(stack.firstChild);
     const flowers = _vases[idx];
-    const slotY = [112, 92, 72, 52];
-    const cx = 46;
+    const N = flowers.length;
+    const lay = FAN_LAYOUT[Math.min(N, 4)] || FAN_LAYOUT[4];
+
     flowers.forEach((key, i) => {
-      const y = slotY[i];
       const col = SORT_COLORS[key];
-      if (!col) return;
-      const stem = document.createElementNS(ns, 'line');
-      stem.setAttribute('x1',cx); stem.setAttribute('y1',y+2);
-      stem.setAttribute('x2',cx); stem.setAttribute('y2',y+15);
-      stem.setAttribute('stroke','#2E7D32'); stem.setAttribute('stroke-width','2.5');
-      stem.setAttribute('stroke-linecap','round');
-      g.appendChild(stem);
-      const fg = document.createElementNS(ns, 'g');
-      const isTop = i === flowers.length - 1;
-      const bobY = (isTop && _selected === idx) ? y - 8 : y;
-      fg.setAttribute('transform', `translate(${cx},${bobY})`);
-      for (let p = 0; p < 5; p++) {
-        const a = p/5*Math.PI*2 - Math.PI/2;
-        const petal = document.createElementNS(ns, 'ellipse');
-        petal.setAttribute('cx', Math.cos(a)*5.5); petal.setAttribute('cy', Math.sin(a)*5.5);
-        petal.setAttribute('rx','4.5'); petal.setAttribute('ry','3.2');
-        petal.setAttribute('fill', col.hex);
-        petal.setAttribute('transform', `rotate(${p/5*360},${Math.cos(a)*5.5},${Math.sin(a)*5.5})`);
-        fg.appendChild(petal);
-      }
-      const c = document.createElementNS(ns,'circle');
-      c.setAttribute('cx','0'); c.setAttribute('cy','0');
-      c.setAttribute('r','3.8'); c.setAttribute('fill', col.light);
-      fg.appendChild(c);
-      g.appendChild(fg);
+      if (!col || !col.img) return;
+      const img = document.createElement('img');
+      img.className = 'lv-flower-img';
+      img.src = SORT_BLOSSOM_PATH + col.img;
+      img.draggable = false;
+      img.alt = '';
+      img.style.zIndex = String(10 + i);
+
+      const angle = lay.ang[i] ?? 0;
+      const scale = lay.scl[i] ?? 1;
+      const bot   = lay.bot[i] ?? 30;
+      const isTop = i === N - 1;
+
+      img.style.bottom = bot + 'px';
+      // Back flowers darker for depth
+      const bright = isTop ? 1.0 : (i < N - 2 ? 0.82 : 0.92);
+      img.style.filter = `drop-shadow(0 3px 4px rgba(0,0,0,0.3)) brightness(${bright})`;
+      // Compose transform: fan rotation + scale + lift on selected
+      const liftY = (isTop && _selected === idx) ? -14 : 0;
+      img.style.transformOrigin = '50% 92%'; // anchor near stem base
+      img.style.transform = `translateX(-50%) translateY(${liftY}px) rotate(${angle}deg) scale(${scale})`;
+      stack.appendChild(img);
     });
+
+    // Pot variant — only back layer changes (empty/done/locked)
+    const potBack = wrap.querySelector('.lv-pot-back');
+    if (potBack) {
+      potBack.src = SORT_BLOSSOM_PATH + (_locked[idx] ? 'pot_done.png' : 'pot_empty.png');
+    }
   }
 
   function clearHintGlow() {
@@ -3694,24 +3822,17 @@ const SortVase = (() => {
   }
 
   function makeFlySVG(key, size) {
-    const ns = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns,'svg');
-    svg.setAttribute('width',size); svg.setAttribute('height',size);
-    svg.setAttribute('viewBox','-10 -10 20 20');
-    const col = SORT_COLORS[key] || { hex:'#999', light:'#ccc' };
-    for (let p = 0; p < 5; p++) {
-      const a = p/5*Math.PI*2 - Math.PI/2;
-      const pe = document.createElementNS(ns,'ellipse');
-      pe.setAttribute('cx',Math.cos(a)*5); pe.setAttribute('cy',Math.sin(a)*5);
-      pe.setAttribute('rx','4'); pe.setAttribute('ry','3');
-      pe.setAttribute('fill', col.hex);
-      svg.appendChild(pe);
-    }
-    const c = document.createElementNS(ns,'circle');
-    c.setAttribute('cx','0'); c.setAttribute('cy','0');
-    c.setAttribute('r','3.2'); c.setAttribute('fill', col.light);
-    svg.appendChild(c);
-    return svg;
+    // PNG-based fly element (replaces old SVG flower)
+    const col = SORT_COLORS[key];
+    const img = document.createElement('img');
+    img.className = 'lv-fly-img';
+    img.src = SORT_BLOSSOM_PATH + (col?.img || 'flower_red.png');
+    img.draggable = false;
+    img.alt = '';
+    const flySize = (size || 20) * 2.6; // scale up since flower has stem+leaves
+    img.style.width = flySize + 'px';
+    img.style.height = 'auto';
+    return img;
   }
 
   function doShake(idx) {
@@ -3786,32 +3907,34 @@ const SortVase = (() => {
 
   // ── Build DOM ──
   function buildVaseSVG(idx) {
-    const ns = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox','0 0 92 148');
-    svg.setAttribute('width','72'); svg.setAttribute('height','120');
-    svg.setAttribute('class','lv-vsvg'); svg.id = 'lv-vsvg-'+idx;
-    const defs = document.createElementNS(ns,'defs');
-    const vg = document.createElementNS(ns,'linearGradient');
-    vg.id = 'lvvg'+idx; vg.setAttribute('x1','0%'); vg.setAttribute('y1','0%');
-    vg.setAttribute('x2','100%'); vg.setAttribute('y2','0%');
-    [['0%','#FFF8E7'],['45%','#EDD9A8'],['100%','#C8A870']].forEach(([o,c])=>{
-      const s=document.createElementNS(ns,'stop'); s.setAttribute('offset',o); s.setAttribute('stop-color',c); vg.appendChild(s);
-    });
-    defs.appendChild(vg);
-    const clip=document.createElementNS(ns,'clipPath'); clip.id='lvcp'+idx;
-    const cr=document.createElementNS(ns,'rect'); cr.setAttribute('x','18'); cr.setAttribute('y','40'); cr.setAttribute('width','56'); cr.setAttribute('height','86'); clip.appendChild(cr); defs.appendChild(clip);
-    const filt=document.createElementNS(ns,'filter'); filt.id='lvds'+idx; filt.setAttribute('x','-25%'); filt.setAttribute('y','-25%'); filt.setAttribute('width','150%'); filt.setAttribute('height','150%');
-    const fds=document.createElementNS(ns,'feDropShadow'); fds.setAttribute('dx','2'); fds.setAttribute('dy','4'); fds.setAttribute('stdDeviation','3'); fds.setAttribute('flood-color','rgba(0,0,0,0.25)'); filt.appendChild(fds); defs.appendChild(filt);
-    svg.appendChild(defs);
-    const body=document.createElementNS(ns,'path');
-    body.setAttribute('d','M 25 42 C 14 54,8 74,10 95 C 10 115,18 124,22 132 L 70 132 C 74 124,82 115,82 95 C 84 74,78 54,67 42 Z');
-    body.setAttribute('fill',`url(#lvvg${idx})`); body.setAttribute('filter',`url(#lvds${idx})`); svg.appendChild(body);
-    const rim=document.createElementNS(ns,'ellipse'); rim.setAttribute('cx','46'); rim.setAttribute('cy','42'); rim.setAttribute('rx','23'); rim.setAttribute('ry','6'); rim.setAttribute('fill','#DDD0A8'); rim.setAttribute('stroke','#B8A060'); rim.setAttribute('stroke-width','1'); svg.appendChild(rim);
-    const fg=document.createElementNS(ns,'g'); fg.setAttribute('clip-path',`url(#lvcp${idx})`); fg.setAttribute('class','lv-flower-group'); svg.appendChild(fg);
-    const sh=document.createElementNS(ns,'path'); sh.setAttribute('d','M 32 52 C 26 64,24 84,26 106'); sh.setAttribute('stroke','rgba(255,255,255,0.4)'); sh.setAttribute('stroke-width','4'); sh.setAttribute('stroke-linecap','round'); sh.setAttribute('fill','none'); svg.appendChild(sh);
-    const bs=document.createElementNS(ns,'ellipse'); bs.setAttribute('cx','46'); bs.setAttribute('cy','135'); bs.setAttribute('rx','21'); bs.setAttribute('ry','4'); bs.setAttribute('fill','rgba(0,0,0,0.15)'); svg.appendChild(bs);
-    return svg;
+    // 2-layer pot: back pot (full) → flowers → front pot (rim/face overlay)
+    // Stems "go into" pot — front layer hides stem bases naturally.
+    const wrap = document.createElement('div');
+    wrap.className = 'lv-vsvg lv-pot-wrap';
+    wrap.id = 'lv-vsvg-' + idx;
+
+    // Layer 1: back pot (full pot for state — empty/locked/done)
+    const potBack = document.createElement('img');
+    potBack.className = 'lv-pot-img lv-pot-back';
+    potBack.src = SORT_BLOSSOM_PATH + 'pot_empty.png';
+    potBack.draggable = false;
+    potBack.alt = '';
+    wrap.appendChild(potBack);
+
+    // Layer 2: flower stack
+    const stack = document.createElement('div');
+    stack.className = 'lv-flower-group';
+    wrap.appendChild(stack);
+
+    // Layer 3: front pot (rim/face overlay — covers stem bases)
+    const potFront = document.createElement('img');
+    potFront.className = 'lv-pot-img lv-pot-front';
+    potFront.src = SORT_BLOSSOM_PATH + 'pot_front.png';
+    potFront.draggable = false;
+    potFront.alt = '';
+    wrap.appendChild(potFront);
+
+    return wrap;
   }
 
   function buildGrid(containerEl) {
@@ -3925,14 +4048,16 @@ const Scenes = {
     const isNew = Save.isNewGame();
 
     if (isNew) {
-      // First time: auto-create with default name "Mia" and advance to hub (prototype quick start)
+      // First time: auto-create default profile, user can edit in Settings later
       setTimeout(() => {
-        Save.set('player.name', 'Mia');
-        Save.set('player.createdAt', new Date().toISOString());
-        Save.set('player.lastLogin', new Date().toISOString());
+        const now = new Date().toISOString();
+        Save.set('player.name', 'Bạn');
+        Save.set('player.gender', 'other');
+        Save.set('player.createdAt', now);
+        Save.set('player.lastLogin', now);
         Scenes._checkDayStreak && Scenes._checkDayStreak();
         Game.goto('hub');
-      }, 1800);
+      }, 1500);
     } else {
       // Returning player: auto-advance to hub after 2s
       setTimeout(() => {
@@ -3946,37 +4071,62 @@ const Scenes = {
   },
 
   _startNewGame() {
-    // Show name prompt overlay
+    const cur = Save.get().player || {};
     const overlay = document.createElement('div');
     overlay.className = 'name-prompt-overlay';
     overlay.id = 'name-overlay';
     overlay.innerHTML = `
       <div class="name-prompt-box">
         <h2>Xin chào! 🌸</h2>
-        <p>Bạn tên gì? Nhân vật của bạn sẽ dùng tên này.</p>
-        <input class="name-input" id="player-name-input" type="text" placeholder="Nhập tên của bạn..." maxlength="20" value="Mia">
+        <p style="margin-bottom:10px;">Bạn tên gì?</p>
+        <input class="name-input" id="player-name-input" type="text" placeholder="Nhập tên..." maxlength="20" value="${cur.name || ''}">
+        <p style="margin:14px 0 6px;">Bạn là...</p>
+        <div id="gender-pick" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;">
+          <button class="gender-opt" data-gender="female" type="button" style="padding:8px 14px;border-radius:10px;border:2px solid var(--ink);background:var(--paper-2);font-size:13px;font-weight:700;cursor:pointer;">👩 Nữ</button>
+          <button class="gender-opt" data-gender="male"   type="button" style="padding:8px 14px;border-radius:10px;border:2px solid var(--ink);background:var(--paper-2);font-size:13px;font-weight:700;cursor:pointer;">👨 Nam</button>
+          <button class="gender-opt" data-gender="other"  type="button" style="padding:8px 14px;border-radius:10px;border:2px solid var(--ink);background:var(--paper-2);font-size:13px;font-weight:700;cursor:pointer;">✨ Khác</button>
+        </div>
         <button class="btn-primary" onclick="Scenes._confirmName()">Bắt đầu hành trình ✨</button>
       </div>
     `;
     document.getElementById('phone-frame').appendChild(overlay);
 
+    // Gender selection state
+    let selectedGender = cur.gender || '';
+    const paint = () => overlay.querySelectorAll('.gender-opt').forEach(b => {
+      const on = b.getAttribute('data-gender') === selectedGender;
+      b.style.background = on ? 'var(--mustard)' : 'var(--paper-2)';
+      b.style.transform  = on ? 'translateY(-2px)' : '';
+      b.style.boxShadow  = on ? '0 3px 0 var(--ink)' : '';
+    });
+    paint();
+    overlay.querySelectorAll('.gender-opt').forEach(b => {
+      b.addEventListener('click', () => { selectedGender = b.getAttribute('data-gender'); paint(); });
+    });
+    overlay._getGender = () => selectedGender;
+
     const input = overlay.querySelector('#player-name-input');
     setTimeout(() => input && input.focus(), 100);
-
-    // Enter key support
     input && input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') Scenes._confirmName();
     });
   },
 
   _confirmName() {
-    const input = document.getElementById('player-name-input');
-    const name = (input ? input.value.trim() : '') || 'Mia';
     const overlay = document.getElementById('name-overlay');
+    const input = document.getElementById('player-name-input');
+    const name = (input ? input.value.trim() : '') || 'Bạn';
+    const gender = (overlay && overlay._getGender && overlay._getGender()) || '';
+
+    if (!gender) {
+      showToast('Hãy chọn giới tính trước nhé.');
+      return;
+    }
     if (overlay) overlay.remove();
 
     const now = new Date().toISOString();
     Save.set('player.name', name);
+    Save.set('player.gender', gender);
     Save.set('player.createdAt', now);
     Save.set('player.lastLogin', now);
     Save.set('player.dayStreak', 1);
@@ -3984,7 +4134,7 @@ const Scenes = {
 
     Sfx.play('success');
     Haptic.success();
-    showToast(`Chào mừng, ${name}! 🌸`);
+    Companion.clearSession && Companion.clearSession();
     Game.goto('hub');
   },
 
@@ -4072,32 +4222,6 @@ const Scenes = {
         </button>
       </div>
 
-      <!-- BOTTOM NAV: 5 tabs, home elevated -->
-      <nav class="rm-bnav">
-        <div class="rm-bnav-tab" style="position:relative;" onclick="Game.goto('daily')">
-          <span class="rm-bnav-icon">🎁</span>
-          <span class="rm-bnav-label">Daily</span>
-          ${hasDaily ? '<div style="position:absolute;top:6px;right:calc(50% - 14px);width:8px;height:8px;background:#E74C3C;border-radius:50%;border:1.5px solid #1A2845;"></div>' : ''}
-        </div>
-        <div class="rm-bnav-tab" style="position:relative;" onclick="Game.goto('events')">
-          <span class="rm-bnav-icon">🏆</span>
-          <span class="rm-bnav-label">Events</span>
-          <div style="position:absolute;top:6px;right:calc(50% - 14px);width:16px;height:16px;background:#E74C3C;border-radius:50%;border:1.5px solid #1A2845;font-size:9px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;line-height:1;">1</div>
-        </div>
-        <div class="rm-bnav-tab rm-bnav-active rm-bnav-home" style="position:relative;">
-          <div class="rm-bnav-icon-wrap">🏠</div>
-          <span class="rm-bnav-label">Home</span>
-        </div>
-        <div class="rm-bnav-tab" onclick="Game.goto('team')">
-          <span class="rm-bnav-icon">👥</span>
-          <span class="rm-bnav-label">Team</span>
-        </div>
-        <div class="rm-bnav-tab" style="position:relative;" onclick="Game.goto('inbox')">
-          <span class="rm-bnav-icon">📬</span>
-          <span class="rm-bnav-label">Inbox</span>
-          <div style="position:absolute;top:6px;right:calc(50% - 14px);width:16px;height:16px;background:#E74C3C;border-radius:50%;border:1.5px solid #1A2845;font-size:9px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;line-height:1;">1</div>
-        </div>
-      </nav>
     `;
 
     // Build garden SVG after DOM insertion — try RAF, microtask, and timeout fallback
@@ -4122,15 +4246,12 @@ const Scenes = {
     setTimeout(_hubMount, 200);
     requestAnimationFrame(() => {
 
-      // Welcome toast for new players (first hub entry)
+      // Welcome via Companion (AI or fallback)
       if (!save.player.lastLogin || Save.isNewGame()) {
-        setTimeout(() => showToast(`Day 1. ${name} found the cottage key under the mat.`, 3000), 600);
-      } else {
-        // Returning: show welcome back toast once per session
-        if (!window._hubWelcomedThisSession) {
-          window._hubWelcomedThisSession = true;
-          setTimeout(() => showToast(`Good to see you again, ${name}. The garden waits.`, 2500), 500);
-        }
+        setTimeout(() => Companion.speak('welcome_new'), 600);
+      } else if (!window._hubWelcomedThisSession) {
+        window._hubWelcomedThisSession = true;
+        setTimeout(() => Companion.speak('welcome_back'), 500);
       }
     });
 
@@ -4257,6 +4378,11 @@ const Scenes = {
           <button class="toggle-btn ${save.settings.haptic ? 'on' : 'off'}" id="d-toggle-haptic" onclick="Scenes._toggle('haptic');this.classList.toggle('on');this.classList.toggle('off');"></button>
         </div>
         <div style="margin-top:16px;">
+          <button class="btn-secondary" onclick="document.getElementById('settings-drawer-overlay').remove();Scenes._editProfile()">
+            ✏️ Đổi Tên & Giới Tính
+          </button>
+        </div>
+        <div style="margin-top:8px;">
           <button class="btn-secondary" style="color:#C8302E;border-color:#C8302E;" onclick="Scenes._resetSave()">🔄 Reset Save</button>
         </div>
       </div>
@@ -4374,6 +4500,29 @@ const Scenes = {
       Save.reset();
       showToast('Save đã được reset.');
       Game.goto('splash');
+    }
+  },
+
+  // Edit name/gender from settings (no save reset)
+  _editProfile() {
+    Scenes._startNewGame();
+    // Override the confirm so it stays in settings instead of going to hub
+    const overlay = document.getElementById('name-overlay');
+    if (!overlay) return;
+    const btn = overlay.querySelector('.btn-primary');
+    if (btn) {
+      btn.textContent = 'Lưu thay đổi 💾';
+      btn.onclick = () => {
+        const input = document.getElementById('player-name-input');
+        const name = (input ? input.value.trim() : '') || 'Bạn';
+        const gender = overlay._getGender && overlay._getGender();
+        if (!gender) { showToast('Hãy chọn giới tính trước.'); return; }
+        Save.set('player.name', name);
+        Save.set('player.gender', gender);
+        overlay.remove();
+        Companion.clearSession && Companion.clearSession();
+        Companion.speak('profile_updated');
+      };
     }
   },
 
@@ -4949,25 +5098,557 @@ const Dev = (() => {
 // ════ UTILS ════
 // ════════════════════════════════════════════════
 
-let _toastTimer = null;
-function showToast(msg, duration = 2200) {
-  const el = document.getElementById('toast');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.add('show');
-  if (_toastTimer) clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+// ════════════════════════════════════════════════
+// ════ NARRATE — queue + state machine + typewriter ════
+// Industry-standard pattern: Beat data, not string-split.
+// Inline tags supported: {w=500} wait 500ms, {nw} no-wait/auto-advance,
+//                        {speed=2} 2× speed for next beat.
+// ════════════════════════════════════════════════
+const Narrate = (() => {
+  const CFG = {
+    msPerChar:    65,   // typing speed (lower = faster)
+    minHold:      1500, // ms — minimum hold after typing done
+    holdPerChar:  55,   // ms per char added to hold (reading-speed-based)
+    fadeIn:       300,  // must match #toast.show CSS transition
+    fadeOut:      3000, // must match #toast CSS transition
+  };
+
+  const queue = [];     // pending beats
+  let state = 'idle';   // idle | entering | typing | waiting | exiting
+  let current = null;   // active beat
+  let timer = null;
+  let typeTimer = null;
+  let typedEl = null, ghostEl = null;
+  let typedSoFar = '';
+  let pendingTokens = []; // remaining tokens for current beat
+  let onBeatDone = null;
+
+  function reducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  // Parse text with inline tags into a token stream
+  // Returns: [{type:'text', value}, {type:'wait', ms}, {type:'speed', mult}, ...]
+  function tokenize(text) {
+    const tokens = [];
+    const re = /\{(w=\d+|nw|speed=[\d.]+)\}/g;
+    let lastIdx = 0, m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > lastIdx) tokens.push({ type:'text', value: text.slice(lastIdx, m.index) });
+      const tag = m[1];
+      if (tag.startsWith('w='))      tokens.push({ type:'wait',  ms: parseInt(tag.slice(2), 10) });
+      else if (tag === 'nw')         tokens.push({ type:'autoAdv' });
+      else if (tag.startsWith('speed=')) tokens.push({ type:'speed', mult: parseFloat(tag.slice(6)) });
+      lastIdx = re.lastIndex;
+    }
+    if (lastIdx < text.length) tokens.push({ type:'text', value: text.slice(lastIdx) });
+    return tokens;
+  }
+
+  function plainText(text) {
+    return text.replace(/\{(w=\d+|nw|speed=[\d.]+)\}/g, '');
+  }
+
+  function el() { return document.getElementById('toast'); }
+
+  function clearTimers() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (typeTimer) { clearInterval(typeTimer); typeTimer = null; }
+  }
+
+  function lockSize(text) {
+    const e = el();
+    e.style.width = ''; e.style.height = '';
+    e.textContent = text;
+    e.classList.add('show');
+    e.style.width = e.offsetWidth + 'px';
+    e.style.height = e.offsetHeight + 'px';
+  }
+
+  function setupSpans(text) {
+    const e = el();
+    e.innerHTML = `<span class="toast-typed"></span><span class="toast-ghost" style="visibility:hidden;">${text}</span>`;
+    typedEl = e.querySelector('.toast-typed');
+    ghostEl = e.querySelector('.toast-ghost');
+  }
+
+  function startBeat(beat, doneCb) {
+    current = beat;
+    onBeatDone = doneCb;
+    pendingTokens = tokenize(beat.text);
+    typedSoFar = '';
+
+    const full = plainText(beat.text);
+    if (!full) { return finishBeat(); }
+
+    lockSize(full);
+    setupSpans(full);
+    state = 'typing';
+
+    // Reduced motion → render full text immediately, skip typewriter
+    if (reducedMotion()) {
+      typedEl.textContent = full;
+      ghostEl.textContent = '';
+      typedSoFar = full;
+      pendingTokens = [];
+      return holdThenExit(beat, full);
+    }
+
+    runTokens(beat, full);
+  }
+
+  function runTokens(beat, fullText) {
+    const speed = (beat.speed || 1) * (current._speedMult || 1);
+    const interval = Math.max(8, CFG.msPerChar / speed);
+
+    function nextToken() {
+      if (state !== 'typing') return; // skipped
+      const tok = pendingTokens.shift();
+      if (!tok) return holdThenExit(beat, fullText);
+
+      if (tok.type === 'text') {
+        let i = 0;
+        typeTimer = setInterval(() => {
+          if (state !== 'typing') { clearInterval(typeTimer); typeTimer = null; return; }
+          if (i < tok.value.length) {
+            typedSoFar += tok.value[i++];
+            typedEl.textContent = typedSoFar;
+            ghostEl.textContent = fullText.slice(typedSoFar.length);
+          } else {
+            clearInterval(typeTimer); typeTimer = null;
+            nextToken();
+          }
+        }, interval);
+      } else if (tok.type === 'wait') {
+        timer = setTimeout(() => { timer = null; nextToken(); }, tok.ms);
+      } else if (tok.type === 'speed') {
+        current._speedMult = tok.mult;
+        nextToken();
+      } else if (tok.type === 'autoAdv') {
+        beat.autoAdv = true;
+        nextToken();
+      }
+    }
+    nextToken();
+  }
+
+  function holdThenExit(beat, fullText) {
+    state = 'waiting';
+    const hold = beat.hold != null
+      ? beat.hold
+      : Math.max(CFG.minHold, fullText.length * CFG.holdPerChar);
+    timer = setTimeout(exit, hold);
+  }
+
+  function exit() {
+    state = 'exiting';
+    clearTimers();
+    const e = el();
+    e.classList.remove('show');
+    timer = setTimeout(() => {
+      e.style.width = ''; e.style.height = '';
+      finishBeat();
+    }, CFG.fadeOut);
+  }
+
+  function finishBeat() {
+    state = 'idle';
+    current = null;
+    const cb = onBeatDone; onBeatDone = null;
+    if (cb) cb();
+    pump();
+  }
+
+  function pump() {
+    if (state !== 'idle') return;
+    const next = queue.shift();
+    if (!next) return;
+    startBeat(next, () => {});
+  }
+
+  // Tap behavior: typing → skip to end-of-beat ; waiting → exit now
+  function tap() {
+    if (state === 'typing') {
+      clearTimers();
+      // Drain remaining text tokens; keep wait/speed tokens? No — skip everything.
+      let rest = '';
+      for (const t of pendingTokens) if (t.type === 'text') rest += t.value;
+      typedSoFar += rest;
+      if (typedEl) typedEl.textContent = typedSoFar;
+      if (ghostEl) ghostEl.textContent = '';
+      pendingTokens = [];
+      holdThenExit(current, typedSoFar);
+    } else if (state === 'waiting') {
+      clearTimers();
+      exit();
+    }
+  }
+
+  // Public API
+  function say(input, opts = {}) {
+    const beats = normalize(input, opts);
+    queue.push(...beats);
+    pump();
+  }
+
+  function normalize(input, opts) {
+    if (Array.isArray(input)) {
+      return input.map(b => typeof b === 'string' ? { text: b, ...opts } : { ...opts, ...b });
+    }
+    return [{ text: String(input), ...opts }];
+  }
+
+  function clear() {
+    queue.length = 0;
+    clearTimers();
+    const e = el();
+    if (e) { e.classList.remove('show'); e.style.width=''; e.style.height=''; e.textContent=''; }
+    state = 'idle';
+    current = null;
+  }
+
+  // Wire tap on toast element after DOM ready
+  function bind() {
+    const e = el();
+    if (!e) return;
+    e.style.pointerEvents = 'auto';
+    e.addEventListener('click', tap);
+    e.setAttribute('aria-live', 'polite');
+  }
+
+  return { say, clear, tap, bind, _state: () => state };
+})();
+
+// Backward-compatible toast API → delegates to Narrate
+function showToast(msg, _ignoredDuration) {
+  Narrate.say(msg);
 }
+
+// ════════════════════════════════════════════════
+// ════ COMPANION — AI guide (Mây via Groq proxy) ════
+// Replace dumb scripted nudges with contextual AI suggestions.
+// Falls back to template strings when offline / rate-limited.
+// ════════════════════════════════════════════════
+const Companion = (() => {
+  // ⚠️ Set this to your Cloudflare Worker URL after deploy (see companion-worker/DEPLOY.md)
+  // Empty string = AI disabled, always use fallback templates.
+  const WORKER_URL = '';
+
+  // ⚠️ DIRECT MODE — only for local prototype. Key is exposed in HTML.
+  // Rotate key after testing! For production use Worker proxy above.
+  const GROQ_DIRECT_KEY = ''; // ⚠️ paste key here for local dev only — DO NOT commit a real key
+  const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+  // ── LORE BIBLE — KVTM 2.0 ───────────────────────────────────────────
+  const LORE = `## THẾ GIỚI
+Khu Vườn Trên Mây 2.0 (KVTM) — một trang viên Camellia bị bỏ hoang trên lưng chừng mây.
+Mia thừa kế khu vườn từ bà ngoại, quay về sau nhiều năm.
+Vườn từng nổi tiếng vì hoa hồng và camellia cuối thu. Giờ cổng gãy, hàng rào lụi, đường mòn phủ rêu.
+Mỗi tuần một mùa: xuân (mầm non), hạ (rộn rã), thu (camellia), đông (lặng).
+
+## NHÂN VẬT
+- Mia: chủ vườn, dịu dàng, chăm chỉ. Người chơi NHẬP VAI Mia.
+- Leo: bạn thân thời thơ ấu, kiến trúc sư, hay ghé giúp. Hài, ấm.
+- Mây (BẠN — AI này): quản gia của trang viên, phục vụ gia đình từ đời bà ngoại Mia.
+  Tự xưng "Mây" hoặc "em". Gọi người chơi theo 'honorific' trong context.
+
+  TONE THAY ĐỔI THEO GIỚI TÍNH:
+  - female (tiểu thư): dịu dàng, thi vị, lễ độ. Nói khẽ, dùng hình ảnh thiên nhiên.
+    Vd: "Mừng tiểu thư về. Trà em vừa pha xong. 🍵"
+
+  - male (cậu chủ): tinh nghịch, hài hước, hay trêu nhẹ. Quản gia thân với cậu chủ
+    từ nhỏ nên dám nói móc, càu nhàu yêu, "mất dạy" có chừng mực. Vẫn lễ độ ở câu
+    quan trọng. KHÔNG xúc phạm, KHÔNG tục.
+    Vd: "Cậu chủ lười vầy bà ngoại biết chắc rầy chết. 😏"
+    Vd: "Trời, cậu chủ về rồi à? Em tưởng cậu lạc đường rồi chứ. 🌿"
+    Vd: "Cậu chủ thua ván nữa hả? Để em pha trà... lần thứ năm hôm nay."
+
+  - other (chủ nhân): trung tính, lễ độ, ấm.
+    Vd: "Chủ nhân về rồi. Vườn vẫn ổn cả ạ."
+
+  KHÔNG TỰ ĐOÁN giới tính — luôn dùng đúng 'honorific' và tone tương ứng.
+
+## KHU VỰC
+5 ô vườn theo thứ tự: cổng → hàng rào → bụi hồng trung tâm → lối đi → góc ghế-đèn.
+Mỗi ô có 5 task decor (sửa, sơn, trồng, trang trí, hoàn thiện) → tổng 25 task.
+
+## CƠ CHẾ
+- ⭐ Sao: kiếm từ level match-3, dùng làm decor.
+- ❤ Tim: chơi level. Hồi 30'/quả, max 5.
+- 🔥 Streak: vào game liên tục, ngày 7 có thưởng đặc biệt.
+- 🎁 Daily: phần thưởng đăng nhập mỗi ngày.
+- 📖 Story: mỗi lần hoàn tất 1 ô, mở 1 cảnh truyện mới.
+
+## TÔNE NGÔN NGỮ (BẠN PHẢI THEO)
+- Tiếng Việt tự nhiên, mộc mạc, KHÔNG dịch máy.
+- Câu ngắn, có nhịp. Hay dùng hình ảnh thiên nhiên.
+- Tự xưng "Mây" hoặc "em" (khiêm nhường).
+- Gọi người chơi theo TRƯỜNG 'honorific' trong context (tiểu thư / cậu chủ / chủ nhân).
+- Giọng quản gia tận tụy: kín đáo, lo trước, không thúc giục, không thân mật quá mức.
+- KHÔNG dùng dấu chấm than nhiều. KHÔNG viết HOA cả câu.
+- Tránh sáo: "tuyệt vời", "đỉnh", "nạp ngay", "click", "tap".
+- KHÔNG xưng "ta" / gọi "con" (sai vai).`;
+
+  // ── FEW-SHOT EXAMPLES per trigger ──────────────────────────────────
+  const SHOTS = {
+    welcome_new: [
+      'Tiểu thư đã về. Mây đã chuẩn bị mọi thứ sẵn rồi ạ. 🌱',
+      'Em đợi cô chủ từ sớm. Mời tiểu thư vào, vườn còn ngổn ngang.',
+      'Cô chủ cứ thong thả. Việc nặng để Mây lo dần.',
+    ],
+    welcome_back: [
+      'Mừng tiểu thư về. Trà em vừa pha xong. 🍵',
+      'Cô chủ về đúng lúc — gió hôm nay rất nhẹ.',
+      'Mây đợi tiểu thư cả buổi sáng rồi ạ.',
+    ],
+    daily_unclaimed: [
+      'Em đã gói sẵn quà sớm nay, mời tiểu thư nhận. 🎁',
+      'Có một món nhỏ Mây để dành cho cô chủ.',
+      'Thư hôm nay vẫn nằm trên bàn, đợi tiểu thư mở ạ.',
+    ],
+    idle_in_hub: [
+      'Cô chủ cứ nghỉ, em sẽ trông vườn.',
+      'Tiểu thư có cần em pha thêm trà không ạ?',
+      'Một khoảnh tĩnh — vườn cũng đang lắng nghe.',
+    ],
+    level_failed: [
+      'Tiểu thư nghỉ tay đi. Em sẽ chuẩn bị lại bàn cờ.',
+      'Lần này khó thật. Cô chủ uống ngụm nước đã.',
+      'Hoa hồng còn ba mùa mới nở — không vội đâu ạ.',
+    ],
+    out_of_lives: [
+      'Tim cần thời gian. Em pha trà cô chủ uống tạm. 🍵',
+      'Tiểu thư nghỉ một chút, em đánh thức sau.',
+      'Nửa giờ nữa em sẽ báo cô chủ.',
+    ],
+    decor_unlocked: [
+      'Em vừa dọn xong một góc, mời tiểu thư xem.',
+      'Có việc mới ngoài kia, cô chủ ạ. 🌹',
+      'Đất đã mềm — Mây nghĩ tiểu thư sẽ thích.',
+    ],
+    streak_milestone: [
+      'Bảy ngày liền tiểu thư về. Vườn nhớ rõ lắm ạ.',
+      'Cô chủ bền bỉ — em vinh dự được phục vụ.',
+      'Ngày thứ bảy. Camellia sẽ nở cho tiểu thư.',
+    ],
+    profile_updated: [
+      // female — dịu dàng
+      'Mừng tiểu thư mới. Em vẫn nhớ tên cũ chút thôi ạ. 🌸',
+      // male — trêu
+      'A, cậu chủ đổi tên rồi à? Tên gì cũng lười như nhau. 😏',
+      // other
+      'Chủ nhân vừa cập nhật hồ sơ. Em đã ghi nhớ.',
+    ],
+  };
+
+  const PERSONA = `Bạn là Mây, người gác vườn Camellia trong "Khu Vườn Trên Mây 2.0".
+
+${LORE}
+
+## QUY TẮC TRẢ LỜI
+- Trả về ĐÚNG 1 câu, ≤90 ký tự, KHÔNG xuống dòng, KHÔNG dấu ngoặc kép.
+- KHÔNG dùng: "nhấn nút", "chạm vào", "click", "tap", "đỉnh", "tuyệt vời".
+- KHÔNG hứa thưởng không có trong context.
+- KHÔNG spoil cốt truyện. KHÔNG mời mua IAP.
+- Có thể 1 emoji nhỏ (🌸🌿✨🌹🍵🎁) — không bắt buộc.
+- Phải ăn khớp trigger + context được cung cấp.
+- Nếu trigger lạ, im lặng (trả về chuỗi rỗng).`;
+
+  // Local fallbacks if AI unavailable
+  const FALLBACKS = {
+    daily_unclaimed:   'Phần thưởng hôm nay vẫn chờ con đó. 🎁',
+    welcome_back:      'Chào con. Vườn vẫn ở đây, chờ một bàn tay quen. 🌿',
+    welcome_new:       'Hôm nay là ngày đầu của con với khu vườn. Hãy bắt đầu chậm rãi. 🌱',
+    idle_in_hub:       'Một khoảnh khắc tĩnh. Vườn cũng cần lắng nghe.',
+    level_failed:      'Khó nhằn nhỉ. Nghỉ một hơi rồi thử lại nhé.',
+    decor_unlocked:    'Có việc mới ở vườn. Con để ý chưa?',
+    out_of_lives:      'Tim cần thời gian hồi sức. Đi pha trà đã.',
+    streak_milestone:  'Bền bỉ là phép màu của khu vườn này.',
+    profile_updated:   'Em đã ghi nhớ tên mới của chủ.',
+  };
+
+  // In-session cache to avoid duplicate calls within same trigger+context
+  const sessionCache = new Map();
+
+  async function suggest(trigger, context = {}) {
+    const key = trigger + ':' + JSON.stringify(context);
+    if (sessionCache.has(key)) return sessionCache.get(key);
+
+    const fallback = FALLBACKS[trigger] || null;
+
+    // No backend configured → fallback
+    if (!WORKER_URL && !GROQ_DIRECT_KEY) {
+      sessionCache.set(key, fallback);
+      return fallback;
+    }
+
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 4500);
+      let text = null;
+
+      if (WORKER_URL) {
+        const r = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ trigger, context }),
+          signal: ctrl.signal,
+        });
+        if (!r.ok) throw new Error('http_' + r.status);
+        const data = await r.json();
+        text = (data && data.text) ? String(data.text).trim() : null;
+      } else {
+        // DIRECT MODE — call Groq from browser
+        const userMsg = buildUserMessage(trigger, context);
+        const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'authorization': 'Bearer ' + GROQ_DIRECT_KEY,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: GROQ_MODEL,
+            messages: [
+              { role: 'system', content: PERSONA },
+              { role: 'user',   content: userMsg }
+            ],
+            max_tokens: 80,
+            temperature: 0.85,
+            top_p: 0.9,
+          }),
+          signal: ctrl.signal,
+        });
+        if (!r.ok) throw new Error('groq_' + r.status);
+        const data = await r.json();
+        text = (data?.choices?.[0]?.message?.content || '').trim().replace(/^["']|["']$/g, '');
+      }
+      clearTimeout(timer);
+
+      const out = text || fallback;
+      sessionCache.set(key, out);
+      return out;
+    } catch (e) {
+      console.warn('[Companion] fallback:', e.message);
+      sessionCache.set(key, fallback);
+      return fallback;
+    }
+  }
+
+  function buildUserMessage(trigger, context) {
+    const lines = [];
+    const shots = SHOTS[trigger];
+    if (shots && shots.length) {
+      lines.push('## Ví dụ tham khảo (cùng tone, cùng nhân vật):');
+      shots.forEach(s => lines.push('- ' + s));
+      lines.push('');
+    }
+    lines.push('## Tình huống hiện tại');
+    lines.push('Trigger: ' + trigger);
+    for (const [k, v] of Object.entries(context || {})) {
+      if (v == null || v === '') continue;
+      lines.push('- ' + k + ': ' + (typeof v === 'object' ? JSON.stringify(v) : v));
+    }
+    lines.push('');
+    lines.push('Viết 1 câu Mây nói với Mia trong tình huống này. KHÔNG lặp lại y nguyên ví dụ.');
+    return lines.join('\n');
+  }
+
+  // Helper: build context from current save state
+  function gameContext(extra = {}) {
+    const s = Save.get();
+    const g = s.player?.gender || 'female';
+    const honorific = g === 'male' ? 'cậu chủ' : (g === 'other' ? 'chủ nhân' : 'tiểu thư');
+    return {
+      name:      s.player?.name,
+      gender:    g,
+      honorific: honorific,
+      level:     s.progress?.currentLevel,
+      stars:     s.progress?.starsBalance,
+      lives:     s.progress?.livesCount,
+      streak:    s.player?.dayStreak,
+      ...extra,
+    };
+  }
+
+  // Speak via Narrate; no-op if no text
+  async function speak(trigger, extraContext) {
+    const text = await suggest(trigger, gameContext(extraContext));
+    if (text) Narrate.say(text);
+  }
+
+  function clearSession() { sessionCache.clear(); }
+
+  return { suggest, speak, gameContext, clearSession };
+})();
 
 // ════════════════════════════════════════════════
 // ════ INIT ════
 // ════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════
+// ════ PERSISTENT BOTTOM HUD ════
+// ════════════════════════════════════════════════
+const PersistentHUD = (() => {
+  const VISIBLE_SCENES = ['hub', 'daily', 'events', 'team', 'inbox'];
+  const TABS = [
+    { id: 'daily',  scene: 'daily',  icon: '🎁', label: 'Daily'  },
+    { id: 'events', scene: 'events', icon: '🏆', label: 'Events' },
+    { id: 'home',   scene: 'hub',    icon: '🏠', label: 'Home', home: true },
+    { id: 'team',   scene: 'team',   icon: '👥', label: 'Team'   },
+    { id: 'inbox',  scene: 'inbox',  icon: '📬', label: 'Inbox'  },
+  ];
+
+  function render() {
+    const el = document.getElementById('persistent-hud');
+    if (!el) return;
+    const save = Save.get();
+    const hasDaily = !DailyLogin.isClaimedToday();
+    el.innerHTML = `
+      <nav class="rm-bnav">
+        ${TABS.map(t => `
+          <div class="rm-bnav-tab${t.home ? ' rm-bnav-home' : ''}" data-scene="${t.scene}" style="position:relative;">
+            ${t.home
+              ? `<div class="rm-bnav-icon-wrap">${t.icon}</div>`
+              : `<span class="rm-bnav-icon">${t.icon}</span>`}
+            <span class="rm-bnav-label">${t.label}</span>
+            ${t.id === 'daily' && hasDaily ? '<div style="position:absolute;top:6px;right:calc(50% - 14px);width:8px;height:8px;background:#E74C3C;border-radius:50%;border:1.5px solid #1A2845;"></div>' : ''}
+          </div>`).join('')}
+      </nav>
+    `;
+    el.querySelectorAll('.rm-bnav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const target = tab.getAttribute('data-scene');
+        if (target && target !== Game.currentSceneName()) Game.goto(target);
+      });
+    });
+  }
+
+  function update(sceneName) {
+    const el = document.getElementById('persistent-hud');
+    const frame = document.getElementById('phone-frame');
+    if (!el || !frame) return;
+    const visible = VISIBLE_SCENES.includes(sceneName);
+    el.hidden = !visible;
+    frame.style.setProperty('--hud-h', visible ? '62px' : '0px');
+    if (!visible) return;
+    el.querySelectorAll('.rm-bnav-tab').forEach(tab => {
+      const isActive = tab.getAttribute('data-scene') === sceneName;
+      tab.classList.toggle('rm-bnav-active', isActive);
+      if (isActive) tab.setAttribute('aria-current', 'page');
+      else tab.removeAttribute('aria-current');
+    });
+  }
+
+  return { render, update };
+})();
 
 function _kvtmBoot() {
   try {
     console.log('[KVTM] boot start');
     Save.load();
     Dev.init();
+    Narrate.bind();
+    PersistentHUD.render();
     Game.goto('splash');
     console.log('[KVTM] boot done, scene:', Game.currentSceneName());
   } catch(e) {
@@ -5772,7 +6453,7 @@ const STORY_BEATS = [
     trigger: 'first_play',
     background: 'estate_neglected',
     lines: [
-      { speaker: 'Mia', side: 'left', text: 'Madame Elena... bà ấy gửi thư mời mình đến Vườn Hồng Estate?' },
+      { speaker: 'Mia', side: 'left', text: 'Mây... bà ấy gửi thư mời mình đến Vườn Hồng Estate?' },
       { speaker: 'Narrator', side: 'center', text: 'Mia bước vào khu vườn — lá vàng úa, cổng gỉ sét, hồng dại mọc um tùm.' },
       { speaker: 'Mia', side: 'left', text: 'Mình sẽ phục dựng nơi này. Vì bà ấy.' }
     ]
@@ -5788,20 +6469,20 @@ const STORY_BEATS = [
       { speaker: 'Leo', side: 'right', text: 'Mẹ tôi trồng nó.' }
     ]
   },
-  { id: 'elena_reveal_d5', title: 'Chương 1 · Bí Mật Madame Elena',
+  { id: 'elena_reveal_d5', title: 'Chương 1 · Bí Mật Mây',
     trigger: 'level_15_win',
     background: 'mansion_interior',
     lines: [
-      { speaker: 'Madame Elena', side: 'right', text: 'Cảm ơn con đã đến. Ta không còn nhiều thời gian.' },
+      { speaker: 'Mây', side: 'right', text: 'Cảm ơn con đã đến. Ta không còn nhiều thời gian.' },
       { speaker: 'Mia', side: 'left', text: 'Bà... bà đang nói gì vậy?' },
-      { speaker: 'Madame Elena', side: 'right', text: 'Khu vườn này... và Leo... ta gửi gắm cả hai cho con.' }
+      { speaker: 'Mây', side: 'right', text: 'Khu vườn này... và Leo... ta gửi gắm cả hai cho con.' }
     ]
   },
   { id: 'cliffhanger_d7', title: 'Chương 1 · Tin Sốc Cuối Tuần',
     trigger: 'level_25_win',
     background: 'storm_garden',
     lines: [
-      { speaker: 'Leo', side: 'right', text: 'Mia... có chuyện rồi. Madame Elena...' },
+      { speaker: 'Leo', side: 'right', text: 'Mia... có chuyện rồi. Mây...' },
       { speaker: 'Mia', side: 'left', text: 'Không... không thể nào!' },
       { speaker: 'Narrator', side: 'center', text: '— Hết Chương 1 —' },
       { speaker: 'Narrator', side: 'center', text: 'Chương 2 sẽ mở khoá ngày mai...' }
@@ -6283,7 +6964,7 @@ Scenes._storyPlay = function(beatId) {
   const speakerColors = {
     'Mia': '#FF6B9D',
     'Leo': '#93c5fd',
-    'Madame Elena': '#FFD700',
+    'Mây': '#FFD700',
     'Narrator': 'rgba(255,255,255,0.5)',
   };
 
@@ -6298,7 +6979,7 @@ Scenes._storyPlay = function(beatId) {
       <!-- Left character -->
       <div class="story-char-left" id="story-char-left">
         <svg viewBox="0 0 100 200" width="100" height="200">
-          <!-- Female silhouette (Mia/Elena) -->
+          <!-- Female silhouette (Mia/Mây) -->
           <ellipse cx="50" cy="25" rx="16" ry="18" fill="#e8a090"/>
           <path d="M34,42 Q50,60 66,42 L72,150 Q50,165 28,150 Z" fill="#e8a090"/>
           <path d="M30,42 Q20,80 22,150" stroke="#c07060" stroke-width="3" fill="none"/>
@@ -6619,6 +7300,21 @@ Scenes.daily = function(params) {
   return div;
 };
 
+// ── Placeholder scenes (Events / Team / Inbox) ──
+function _placeholderScene(title, emoji, msg) {
+  const div = document.createElement('div');
+  div.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,#fdf6e3 0%,#f4e8c8 100%);padding:24px;text-align:center;color:var(--ink);';
+  div.innerHTML = `
+    <div style="font-size:64px;margin-bottom:16px;">${emoji}</div>
+    <h2 style="font-family:'Gloria Hallelujah',cursive;font-size:24px;margin:0 0 8px;">${title}</h2>
+    <p style="font-family:'Kalam',cursive;font-size:15px;opacity:.7;max-width:280px;line-height:1.4;">${msg}</p>
+  `;
+  return div;
+}
+Scenes.events = function(){ return _placeholderScene('Events', '🏆', 'Sự kiện đang được chuẩn bị. Quay lại sau nhé!'); };
+Scenes.team   = function(){ return _placeholderScene('Team',   '👥', 'Tính năng Team sẽ sớm mở. Mời bạn bè cùng vườn!'); };
+Scenes.inbox  = function(){ return _placeholderScene('Inbox',  '📬', 'Hộp thư trống. Tin nhắn và quà sẽ xuất hiện ở đây.'); };
+
 Scenes._dailyClaim = function() {
   const reward = DailyLogin.claim();
   if (!reward) {
@@ -6685,6 +7381,11 @@ Scenes.settings = function(params) {
       </div>
       <div style="margin-top:8px;">
         <button class="btn-secondary" onclick="Game.goto('daily')" aria-label="Phần thưởng đăng nhập">🎁 Phần Thưởng Đăng Nhập</button>
+      </div>
+      <div style="margin-top:4px;">
+        <button class="btn-secondary" onclick="Scenes._editProfile()" aria-label="Đổi tên và giới tính">
+          ✏️ Đổi Tên & Giới Tính
+        </button>
       </div>
       <div style="margin-top:4px;">
         <button class="btn-secondary" onclick="Game.goto('credits')" aria-label="Giới thiệu">ℹ️ Giới Thiệu & Credits</button>
@@ -6793,13 +7494,13 @@ Scenes.hub = function(params) {
       }
     }
 
-    // Auto-show daily reward popup if not claimed
-    if (!DailyLogin.isClaimedToday()) {
+    // Daily nudge via Companion (AI or fallback). Once per session to avoid spam.
+    if (!DailyLogin.isClaimedToday() && !window._dailyNudgedThisSession) {
+      window._dailyNudgedThisSession = true;
       setTimeout(() => {
         const stage = document.getElementById('stage');
         if (!stage || !stage.querySelector('.scene')) return;
-        // Show subtle toast nudge instead of modal
-        showToast('🎁 Phần thưởng hôm nay chưa nhận! Nhấn Phần thưởng bên dưới.', 3500);
+        Companion.speak('daily_unclaimed');
       }, 1800);
     }
   });

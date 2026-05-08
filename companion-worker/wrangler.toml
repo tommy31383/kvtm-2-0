@@ -1,0 +1,8 @@
+name = "kvtm-companion"
+main = "worker.js"
+compatibility_date = "2024-12-01"
+
+# Optional: tighten CORS to your game domain in production
+# [vars]
+# ALLOWED_ORIGIN = "https://your-game.com"
+# MODEL = "llama-3.3-70b-versatile"
