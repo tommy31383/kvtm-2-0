@@ -4541,9 +4541,15 @@ const Scenes = {
       return Scenes._levelTripleTile(levelId);
     }
 
-    // ─── Sort Blossom v2 routing (shared engine with tool) ─────
-    // If level exists in SortBlossomData with schemaVersion 2 → use new engine.
-    if (typeof SortBlossomData !== 'undefined') {
+    // ─── Sort Blossom v2 routing (gated — opt-in via flag) ───────
+    // To avoid mid-pack rule discontinuity, v2 engine only kicks in when
+    // EXPLICITLY enabled. Enable via:
+    //   - URL: ?blossom_v2=1
+    //   - DevTools: localStorage.setItem('kvtm2_blossom_v2','1')
+    // Future: flip default to true once L1-L20 all migrated to v2 data.
+    const _v2Flag = (new URLSearchParams(location.search).get('blossom_v2') === '1')
+                 || (localStorage.getItem('kvtm2_blossom_v2') === '1');
+    if (_v2Flag && typeof SortBlossomData !== 'undefined') {
       const v2Levels = SortBlossomData.loadLevels();
       const v2 = v2Levels.find(l => l.id === levelId && l.schemaVersion === 2);
       if (v2) return Scenes._levelBlossomV2(v2);
@@ -7522,12 +7528,37 @@ Scenes._levelBlossomV2 = function(cfg) {
       Save.set('progress.currentLevel', cfg.id + 1);
     }
     Save.set('progress.starsBalance', (save.progress.starsBalance || 0) + stars);
-    // Win overlay (reuse simple inline alert for now)
-    setTimeout(() => {
-      if (confirm(`🌸 Hoàn thành ${cfg.name}!\nMoves: ${moves} · ${'★'.repeat(stars)}${'☆'.repeat(3-stars)}\n\nVề Hub?`)) {
-        Game.goto('hub');
-      }
-    }, 200);
+
+    // Build win overlay (in-game, not confirm()) — matches SortVase/TripleTile UX
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:200;';
+    overlay.innerHTML = `
+      <div style="background:#fdf6e3;border:3px solid #3a2a1a;border-radius:18px;padding:24px 20px;width:280px;text-align:center;font-family:'Gloria Hallelujah',cursive;color:#3a2a1a;box-shadow:0 16px 40px rgba(0,0,0,.4);">
+        <div style="font-size:34px;margin-bottom:4px;">🌸</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Hoàn thành!</div>
+        <div style="font-size:32px;color:#FFD700;margin:8px 0;">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</div>
+        <div style="font-size:13px;color:#666;margin-bottom:16px;">${cfg.name} · ${moves} lượt</div>
+        <button id="blv2-next-btn" style="width:100%;padding:10px;background:#FFD700;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:#3a2a1a;">→ TIẾP TỤC</button>
+      </div>
+    `;
+    div.appendChild(overlay);
+    overlay.querySelector('#blv2-next-btn').addEventListener('click', () => {
+      overlay.remove();
+      goNextWithStoryCheck();
+    });
+  }
+
+  // Story unlock hook — mirrors SortVase.gotoNextLevel patch behavior
+  function goNextWithStoryCheck() {
+    const completedId = cfg.id;
+    const beatId = (typeof Story !== 'undefined' && Story.checkTrigger) ? Story.checkTrigger(completedId) : null;
+    if (beatId) {
+      Story.unlock(beatId);
+      window._storyReturnScene = 'hub';
+      setTimeout(() => Game.goto('story', { beatId }), 200);
+    } else {
+      Game.goto('hub');
+    }
   }
 
   function triggerLose(reason) {

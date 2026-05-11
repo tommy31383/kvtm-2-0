@@ -186,18 +186,20 @@
    * @param {number} maxStates safety cap
    * @returns {{moves:number, states:number, solvable:boolean, timeout?:boolean}}
    */
-  function bfsSolve(pots, maxStates = 200000) {
+  function bfsSolve(pots, maxStates = 50000) {
     const start = initState(pots);
     if (isWon(start)) return { moves: 0, states: 1, solvable: true };
 
     const visited = new Set();
     visited.add(encode(start));
+    // Use queue + head index (O(1) dequeue) instead of array.shift() (O(n))
     const queue = [{ state: start, moves: 0 }];
+    let head = 0;
     let states = 1;
 
-    while (queue.length) {
+    while (head < queue.length) {
       if (states > maxStates) return { moves: -1, states, solvable: false, timeout: true };
-      const { state, moves } = queue.shift();
+      const { state, moves } = queue[head++];
       const N = state.length;
       for (let a = 0; a < N; a++) {
         for (let posA = 0; posA < 3; posA++) {
