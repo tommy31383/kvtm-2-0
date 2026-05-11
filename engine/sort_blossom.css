@@ -1,0 +1,202 @@
+/**
+ * KVTM 2.0 — Sort Blossom shared styles
+ * Used by both tools/level_editor.html and kvtm_2_0_game.html
+ *
+ * Override --pot-scale on a parent container to resize everything proportionally.
+ * Default scale = 1 = editor size. Game uses ~0.55 for compact phone layout.
+ */
+
+:root {
+  /* ┌───────────────────────────────────────────────┐
+     │ TUNING — chỉnh layout hoa                     │
+     └───────────────────────────────────────────────┘ */
+  --sb-stem-x:        10px;   /* DỜI TÂM hội tụ X (- = sang trái, + = sang phải) */
+  --sb-stem-spread:    5px;   /* KHOẢNG RỘNG giữa chân stems */
+  --sb-flower-bottom: 70px;   /* vị trí Y chân stem */
+  --sb-flower-w-side: 170px;  /* size hoa L và R */
+  --sb-flower-w-mid:  180px;  /* size hoa C (giữa) */
+  --sb-flower-angle:   22deg; /* độ nghiêng L/R */
+  --sb-pot-w:         160px;  /* chiều rộng pot wrap */
+  --sb-pot-h:         290px;  /* chiều cao pot wrap */
+  --sb-pot-img-w:     150px;  /* chiều rộng pot PNG */
+  --sb-active-h:      220px;  /* chiều cao vùng active flowers */
+  --sb-asset-path:    'assets/sort_blossom/';
+}
+
+/* Scaled variant for game (compact mobile) — apply class "sb-compact" on parent */
+.sb-compact {
+  --sb-stem-x:        4px;
+  --sb-stem-spread:   3px;
+  --sb-flower-bottom: 40px;
+  --sb-flower-w-side: 76px;
+  --sb-flower-w-mid:  82px;
+  --sb-flower-angle:  18deg;
+  --sb-pot-w:         88px;
+  --sb-pot-h:         150px;
+  --sb-pot-img-w:     82px;
+  --sb-active-h:      110px;
+}
+
+/* ─── POT CELL ────────────────────────────────────────────── */
+.sb-pot-cell {
+  position: relative;
+  width: var(--sb-pot-w);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform .15s ease;
+}
+.sb-pot-cell:hover { transform: translateY(-2px); }
+
+.sb-pot-visual {
+  position: relative;
+  width: var(--sb-pot-w);
+  height: var(--sb-pot-h);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sb-pot-back, .sb-pot-front {
+  position: absolute;
+  width: var(--sb-pot-img-w);
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.sb-pot-back  { z-index: 1; }
+.sb-pot-front { z-index: 30; }
+
+/* ─── ACTIVE FLOWERS (visual) ────────────────────────────────── */
+.sb-active-flowers {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: var(--sb-flower-bottom);
+  height: var(--sb-active-h);
+  z-index: 20;
+  pointer-events: none;
+}
+.sb-active-flowers img {
+  position: absolute;
+  bottom: 0;
+  height: auto;
+  transform-origin: 50% 95%;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.45));
+  transition: transform .18s cubic-bezier(.34,1.56,.64,1);
+}
+.sb-active-flowers img[data-pos="0"] {
+  left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread));
+  width: var(--sb-flower-w-side);
+  transform: translateX(-50%) rotate(calc(-1 * var(--sb-flower-angle)));
+  z-index: 1;
+}
+.sb-active-flowers img[data-pos="1"] {
+  left: calc(50% + var(--sb-stem-x));
+  width: var(--sb-flower-w-mid);
+  transform: translateX(-50%) rotate(0deg);
+  z-index: 3;
+}
+.sb-active-flowers img[data-pos="2"] {
+  left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread));
+  width: var(--sb-flower-w-side);
+  transform: translateX(-50%) rotate(var(--sb-flower-angle));
+  z-index: 2;
+}
+.sb-active-flowers img.sb-lifted[data-pos="0"] {
+  transform: translateX(-50%) translateY(-14px) rotate(calc(-1 * var(--sb-flower-angle))) scale(1.06);
+}
+.sb-active-flowers img.sb-lifted[data-pos="1"] {
+  transform: translateX(-50%) translateY(-14px) rotate(0deg) scale(1.06);
+}
+.sb-active-flowers img.sb-lifted[data-pos="2"] {
+  transform: translateX(-50%) translateY(-14px) rotate(var(--sb-flower-angle)) scale(1.06);
+}
+
+/* ─── HIT ZONES (invisible, 3 columns L/C/R) ───────────────── */
+.sb-active-row {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: var(--sb-flower-bottom);
+  height: var(--sb-active-h);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  z-index: 25;
+}
+.sb-active-slot {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 4px;
+  transition: background .12s ease;
+  position: relative;
+}
+.sb-active-slot:hover { background: rgba(255,215,0,0.08); }
+.sb-pos-label {
+  position: absolute;
+  top: -2px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: rgba(255,215,0,0.45);
+  font-family: monospace;
+  pointer-events: none;
+}
+
+/* ─── QUEUE STRIP (below pot) ──────────────────────────────── */
+.sb-queue-strip {
+  margin-top: 6px;
+  width: var(--sb-pot-w);
+  min-height: 38px;
+  background: rgba(0,0,0,0.25);
+  border: 1px dashed #4a4f5e;
+  border-radius: 6px;
+  padding: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  align-items: center;
+}
+.sb-queue-flower {
+  width: 26px; height: 26px;
+  cursor: pointer;
+  position: relative;
+}
+.sb-queue-flower img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  opacity: 0.55;
+  filter: brightness(0.85);
+}
+.sb-queue-flower:hover img { opacity: 1; filter: none; }
+.sb-queue-empty {
+  width: 26px; height: 26px;
+  border: 1px dashed #5a5f6e;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #5a5f6e;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.sb-queue-empty:hover { border-color: #FFD700; color: #FFD700; }
+.sb-queue-label {
+  width: 100%; text-align: center;
+  color: #6a6f7e;
+  font-size: 9px;
+  font-family: monospace;
+  margin-bottom: 2px;
+}
+
+/* ─── SELECTED POT GLOW ───────────────────────────────────── */
+.sb-pot-cell.sb-selected .sb-pot-back {
+  filter: drop-shadow(0 0 12px rgba(255,215,0,0.6));
+}
+
+/* ─── VANISH ANIMATION ────────────────────────────────────── */
+.sb-vanish {
+  animation: sbVanishAnim .4s ease forwards;
+}
+@keyframes sbVanishAnim {
+  0%   { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) scale(1.5); }
+}

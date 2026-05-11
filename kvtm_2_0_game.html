@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>KVTM 2.0 — Vườn Hoa & Câu Chuyện</title>
 <script src="https://cdn.tailwindcss.com"></script>
+
+<!-- ═══ Sort Blossom shared engine (single source of truth with tools/level_editor.html) ═══ -->
+<link rel="stylesheet" href="engine/sort_blossom.css">
+<script src="engine/sort_blossom_engine.js"></script>
+<script src="engine/sort_blossom_render.js"></script>
+<script src="engine/sort_blossom_data.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Caveat:wght@500;600;700&family=Kalam:wght@400;700&family=Gloria+Hallelujah&family=Patrick+Hand&display=swap" rel="stylesheet">
@@ -4134,7 +4140,7 @@ const Scenes = {
 
     Sfx.play('success');
     Haptic.success();
-    Companion.clearSession && Companion.clearSession();
+    Companion.bumpProfileVersion && Companion.bumpProfileVersion();
     Game.goto('hub');
   },
 
@@ -4520,7 +4526,7 @@ const Scenes = {
         Save.set('player.name', name);
         Save.set('player.gender', gender);
         overlay.remove();
-        Companion.clearSession && Companion.clearSession();
+        Companion.bumpProfileVersion && Companion.bumpProfileVersion();
         Companion.speak('profile_updated');
       };
     }
@@ -4533,6 +4539,14 @@ const Scenes = {
     // Phase 4: Route to Triple Tile engine for L21+
     if (LEVEL_TYPE(levelId) === 'triple_tile') {
       return Scenes._levelTripleTile(levelId);
+    }
+
+    // ─── Sort Blossom v2 routing (shared engine with tool) ─────
+    // If level exists in SortBlossomData with schemaVersion 2 → use new engine.
+    if (typeof SortBlossomData !== 'undefined') {
+      const v2Levels = SortBlossomData.loadLevels();
+      const v2 = v2Levels.find(l => l.id === levelId && l.schemaVersion === 2);
+      if (v2) return Scenes._levelBlossomV2(v2);
     }
 
     const cfgIdx  = Math.min(Math.max(levelId, 1), SORT_VASE_LEVELS.length) - 1;
@@ -5467,18 +5481,78 @@ ${LORE}
     profile_updated:   'Em đã ghi nhớ tên mới của chủ.',
   };
 
-  // In-session cache to avoid duplicate calls within same trigger+context
-  const sessionCache = new Map();
+  // ── Persistent cache with profile-version invalidation + TTL + LRU ──
+  const CACHE_LS_KEY = 'kvtm2_companion_cache';
+  const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+  const CACHE_MAX    = 60;                  // LRU cap
+
+  let profileVersion = 0;
+  const cache = new Map(); // key → { text, ts }
+
+  function loadCache() {
+    try {
+      const raw = localStorage.getItem(CACHE_LS_KEY);
+      if (!raw) return;
+      const obj = JSON.parse(raw);
+      profileVersion = obj.v | 0;
+      const now = Date.now();
+      for (const e of obj.e || []) {
+        if (now - e.t < CACHE_TTL_MS) cache.set(e.k, { text: e.x, ts: e.t });
+      }
+    } catch {}
+  }
+
+  function persistCache() {
+    try {
+      const entries = [];
+      for (const [k, v] of cache) entries.push({ k, x: v.text, t: v.ts });
+      localStorage.setItem(CACHE_LS_KEY, JSON.stringify({ v: profileVersion, e: entries }));
+    } catch {}
+  }
+
+  function cacheKey(trigger, context) {
+    return profileVersion + '::' + trigger + '::' + JSON.stringify(context);
+  }
+
+  function cacheGet(key) {
+    const v = cache.get(key);
+    if (!v) return undefined;
+    if (Date.now() - v.ts > CACHE_TTL_MS) { cache.delete(key); return undefined; }
+    return v.text;
+  }
+
+  function cacheSet(key, text) {
+    cache.set(key, { text, ts: Date.now() });
+    if (cache.size > CACHE_MAX) {
+      // Evict oldest
+      const arr = [...cache.entries()].sort((a, b) => a[1].ts - b[1].ts);
+      while (cache.size > CACHE_MAX) cache.delete(arr.shift()[0]);
+    }
+    persistCache();
+  }
+
+  function bumpProfileVersion() {
+    profileVersion = (profileVersion + 1) >>> 0;
+    // Prune entries from old versions to free memory
+    for (const k of [...cache.keys()]) {
+      if (!k.startsWith(profileVersion + '::')) cache.delete(k);
+    }
+    persistCache();
+    console.log('[Companion] profile version bumped →', profileVersion);
+  }
+
+  loadCache();
 
   async function suggest(trigger, context = {}) {
-    const key = trigger + ':' + JSON.stringify(context);
-    if (sessionCache.has(key)) return sessionCache.get(key);
+    const key = cacheKey(trigger, context);
+    const cached = cacheGet(key);
+    if (cached !== undefined) return cached;
 
     const fallback = FALLBACKS[trigger] || null;
 
     // No backend configured → fallback
     if (!WORKER_URL && !GROQ_DIRECT_KEY) {
-      sessionCache.set(key, fallback);
+      cacheSet(key, fallback);
       return fallback;
     }
 
@@ -5525,11 +5599,11 @@ ${LORE}
       clearTimeout(timer);
 
       const out = text || fallback;
-      sessionCache.set(key, out);
+      cacheSet(key, out);
       return out;
     } catch (e) {
       console.warn('[Companion] fallback:', e.message);
-      sessionCache.set(key, fallback);
+      cacheSet(key, fallback);
       return fallback;
     }
   }
@@ -5576,9 +5650,20 @@ ${LORE}
     if (text) Narrate.say(text);
   }
 
-  function clearSession() { sessionCache.clear(); }
+  // Hard clear (rarely needed). Prefer bumpProfileVersion() for profile change.
+  function clearSession() {
+    cache.clear();
+    try { localStorage.removeItem(CACHE_LS_KEY); } catch {}
+    profileVersion = 0;
+    console.log('[Companion] cache cleared');
+  }
 
-  return { suggest, speak, gameContext, clearSession };
+  // Stats for dev/debug
+  function stats() {
+    return { profileVersion, cacheSize: cache.size, ttlH: CACHE_TTL_MS / 3600000, max: CACHE_MAX };
+  }
+
+  return { suggest, speak, gameContext, clearSession, bumpProfileVersion, stats };
 })();
 
 // ════════════════════════════════════════════════
@@ -7314,6 +7399,186 @@ function _placeholderScene(title, emoji, msg) {
 Scenes.events = function(){ return _placeholderScene('Events', '🏆', 'Sự kiện đang được chuẩn bị. Quay lại sau nhé!'); };
 Scenes.team   = function(){ return _placeholderScene('Team',   '👥', 'Tính năng Team sẽ sớm mở. Mời bạn bè cùng vườn!'); };
 Scenes.inbox  = function(){ return _placeholderScene('Inbox',  '📬', 'Hộp thư trống. Tin nhắn và quà sẽ xuất hiện ở đây.'); };
+
+// ═══════════════════════════════════════════════════════════════
+// ════ SORT BLOSSOM v2 LEVEL SCENE (shared engine) ════
+// ═══════════════════════════════════════════════════════════════
+Scenes._levelBlossomV2 = function(cfg) {
+  const Engine = SortBlossomEngine;
+  const Render = SortBlossomRender;
+  const ASSETS = 'assets/sort_blossom/';
+
+  const div = document.createElement('div');
+  div.className = 'scene-blossom-v2';
+  div.style.cssText = 'flex:1;display:flex;flex-direction:column;background:linear-gradient(180deg,#f5e8c4 0%,#d8c39e 100%);overflow:hidden;';
+
+  // State
+  let state = Engine.initState(cfg.pots);
+  let moves = 0;
+  let selected = null;
+  let history = [];
+  let gameOver = false;
+
+  div.innerHTML = `
+    <div class="lv-topbar" style="background:rgba(122,146,168,0.92);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #3a2a1a;">
+      <button class="lv-back-btn" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:4px 10px;border-radius:6px;cursor:pointer;" onclick="Game.goto('hub')">←</button>
+      <div style="font-family:'Gloria Hallelujah',cursive;font-size:14px;text-align:center;">🌹 ${cfg.name}</div>
+      <button class="lv-pause-btn" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:4px 10px;border-radius:6px;cursor:pointer;">⏸</button>
+    </div>
+    <div class="lv-stats" style="background:rgba(255,255,255,0.6);padding:8px 14px;display:flex;justify-content:space-between;color:#3a2a1a;font-size:13px;font-weight:700;">
+      <span>Lượt: <span id="blv2-moves">0</span>/${cfg.moveLimit}</span>
+      <span id="blv2-stars">★★★</span>
+    </div>
+    <div class="blv2-pots sb-compact" id="blv2-pots" style="flex:1;overflow-y:auto;padding:18px 8px 8px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:flex-end;"></div>
+    <div style="background:rgba(122,146,168,0.92);padding:8px 14px;display:flex;gap:8px;border-top:2px solid #3a2a1a;">
+      <button id="blv2-undo" style="flex:1;background:#fff;color:#3a2a1a;border:2px solid #3a2a1a;padding:6px;border-radius:6px;cursor:pointer;font-size:12px;">↶ Undo</button>
+      <button id="blv2-hint" style="flex:1;background:#fff;color:#3a2a1a;border:2px solid #3a2a1a;padding:6px;border-radius:6px;cursor:pointer;font-size:12px;">💡 Hint</button>
+      <button id="blv2-reset" style="flex:1;background:#fff;color:#3a2a1a;border:2px solid #3a2a1a;padding:6px;border-radius:6px;cursor:pointer;font-size:12px;">🔄 Reset</button>
+    </div>
+  `;
+
+  const cells = [];
+  function build() {
+    const cont = div.querySelector('#blv2-pots');
+    cont.innerHTML = '';
+    cells.length = 0;
+    state.forEach((pot, idx) => {
+      const cell = Render.buildPotCell({
+        idx, pot, assetPath: ASSETS,
+        showPosLabel: false, showQueue: true, queueMax: 6,
+      });
+      cont.appendChild(cell);
+      cells.push(cell);
+      cell.querySelectorAll('.sb-active-slot').forEach(slotEl => {
+        slotEl.addEventListener('click', () => {
+          if (gameOver) return;
+          const p = parseInt(slotEl.dataset.pos, 10);
+          onTap(idx, p);
+        });
+      });
+    });
+  }
+
+  function repaint() {
+    cells.forEach((cell, i) => Render.paintAll(cell, state[i], ASSETS, 6));
+    Render.setSelected(cells, selected);
+    div.querySelector('#blv2-moves').textContent = moves;
+    const stars = Engine.starsFor(moves, cfg.starThresholds);
+    div.querySelector('#blv2-stars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+  }
+
+  function onTap(potIdx, pos) {
+    const pot = state[potIdx];
+    if (!selected) {
+      if (!pot.active[pos]) return;
+      selected = { pot: potIdx, pos };
+      Sfx.play('tap'); Haptic.tap();
+      repaint();
+      return;
+    }
+    if (selected.pot === potIdx && selected.pos === pos) {
+      selected = null;
+      repaint();
+      return;
+    }
+    if (!Engine.canMove(state, selected.pot, selected.pos, potIdx, pos)) {
+      selected = null;
+      Sfx.play('invalid');
+      repaint();
+      return;
+    }
+    history.push(Engine.clone(state));
+    const r = Engine.applyMove(state, selected.pot, selected.pos, potIdx, pos);
+    moves++;
+    selected = null;
+    Sfx.play('pour'); Haptic.tap();
+    if (r.vanished) { Sfx.play('lock'); Haptic.success(); }
+    repaint();
+
+    if (Engine.isWon(state)) {
+      gameOver = true;
+      Sfx.play('win'); Haptic.success();
+      setTimeout(() => triggerWin(), 350);
+    } else if (moves >= cfg.moveLimit) {
+      gameOver = true;
+      Sfx.play('lose'); Haptic.fail();
+      setTimeout(() => triggerLose('moves'), 350);
+    } else if (Engine.isDeadlock(state)) {
+      gameOver = true;
+      Sfx.play('lose'); Haptic.fail();
+      setTimeout(() => triggerLose('deadlock'), 350);
+    }
+  }
+
+  function triggerWin() {
+    const stars = Engine.starsFor(moves, cfg.starThresholds);
+    const save = Save.get();
+    const existing = save.progress.levelsCompleted || [];
+    const prev = existing.find(e => e.id === cfg.id);
+    if (!prev) existing.push({ id: cfg.id, stars, moves });
+    else if (stars > prev.stars) { prev.stars = stars; prev.moves = moves; }
+    Save.set('progress.levelsCompleted', existing);
+    if (save.progress.currentLevel === cfg.id) {
+      Save.set('progress.currentLevel', cfg.id + 1);
+    }
+    Save.set('progress.starsBalance', (save.progress.starsBalance || 0) + stars);
+    // Win overlay (reuse simple inline alert for now)
+    setTimeout(() => {
+      if (confirm(`🌸 Hoàn thành ${cfg.name}!\nMoves: ${moves} · ${'★'.repeat(stars)}${'☆'.repeat(3-stars)}\n\nVề Hub?`)) {
+        Game.goto('hub');
+      }
+    }, 200);
+  }
+
+  function triggerLose(reason) {
+    const msg = reason === 'deadlock' ? 'Bí cờ! Không còn nước đi.' : `Hết ${cfg.moveLimit} lượt.`;
+    setTimeout(() => {
+      if (confirm(`💔 ${msg}\n\nChơi lại?`)) {
+        state = Engine.initState(cfg.pots);
+        moves = 0; selected = null; history = []; gameOver = false;
+        build(); repaint();
+      } else {
+        Game.goto('hub');
+      }
+    }, 200);
+  }
+
+  // Build after DOM mount
+  setTimeout(() => {
+    build();
+    repaint();
+    div.querySelector('#blv2-undo').addEventListener('click', () => {
+      if (!history.length || gameOver) return;
+      state = history.pop();
+      moves = Math.max(0, moves - 1);
+      selected = null;
+      Sfx.play('tap');
+      repaint();
+    });
+    div.querySelector('#blv2-hint').addEventListener('click', () => {
+      if (gameOver) return;
+      const h = Engine.findHint(state);
+      if (!h) { showToast('Không có gợi ý hợp lệ!'); return; }
+      // Briefly highlight
+      const fromCell = cells[h.fromPot];
+      const toCell = cells[h.toPot];
+      if (fromCell) fromCell.classList.add('sb-selected');
+      if (toCell) toCell.classList.add('sb-selected');
+      setTimeout(() => {
+        if (fromCell) fromCell.classList.remove('sb-selected');
+        if (toCell) toCell.classList.remove('sb-selected');
+      }, 1500);
+    });
+    div.querySelector('#blv2-reset').addEventListener('click', () => {
+      if (!confirm('Chơi lại từ đầu?')) return;
+      state = Engine.initState(cfg.pots);
+      moves = 0; selected = null; history = []; gameOver = false;
+      build(); repaint();
+    });
+  }, 30);
+
+  return div;
+};
 
 Scenes._dailyClaim = function() {
   const reward = DailyLogin.claim();
