@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kvtm",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "E:/Game AI/KVTM 2.0", "-l", "3459", "--no-clipboard"],
+      "port": 3459
+    }
+  ]
+}
