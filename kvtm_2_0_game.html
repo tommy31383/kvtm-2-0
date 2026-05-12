@@ -6888,9 +6888,11 @@ Scenes._levelBlossomV2 = function(cfg) {
     Save.inc('progress.starsBalance', starsEarned);
     Hub.refreshStarsUI();
 
-    // Win celebration on each pot
+    // Win celebration on each pot — popup appears AFTER celebration finishes
     Render.playWinCelebration(cells, stars);
+    const celebDuration = cells.length * 120 + 1400; // stagger + longest effect
 
+    setTimeout(() => {
     // Star fly animation
     _sbSpawnStarFly(div);
 
@@ -6927,6 +6929,8 @@ Scenes._levelBlossomV2 = function(cfg) {
         if (bal >= nextTask.cost) showToast(`🌱 Đủ sao làm "${nextTask.label}"! Về Hub nhé!`, 3000);
       }
     }, 1800);
+
+    }, celebDuration); // end setTimeout — wait for celebration before showing popup
   }
 
   // Story unlock hook
