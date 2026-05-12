@@ -11,14 +11,14 @@
   'use strict';
 
   const COLORS = {
-    R: { name: 'Red',      img: 'flower_red.png',      bloom: 'flower_red_bloom.png'      },
-    P: { name: 'Pink',     img: 'flower_pink.png',     bloom: 'flower_pink_bloom.png'     },
-    Y: { name: 'Yellow',   img: 'flower_yellow.png',   bloom: 'flower_yellow_bloom.png'   },
-    V: { name: 'Purple',   img: 'flower_purple.png',   bloom: 'flower_purple_bloom.png'   },
-    W: { name: 'White',    img: 'flower_white.png',    bloom: 'flower_white_bloom.png'    },
-    O: { name: 'Orange',   img: 'flower_orange.png',   bloom: 'flower_orange_bloom.png'   },
-    B: { name: 'Blue',     img: 'flower_blue.png',     bloom: 'flower_blue_bloom.png'     },
-    C: { name: 'Camellia', img: 'flower_camellia.png', bloom: 'flower_camellia_bloom.png' },
+    R: { name: 'Red',      img: 'flower_red.png',      bloom: 'flower_red_bloom.png',      rectsFile: 'bloom_rects_red.json'      },
+    P: { name: 'Pink',     img: 'flower_pink.png',     bloom: 'flower_pink_bloom.png',     rectsFile: 'bloom_rects_pink.json'     },
+    Y: { name: 'Yellow',   img: 'flower_yellow.png',   bloom: 'flower_yellow_bloom.png',   rectsFile: 'bloom_rects_yellow.json'   },
+    V: { name: 'Purple',   img: 'flower_purple.png',   bloom: 'flower_purple_bloom.png',   rectsFile: 'bloom_rects_purple.json'   },
+    W: { name: 'White',    img: 'flower_white.png',    bloom: 'flower_white_bloom.png',    rectsFile: 'bloom_rects_white.json'    },
+    O: { name: 'Orange',   img: 'flower_orange.png',   bloom: 'flower_orange_bloom.png',   rectsFile: 'bloom_rects_orange.json'   },
+    B: { name: 'Blue',     img: 'flower_blue.png',     bloom: 'flower_blue_bloom.png',     rectsFile: 'bloom_rects_blue.json'     },
+    C: { name: 'Camellia', img: 'flower_camellia.png', bloom: 'flower_camellia_bloom.png', rectsFile: 'bloom_rects_camellia.json' },
   };
 
   // Bloom sprite sheet config — 5 cols × 2 rows = 10 frames
@@ -90,30 +90,59 @@
     }).join('');
   }
 
-  // Cache: does this color have a bloom sprite sheet?
-  const _bloomCache = {};
+  // Cache: sheet Image + rects per color
+  const _bloomCache = {};   // color → { sheet: Image, rects: [[x,y,w,h],...] } | false
   function _probeBloom(color, assetPath, cb) {
+    if (color in _bloomCache) return cb(_bloomCache[color]);
+    const c = COLORS[color];
+    // Load sheet + rects JSON in parallel
+    const sheet = new Image();
+    let rects = null, sheetLoaded = false, rectsLoaded = false;
+    const tryDone = () => {
+      if (!sheetLoaded || !rectsLoaded) return;
+      _bloomCache[color] = rects ? { sheet, rects } : false;
+      cb(_bloomCache[color]);
+    };
+    sheet.onload  = () => { sheetLoaded = true; tryDone(); };
+    sheet.onerror = () => { _bloomCache[color] = false; cb(false); };
+    sheet.src = assetPath + c.bloom;
+    fetch(assetPath + c.rectsFile)
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { rects = j && j.rects ? j.rects : null; rectsLoaded = true; tryDone(); })
+      .catch(() => { rects = null; rectsLoaded = true; tryDone(); });
+  }
+  function _probeBloomLegacy(color, assetPath, cb) {
     if (color in _bloomCache) return cb(_bloomCache[color]);
     const probe = new Image();
     probe.onload  = () => { _bloomCache[color] = true;  cb(true); };
     probe.onerror = () => { _bloomCache[color] = false; cb(false); };
     probe.src = assetPath + COLORS[color].bloom;
   }
-  /** Show bloom-sheet frame 1 (bud) on queue preview imgs, if sheet exists. */
+  /** Show bloom bud (frame 0) on queue preview imgs using canvas. */
   function upgradeQueueBuds(cell, assetPath) {
-    cell.querySelectorAll('.sb-queue-bud').forEach(img => {
-      const color = img.dataset.color;
+    cell.querySelectorAll('.sb-queue-bud').forEach(imgEl => {
+      const color = imgEl.dataset.color;
       if (!color || !COLORS[color]) return;
-      _probeBloom(color, assetPath, (ok) => {
-        if (!ok) return;
-        const rect = img.getBoundingClientRect();
-        const w = rect.width, h = rect.height;
-        if (!w || !h) return;
-        img.style.backgroundImage    = `url('${assetPath}${COLORS[color].bloom}')`;
-        img.style.backgroundSize     = `${w * BLOOM_COLS}px ${h * BLOOM_ROWS}px`;
-        img.style.backgroundPosition = '0 0';
-        img.style.backgroundRepeat   = 'no-repeat';
-        img.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+      _probeBloom(color, assetPath, (cached) => {
+        if (!cached) return;
+        const { sheet, rects } = cached;
+        const rect = imgEl.getBoundingClientRect();
+        const dw = rect.width || 26, dh = rect.height || 26;
+        if (!dw || !dh) return;
+
+        // Draw bud (frame 0) onto a canvas and use as data-url for the img
+        const oc = document.createElement('canvas');
+        oc.width = Math.round(dw); oc.height = Math.round(dh);
+        const ctx = oc.getContext('2d');
+        if (rects && rects[0]) {
+          const [sx, sy, sw, sh] = rects[0];
+          ctx.drawImage(sheet, sx, sy, sw, sh, 0, 0, oc.width, oc.height);
+        } else {
+          const fw = sheet.naturalWidth / BLOOM_COLS;
+          const fh = sheet.naturalHeight / BLOOM_ROWS;
+          ctx.drawImage(sheet, 0, 0, fw, fh, 0, 0, oc.width, oc.height);
+        }
+        imgEl.src = oc.toDataURL();
       });
     });
   }
@@ -588,33 +617,32 @@
    */
   function playBloom(imgEl, color, assetPath, onDone) {
     if (!imgEl || !COLORS[color]) { onDone && onDone(); return; }
-    const bloomFile = COLORS[color].bloom;
-    if (!bloomFile) { onDone && onDone(); return; }
+    if (!COLORS[color].bloom)     { onDone && onDone(); return; }
 
-    // Load the sheet fresh (browser caches it after first load)
-    const sheet = new Image();
-    sheet.onerror = () => { onDone && onDone(); };
-    sheet.onload = () => {
-      // Frame dimensions on the sheet (pixels)
-      const srcW = sheet.naturalWidth  / BLOOM_COLS;
-      const srcH = sheet.naturalHeight / BLOOM_ROWS;
+    _probeBloom(color, assetPath, (cached) => {
+      if (!cached) { onDone && onDone(); return; }
+      const { sheet, rects } = cached;
+      const nFrames = rects ? rects.length : BLOOM_FRAMES;
 
-      // Display size: width from rendered img, height ALWAYS from frame aspect ratio
-      // (img height:auto can return wrong value — frame ratio is ground truth)
-      const rect = imgEl.getBoundingClientRect();
-      const dw = rect.width || 80;
-      const dh = dw * srcH / srcW;  // frame aspect: e.g. 94 * (512/307) ≈ 157px
+      // Measure display size from the first (largest) rect for aspect ratio
+      const ref = rects ? rects[rects.length - 1] : null; // last frame = fully open = largest
+      const refW = ref ? ref[2] : sheet.naturalWidth  / BLOOM_COLS;
+      const refH = ref ? ref[3] : sheet.naturalHeight / BLOOM_ROWS;
 
-      // Canvas positioned FIXED — anchor to img bottom-center (same as flower CSS)
-      const imgBottom = window.innerHeight - rect.bottom; // distance from viewport bottom
-      const cvLeft   = rect.left + rect.width / 2 - dw / 2; // center-align to img
+      const imgRect = imgEl.getBoundingClientRect();
+      const dw = imgRect.width || 80;
+      const dh = dw * refH / refW;
+
+      // Canvas: fixed, anchored bottom-center of the flower img
+      const imgBottom = window.innerHeight - imgRect.bottom;
+      const cvLeft    = imgRect.left + imgRect.width / 2 - dw / 2;
       const cv = document.createElement('canvas');
       cv.width  = Math.round(dw);
       cv.height = Math.round(dh);
       cv.style.cssText = [
         'position:fixed',
-        `left:${cvLeft}px`,
-        `bottom:${imgBottom}px`,
+        `left:${Math.round(cvLeft)}px`,
+        `bottom:${Math.round(imgBottom)}px`,
         `width:${dw}px`,
         `height:${dh}px`,
         'pointer-events:none',
@@ -622,22 +650,24 @@
       ].join(';');
       document.body.appendChild(cv);
       const ctx = cv.getContext('2d');
-
       imgEl.style.visibility = 'hidden';
 
-      const frameMs = BLOOM_DURATION_MS / BLOOM_FRAMES;
+      const frameMs = BLOOM_DURATION_MS / nFrames;
       let frame = 0;
       function tick() {
-        const col = frame % BLOOM_COLS;
-        const row = Math.floor(frame / BLOOM_COLS);
-        // Clear + draw exactly one frame — no sliding, no bg-position
         ctx.clearRect(0, 0, cv.width, cv.height);
-        ctx.drawImage(sheet,
-          col * srcW, row * srcH, srcW, srcH,  // source rect on sprite sheet
-          0, 0, cv.width, cv.height             // destination = full canvas
-        );
+        if (rects) {
+          // Per-frame custom crop from JSON
+          const [sx, sy, sw, sh] = rects[frame];
+          ctx.drawImage(sheet, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+        } else {
+          // Fallback: uniform grid
+          const col = frame % BLOOM_COLS, row = Math.floor(frame / BLOOM_COLS);
+          const fw = sheet.naturalWidth / BLOOM_COLS, fh = sheet.naturalHeight / BLOOM_ROWS;
+          ctx.drawImage(sheet, col*fw, row*fh, fw, fh, 0, 0, cv.width, cv.height);
+        }
         frame++;
-        if (frame < BLOOM_FRAMES) {
+        if (frame < nFrames) {
           setTimeout(tick, frameMs);
         } else {
           cv.remove();
@@ -646,8 +676,7 @@
         }
       }
       tick();
-    };
-    sheet.src = assetPath + bloomFile;
+    });
   }
 
   /**
