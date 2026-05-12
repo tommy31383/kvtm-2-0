@@ -751,97 +751,116 @@
 
   // ─── WIN CELEBRATION ────────────────────────────────────────────
   /**
-   * Play staggered win celebration on each pot cell.
-   * Combo: burst particles + ring pulse + emoji fountain, staggered per pot.
-   * @param {HTMLElement[]} cells  pot cell elements
-   * @param {number} stars  1-3 stars earned
+   * Clean staggered win celebration:
+   * Phase 1 — each pot fires sequentially: glow ring + 6 petal dots
+   * Phase 2 — after all pots done: confetti rain from top + big emoji burst at center
    */
   function playWinCelebration(cells, stars) {
-    const emojis = stars === 3 ? ['🌸','✨','🌟','💐','🎉'] :
-                   stars === 2 ? ['🌸','✨','💮','🌼'] :
-                                 ['🌸','🌿','💧'];
-    const colors  = ['#f9a8d4','#fde68a','#a5f3fc','#bbf7d0','#e9d5ff','#fed7aa'];
+    const PETAL_COLORS = ['#f9a8d4','#fde68a','#bbf7d0','#e9d5ff','#a5f3fc','#fed7aa'];
+    const STAGGER = 180; // ms between each pot
+    const POT_DUR = 520; // ring + petals duration
 
+    // ── Phase 1: per-pot effect ──────────────────────────────────
     cells.forEach((cell, idx) => {
       if (!cell) return;
-      const delay = idx * 120;   // stagger 120ms per pot
-
       setTimeout(() => {
         if (!cell.isConnected) return;
         const rect = cell.getBoundingClientRect();
-        const cx = rect.left + rect.width  / 2;
-        const cy = rect.top  + rect.height / 2;
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top  + rect.height * 0.4; // target near flower area
 
-        // 1. Scale pop on the pot itself
+        // a. Pot bounce
         cell.animate([
-          { transform: 'scale(1)',    offset: 0   },
-          { transform: 'scale(1.18)', offset: 0.3 },
-          { transform: 'scale(0.95)', offset: 0.6 },
-          { transform: 'scale(1)',    offset: 1   },
-        ], { duration: 480, easing: 'ease-out' });
+          { transform:'scale(1)'   },
+          { transform:'scale(1.15)', offset:0.35 },
+          { transform:'scale(1)'   },
+        ], { duration: POT_DUR, easing:'cubic-bezier(.34,1.56,.64,1)' });
 
-        // 2. Ring pulse (position:fixed so not clipped)
+        // b. Single expanding ring
         const ring = document.createElement('div');
-        ring.style.cssText = `
-          position:fixed; left:${cx}px; top:${cy}px;
-          width:20px; height:20px;
-          border-radius:50%;
-          border:3px solid ${colors[idx % colors.length]};
-          transform:translate(-50%,-50%) scale(0);
-          pointer-events:none; z-index:9998;
-        `;
+        const ringColor = PETAL_COLORS[idx % PETAL_COLORS.length];
+        ring.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;
+          width:16px;height:16px;border-radius:50%;
+          border:2.5px solid ${ringColor};
+          pointer-events:none;z-index:9990;`;
         document.body.appendChild(ring);
         ring.animate([
-          { transform:'translate(-50%,-50%) scale(0)', opacity:1   },
-          { transform:'translate(-50%,-50%) scale(4)', opacity:0   },
-        ], { duration: 600, easing:'ease-out' }).onfinish = () => ring.remove();
+          { transform:'translate(-50%,-50%) scale(0)', opacity:0.9 },
+          { transform:'translate(-50%,-50%) scale(5)', opacity:0   },
+        ], { duration: POT_DUR, easing:'ease-out' }).onfinish = () => ring.remove();
 
-        // 3. Burst 10 particles
-        const count = 10;
-        for (let i = 0; i < count; i++) {
-          const angle  = (i / count) * Math.PI * 2;
-          const dist   = 55 + Math.random() * 35;
-          const dx     = Math.cos(angle) * dist;
-          const dy     = Math.sin(angle) * dist;
-          const dot    = document.createElement('div');
-          const color  = colors[Math.floor(Math.random() * colors.length)];
-          const size   = 5 + Math.random() * 5;
-          dot.style.cssText = `
-            position:fixed; left:${cx}px; top:${cy}px;
-            width:${size}px; height:${size}px;
-            border-radius:50%; background:${color};
-            pointer-events:none; z-index:9998;
-            transform:translate(-50%,-50%);
-          `;
+        // c. 6 petal dots burst outward
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2 - Math.PI / 2;
+          const dist  = 40 + Math.random() * 20;
+          const dx = Math.cos(angle) * dist;
+          const dy = Math.sin(angle) * dist;
+          const dot = document.createElement('div');
+          const col = PETAL_COLORS[i % PETAL_COLORS.length];
+          dot.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;
+            width:7px;height:7px;border-radius:50%;background:${col};
+            pointer-events:none;z-index:9990;`;
           document.body.appendChild(dot);
           dot.animate([
-            { transform:`translate(-50%,-50%) translate(0,0) scale(1)`,          opacity:1 },
+            { transform:`translate(-50%,-50%) translate(0,0) scale(1)`, opacity:1 },
             { transform:`translate(-50%,-50%) translate(${dx}px,${dy}px) scale(0)`, opacity:0 },
-          ], { duration: 500 + Math.random()*300, easing:'ease-out' }).onfinish = () => dot.remove();
+          ], { duration: 480 + Math.random()*120, easing:'ease-out' }).onfinish = () => dot.remove();
         }
-
-        // 4. Emoji fountain — 3 emojis float up from pot
-        for (let e = 0; e < 3; e++) {
-          setTimeout(() => {
-            const em = document.createElement('div');
-            const offsetX = (Math.random() - 0.5) * 60;
-            em.style.cssText = `
-              position:fixed; left:${cx + offsetX}px; top:${cy}px;
-              font-size:${18 + Math.random()*10}px;
-              pointer-events:none; z-index:9999;
-              transform:translate(-50%,-50%);
-              user-select:none;
-            `;
-            em.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-            document.body.appendChild(em);
-            em.animate([
-              { transform:`translate(-50%,-50%) translateY(0)   scale(1)`,   opacity:1 },
-              { transform:`translate(-50%,-50%) translateY(-90px) scale(0.6)`, opacity:0 },
-            ], { duration: 900 + Math.random()*400, easing:'ease-out' }).onfinish = () => em.remove();
-          }, e * 80);
-        }
-      }, delay);
+      }, idx * STAGGER);
     });
+
+    // ── Phase 2: confetti rain + emoji burst after all pots ──────
+    const phase2Delay = cells.length * STAGGER + POT_DUR + 100;
+    const emojis = stars === 3 ? ['🌸','🌟','✨','💐','🎉','⭐'] :
+                   stars === 2 ? ['🌸','✨','🌼','💮'] : ['🌸','🌿','✨'];
+
+    setTimeout(() => {
+      // Confetti: 28 pieces fall from random X at top
+      const frameRect = (document.getElementById('phone-frame') || document.body).getBoundingClientRect();
+      const fLeft = frameRect.left, fWidth = frameRect.width || window.innerWidth;
+      const fTop  = frameRect.top;
+
+      for (let i = 0; i < 28; i++) {
+        setTimeout(() => {
+          const piece = document.createElement('div');
+          const x = fLeft + Math.random() * fWidth;
+          const col = PETAL_COLORS[Math.floor(Math.random() * PETAL_COLORS.length)];
+          const size = 5 + Math.random() * 5;
+          const rot  = Math.random() * 360;
+          const swayX = (Math.random() - 0.5) * 60;
+          piece.style.cssText = `position:fixed;left:${x}px;top:${fTop}px;
+            width:${size}px;height:${size * 1.6}px;border-radius:2px;
+            background:${col};pointer-events:none;z-index:9990;
+            transform:rotate(${rot}deg);`;
+          document.body.appendChild(piece);
+          piece.animate([
+            { transform:`rotate(${rot}deg) translate(0,0)`,              opacity:1 },
+            { transform:`rotate(${rot+180}deg) translate(${swayX}px,${frameRect.height||500}px)`, opacity:0 },
+          ], { duration: 1000 + Math.random()*600, easing:'ease-in' }).onfinish = () => piece.remove();
+        }, i * 40);
+      }
+
+      // Big emoji burst from screen center
+      const cx = fLeft + fWidth / 2;
+      const cy = fTop  + (frameRect.height || 500) * 0.45;
+      for (let e = 0; e < emojis.length; e++) {
+        setTimeout(() => {
+          const angle = (e / emojis.length) * Math.PI * 2;
+          const dist  = 60 + Math.random() * 30;
+          const em = document.createElement('div');
+          em.textContent = emojis[e];
+          em.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;
+            font-size:26px;pointer-events:none;z-index:9991;
+            transform:translate(-50%,-50%);user-select:none;`;
+          document.body.appendChild(em);
+          em.animate([
+            { transform:`translate(-50%,-50%) scale(0)`, opacity:0 },
+            { transform:`translate(-50%,-50%) scale(1.3) translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist - 30}px)`, opacity:1, offset:0.5 },
+            { transform:`translate(-50%,-50%) scale(0.8) translate(${Math.cos(angle)*dist*1.4}px,${Math.sin(angle)*dist*1.4 - 60}px)`, opacity:0 },
+          ], { duration: 900, easing:'ease-out' }).onfinish = () => em.remove();
+        }, e * 60);
+      }
+    }, phase2Delay);
   }
 
   // ─── EXPORT ─────────────────────────────────────────

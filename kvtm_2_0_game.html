@@ -9,7 +9,7 @@
 <!-- ═══ Sort Blossom shared engine (single source of truth with tools/level_editor.html) ═══ -->
 <link rel="stylesheet" href="engine/sort_blossom.css">
 <script src="engine/sort_blossom_engine.js"></script>
-<script src="engine/sort_blossom_render.js?v=19"></script>
+<script src="engine/sort_blossom_render.js?v=20"></script>
 <script src="engine/sort_blossom_data.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -6890,7 +6890,7 @@ Scenes._levelBlossomV2 = function(cfg) {
 
     // Win celebration on each pot — popup appears AFTER celebration finishes
     Render.playWinCelebration(cells, stars);
-    const celebDuration = cells.length * 120 + 1400; // stagger + longest effect
+    const celebDuration = cells.length * 180 + 520 + 100 + 28*40 + 900 + 200; // phase1 + phase2 confetti + buffer
 
     setTimeout(() => {
     // Star fly animation
