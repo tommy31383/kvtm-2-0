@@ -591,66 +591,61 @@
     const bloomFile = COLORS[color].bloom;
     if (!bloomFile) { onDone && onDone(); return; }
 
-    _probeBloom(color, assetPath, (ok) => {
-      if (!ok) { onDone && onDone(); return; }
+    // Load the sheet fresh (browser caches it after first load)
+    const sheet = new Image();
+    sheet.onerror = () => { onDone && onDone(); };
+    sheet.onload = () => {
+      // Frame dimensions on the sheet (pixels)
+      const srcW = sheet.naturalWidth  / BLOOM_COLS;
+      const srcH = sheet.naturalHeight / BLOOM_ROWS;
 
-      const parent = imgEl.parentElement;
-      if (!parent) { onDone && onDone(); return; }
+      // Display size: match the flower img's rendered bounding rect
+      const rect = imgEl.getBoundingClientRect();
+      const dw = rect.width  || 80;
+      const dh = rect.height || (dw * srcH / srcW);
 
-      // Read computed layout from imgEl — use same left/bottom/width/transform
-      // so the overlay sits EXACTLY on top of the flower, including rotation.
-      const cs = window.getComputedStyle(imgEl);
-      // Rendered width (natural width scaled to CSS width property)
-      let dw = imgEl.getBoundingClientRect().width;
-      if (!dw) dw = parseFloat(cs.width) || 80;
-      // height: auto — derive from sheet frame aspect ratio (512/307.2 ≈ 1.667)
-      const frameAspect = (1024 / BLOOM_ROWS) / (1536 / BLOOM_COLS); // frameH/frameW
-      let dh = dw * frameAspect;
-
-      // Mirror the img's CSS position (left, bottom) and transform exactly
-      // parent (.sb-active-flowers) is position:absolute — children are relative to it
-      const left      = cs.left;      // e.g. "calc(50% + 4px - 3px)"
-      const bottom    = cs.bottom;    // e.g. "0px"
-      const transform = cs.transform; // matrix(...) or "none"
-
-      const ov = document.createElement('div');
-      ov.style.cssText = [
-        'position:absolute',
-        `left:${left}`,
-        `bottom:${bottom}`,
+      // Canvas positioned FIXED over the img — no transform needed, no parent math
+      const cv = document.createElement('canvas');
+      cv.width  = Math.round(dw);
+      cv.height = Math.round(dh);
+      cv.style.cssText = [
+        'position:fixed',
+        `left:${rect.left}px`,
+        `top:${rect.top}px`,
         `width:${dw}px`,
         `height:${dh}px`,
-        `background-image:url('${assetPath}${bloomFile}')`,
-        `background-size:${dw * BLOOM_COLS}px ${dh * BLOOM_ROWS}px`,
-        'background-repeat:no-repeat',
-        'background-position:0 0',
         'pointer-events:none',
-        'z-index:60',
-        'transform-origin:50% 95%',
-        `transform:${transform !== 'none' ? transform : ''}`,
+        'z-index:9999',
+        'image-rendering:pixelated',
       ].join(';');
+      document.body.appendChild(cv);
+      const ctx = cv.getContext('2d');
 
-      // Hide the original flower img while bloom plays
       imgEl.style.visibility = 'hidden';
-      parent.appendChild(ov);
 
       const frameMs = BLOOM_DURATION_MS / BLOOM_FRAMES;
       let frame = 0;
       function tick() {
         const col = frame % BLOOM_COLS;
         const row = Math.floor(frame / BLOOM_COLS);
-        ov.style.backgroundPosition = `-${Math.round(col * dw)}px -${Math.round(row * dh)}px`;
+        // Clear + draw exactly one frame — no sliding, no bg-position
+        ctx.clearRect(0, 0, cv.width, cv.height);
+        ctx.drawImage(sheet,
+          col * srcW, row * srcH, srcW, srcH,  // source rect on sprite sheet
+          0, 0, cv.width, cv.height             // destination = full canvas
+        );
         frame++;
         if (frame < BLOOM_FRAMES) {
           setTimeout(tick, frameMs);
         } else {
-          ov.remove();
+          cv.remove();
           imgEl.style.visibility = '';
           onDone && onDone();
         }
       }
       tick();
-    });
+    };
+    sheet.src = assetPath + bloomFile;
   }
 
   /**
