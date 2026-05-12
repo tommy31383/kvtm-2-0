@@ -25,7 +25,7 @@
   const BLOOM_COLS = 5;
   const BLOOM_ROWS = 2;
   const BLOOM_FRAMES = 10;
-  const BLOOM_DURATION_MS = 700;
+  const BLOOM_DURATION_MS = 1800;
 
   const POS_LABEL = ['L', 'C', 'R'];
 
@@ -90,28 +90,27 @@
     }).join('');
   }
 
-  // Cache: sheet Image + rects per color
+  // Embedded bloom rects — no fetch needed, works on file:// and localhost
+  const _BLOOM_RECTS = {
+    R: [[120,156,177,280],[362,153,197,283],[617,150,207,285],[882,144,214,292],[1211,147,224,290],[78,644,230,292],[339,640,228,295],[596,636,240,297],[876,627,248,309],[1225,628,245,309]],
+    P: [[118,166,180,260],[368,162,184,264],[621,153,189,270],[883,143,239,284],[1212,151,249,276],[99,634,207,299],[349,635,222,300],[605,628,237,304],[876,625,276,310],[1208,615,269,318]],
+    Y: [[122,147,176,265],[364,150,189,260],[622,140,186,271],[880,137,228,278],[1201,135,242,279],[81,621,217,323],[327,621,240,328],[582,619,266,332],[868,614,253,332],[1195,608,269,338]],
+    V: [[122,148,161,291],[360,148,180,298],[624,129,182,314],[876,128,212,312],[1207,135,213,307],[113,617,169,312],[360,608,181,321],[614,611,198,320],[862,611,222,322],[1215,614,215,315]],
+    W: [[115,167,193,251],[341,163,202,253],[602,149,204,270],[869,140,241,279],[1195,140,259,279],[71,623,225,284],[345,619,204,289],[608,616,208,292],[860,619,226,289],[1191,616,243,290]],
+    O: [[117,152,187,268],[343,148,203,276],[614,138,192,281],[864,138,250,282],[1204,140,256,282],[85,618,213,296],[340,618,207,297],[592,616,226,299],[858,616,232,297],[1201,610,243,303]],
+    B: [[116,168,181,251],[345,156,204,261],[595,136,223,282],[862,140,254,280],[1191,141,267,282],[84,630,206,276],[329,621,226,286],[587,619,231,291],[850,615,240,294],[1199,619,252,290]],
+    C: [[110,151,183,271],[340,149,213,274],[596,144,206,284],[838,140,308,285],[1195,139,270,295],[76,615,214,293],[327,609,216,299],[576,615,248,293],[840,616,256,288],[1191,616,260,291]],
+  };
+
+  // Cache: sheet Image per color
   const _bloomCache = {};   // color → { sheet: Image, rects: [[x,y,w,h],...] } | false
   function _probeBloom(color, assetPath, cb) {
     if (color in _bloomCache) return cb(_bloomCache[color]);
     const c = COLORS[color];
-    // Load sheet + rects JSON in parallel
     const sheet = new Image();
-    let rects = null, sheetLoaded = false, rectsLoaded = false;
-    const tryDone = () => {
-      if (!sheetLoaded || !rectsLoaded) return;
-      _bloomCache[color] = rects ? { sheet, rects } : false;
-      cb(_bloomCache[color]);
-    };
-    sheet.onload  = () => { sheetLoaded = true; tryDone(); };
+    sheet.onload  = () => { _bloomCache[color] = { sheet, rects: _BLOOM_RECTS[color] || null }; cb(_bloomCache[color]); };
     sheet.onerror = () => { _bloomCache[color] = false; cb(false); };
     sheet.src = assetPath + c.bloom;
-    // Resolve to absolute URL so fetch works regardless of page URL trailing slash
-    const rectsUrl = new URL(assetPath + c.rectsFile, location.href).href;
-    fetch(rectsUrl)
-      .then(r => r.ok ? r.json() : null)
-      .then(j => { rects = j && j.rects ? j.rects : null; rectsLoaded = true; tryDone(); })
-      .catch(() => { rects = null; rectsLoaded = true; tryDone(); });
   }
   function _probeBloomLegacy(color, assetPath, cb) {
     if (color in _bloomCache) return cb(_bloomCache[color]);
@@ -144,7 +143,7 @@
           const fh = sheet.naturalHeight / BLOOM_ROWS;
           ctx.drawImage(sheet, 0, 0, fw, fh, 0, 0, oc.width, oc.height);
         }
-        imgEl.src = oc.toDataURL();
+        try { imgEl.src = oc.toDataURL(); } catch(e) { /* tainted canvas on file:// — keep static img */ }
       });
     });
   }
@@ -617,68 +616,122 @@
    * @param {string} assetPath         e.g. 'assets/sort_blossom/'
    * @param {Function} onDone
    */
+  // ── Bloom color map (hex per color key) ──────────────────────
+  const _BLOOM_HEX = {
+    R:'#e8455a', P:'#f472b6', Y:'#fbbf24', V:'#a855f7',
+    W:'#e5e7eb', O:'#fb923c', B:'#60a5fa', C:'#fb7185',
+  };
+
+  // ── A: Spring Scale Pop ───────────────────────────────────────
+  function _bloomA(imgEl, onDone) {
+    imgEl.animate([
+      { transform: 'translateX(-50%) scale(0)',   opacity: 0 },
+      { transform: 'translateX(-50%) scale(1.35)',opacity: 1, offset: 0.55 },
+      { transform: 'translateX(-50%) scale(1)',   opacity: 1 },
+    ], { duration: 520, easing: 'ease-out', fill: 'none' })
+      .onfinish = onDone;
+  }
+
+  // ── B: Petal Particle Burst ───────────────────────────────────
+  function _bloomB(imgEl, color, onDone) {
+    const hex = _BLOOM_HEX[color] || '#fff';
+    const rect = imgEl.getBoundingClientRect();
+    const cx = rect.left + rect.width  / 2;
+    const cy = rect.top  + rect.height / 2;
+    const N = 8;
+    const frags = [];
+    for (let i = 0; i < N; i++) {
+      const angle = (i / N) * Math.PI * 2;
+      const dist  = 38 + Math.random() * 22;
+      const size  = 6 + Math.random() * 5;
+      const d = document.createElement('div');
+      d.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;width:${size}px;height:${size}px;`
+        + `border-radius:50%;background:${hex};pointer-events:none;z-index:9999;`
+        + `transform:translate(-50%,-50%)`;
+      document.body.appendChild(d);
+      d.animate([
+        { transform: `translate(-50%,-50%) scale(1)`, opacity: 1 },
+        { transform: `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px)) scale(0)`, opacity: 0 },
+      ], { duration: 600, easing: 'ease-out', fill: 'forwards' })
+        .onfinish = () => d.remove();
+      frags.push(d);
+    }
+    // Also spring-pop the flower itself
+    imgEl.animate([
+      { transform: 'translateX(-50%) scale(0.6)', opacity: 0.5 },
+      { transform: 'translateX(-50%) scale(1.2)', opacity: 1, offset: 0.4 },
+      { transform: 'translateX(-50%) scale(1)',   opacity: 1 },
+    ], { duration: 500, easing: 'ease-out' });
+    setTimeout(onDone, 620);
+  }
+
+  // ── C: Ring Pulse ─────────────────────────────────────────────
+  function _bloomC(imgEl, color, onDone) {
+    const hex = _BLOOM_HEX[color] || '#fff';
+    const rect = imgEl.getBoundingClientRect();
+    const cx = rect.left + rect.width  / 2;
+    const cy = rect.top  + rect.height / 2;
+    const ring = document.createElement('div');
+    const r0 = rect.width * 0.4;
+    ring.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;width:${r0*2}px;height:${r0*2}px;`
+      + `border-radius:50%;border:3px solid ${hex};pointer-events:none;z-index:9999;`
+      + `transform:translate(-50%,-50%) scale(0);opacity:1;`;
+    document.body.appendChild(ring);
+    ring.animate([
+      { transform: 'translate(-50%,-50%) scale(0)', opacity: 0.9 },
+      { transform: 'translate(-50%,-50%) scale(2.8)', opacity: 0 },
+    ], { duration: 550, easing: 'ease-out', fill: 'forwards' })
+      .onfinish = () => ring.remove();
+    imgEl.animate([
+      { transform: 'translateX(-50%) scale(0.5)', opacity: 0 },
+      { transform: 'translateX(-50%) scale(1.15)', opacity: 1, offset: 0.5 },
+      { transform: 'translateX(-50%) scale(1)',   opacity: 1 },
+    ], { duration: 480, easing: 'ease-out' });
+    setTimeout(onDone, 560);
+  }
+
+  // ── D: Combo — Scale Pop + Particles ─────────────────────────
+  function _bloomD(imgEl, color, onDone) {
+    const hex = _BLOOM_HEX[color] || '#fff';
+    const rect = imgEl.getBoundingClientRect();
+    const cx = rect.left + rect.width  / 2;
+    const cy = rect.top  + rect.height / 2;
+    // 6 star-shaped particles
+    const shapes = ['★','✦','•','◆','✿','•','★','✦'];
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2 - Math.PI / 2;
+      const dist  = 44 + Math.random() * 18;
+      const d = document.createElement('div');
+      d.textContent = shapes[i % shapes.length];
+      d.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;font-size:${10+Math.random()*6}px;`
+        + `color:${hex};pointer-events:none;z-index:9999;line-height:1;`
+        + `transform:translate(-50%,-50%)`;
+      document.body.appendChild(d);
+      d.animate([
+        { transform: `translate(-50%,-50%) scale(1) rotate(0deg)`, opacity: 1 },
+        { transform: `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px)) scale(0) rotate(180deg)`, opacity: 0 },
+      ], { duration: 650, easing: 'ease-out', fill: 'forwards' })
+        .onfinish = () => d.remove();
+    }
+    // Big spring pop on flower
+    imgEl.animate([
+      { transform: 'translateX(-50%) scale(0)',   opacity: 0 },
+      { transform: 'translateX(-50%) scale(1.4)', opacity: 1, offset: 0.5 },
+      { transform: 'translateX(-50%) scale(0.9)', opacity: 1, offset: 0.75 },
+      { transform: 'translateX(-50%) scale(1)',   opacity: 1 },
+    ], { duration: 580, easing: 'ease-out' });
+    setTimeout(onDone, 660);
+  }
+
+  // ── playBloom: random pick A/B/C/D ───────────────────────────
   function playBloom(imgEl, color, assetPath, onDone) {
-    if (!imgEl || !COLORS[color]) { onDone && onDone(); return; }
-    if (!COLORS[color].bloom)     { onDone && onDone(); return; }
-
-    _probeBloom(color, assetPath, (cached) => {
-      if (!cached) { onDone && onDone(); return; }
-      const { sheet, rects } = cached;
-      const nFrames = rects ? rects.length : BLOOM_FRAMES;
-
-      // Measure display size from the first (largest) rect for aspect ratio
-      const ref = rects ? rects[rects.length - 1] : null; // last frame = fully open = largest
-      const refW = ref ? ref[2] : sheet.naturalWidth  / BLOOM_COLS;
-      const refH = ref ? ref[3] : sheet.naturalHeight / BLOOM_ROWS;
-
-      const imgRect = imgEl.getBoundingClientRect();
-      const dw = imgRect.width || 80;
-      const dh = dw * refH / refW;
-
-      // Canvas: fixed, anchored bottom-center of the flower img
-      const imgBottom = window.innerHeight - imgRect.bottom;
-      const cvLeft    = imgRect.left + imgRect.width / 2 - dw / 2;
-      const cv = document.createElement('canvas');
-      cv.width  = Math.round(dw);
-      cv.height = Math.round(dh);
-      cv.style.cssText = [
-        'position:fixed',
-        `left:${Math.round(cvLeft)}px`,
-        `bottom:${Math.round(imgBottom)}px`,
-        `width:${dw}px`,
-        `height:${dh}px`,
-        'pointer-events:none',
-        'z-index:9999',
-      ].join(';');
-      document.body.appendChild(cv);
-      const ctx = cv.getContext('2d');
-      imgEl.style.visibility = 'hidden';
-
-      const frameMs = BLOOM_DURATION_MS / nFrames;
-      let frame = 0;
-      function tick() {
-        ctx.clearRect(0, 0, cv.width, cv.height);
-        if (rects) {
-          // Per-frame custom crop from JSON
-          const [sx, sy, sw, sh] = rects[frame];
-          ctx.drawImage(sheet, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
-        } else {
-          // Fallback: uniform grid
-          const col = frame % BLOOM_COLS, row = Math.floor(frame / BLOOM_COLS);
-          const fw = sheet.naturalWidth / BLOOM_COLS, fh = sheet.naturalHeight / BLOOM_ROWS;
-          ctx.drawImage(sheet, col*fw, row*fh, fw, fh, 0, 0, cv.width, cv.height);
-        }
-        frame++;
-        if (frame < nFrames) {
-          setTimeout(tick, frameMs);
-        } else {
-          cv.remove();
-          imgEl.style.visibility = '';
-          onDone && onDone();
-        }
-      }
-      tick();
-    });
+    if (!imgEl || !imgEl.isConnected) { onDone && onDone(); return; }
+    const done = () => { onDone && onDone(); };
+    const pick = Math.floor(Math.random() * 4);
+    if (pick === 0) _bloomA(imgEl, done);
+    else if (pick === 1) _bloomB(imgEl, color, done);
+    else if (pick === 2) _bloomC(imgEl, color, done);
+    else _bloomD(imgEl, color, done);
   }
 
   /**

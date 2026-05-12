@@ -6,9 +6,9 @@
 
 <!-- Shared engine modules (single source of truth) -->
 <link rel="stylesheet" href="../engine/sort_blossom.css">
-<script src="../engine/sort_blossom_engine.js"></script>
-<script src="../engine/sort_blossom_render.js"></script>
-<script src="../engine/sort_blossom_data.js"></script>
+<script src="../engine/sort_blossom_engine.js?v=3"></script>
+<script src="../engine/sort_blossom_render.js?v=17"></script>
+<script src="../engine/sort_blossom_data.js?v=3"></script>
 
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -170,6 +170,78 @@
     font-family: 'Gloria Hallelujah', cursive;
   }
   .play-actions button.primary { background: #FFD700; }
+
+  /* ── LAYOUT EDITOR OVERLAY ── */
+  .layout-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+    display: none; align-items: center; justify-content: center; z-index: 2000;
+  }
+  .layout-overlay.show { display: flex; }
+  .layout-panel {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    max-height: 100vh; overflow: hidden;
+  }
+  .layout-toolbar-row {
+    display: flex; gap: 8px; align-items: center;
+    background: #2a2f3e; padding: 8px 14px; border-radius: 8px;
+  }
+  .layout-phone {
+    width: 390px; height: 890px; /* 60+44+700+86 = 890, layout-area = exactly 700px = game REF_H */
+    transform-origin: top center;
+    background: linear-gradient(180deg, #f5e8c4 0%, #d8c39e 100%);
+    border-radius: 36px;
+    border: 4px solid #3a2a1a;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.6);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  /* Game topbar: logo + moves ~60px */
+  .layout-fake-top {
+    height: 60px; flex-shrink: 0;
+    background: rgba(90,122,90,0.92);
+    border-bottom: 2px solid #3a2a1a;
+    display: flex; align-items: center; padding: 0 14px;
+    color: #fff; font-size: 13px; font-weight: 700;
+  }
+  /* Stars + progress ~44px */
+  .layout-fake-stats {
+    height: 44px; flex-shrink: 0;
+    background: rgba(248,239,216,0.9);
+    border-bottom: 1px solid rgba(58,42,26,0.2);
+    display: flex; align-items: center; padding: 0 12px;
+    gap: 6px; font-size: 18px; color: #c8a840;
+  }
+  /* Pot area — flex:1, matches game sb-pots */
+  .layout-area {
+    flex: 1; position: relative; overflow: hidden;
+  }
+  /* Booster bar + undo ~86px */
+  .layout-fake-bottom {
+    height: 86px; flex-shrink: 0;
+    background: rgba(90,122,90,0.85);
+    border-top: 2px solid #3a2a1a;
+    display: flex; align-items: center; justify-content: center;
+    gap: 20px; font-size: 22px;
+  }
+  .layout-pot-drag {
+    position: absolute;
+    cursor: grab;
+    /* margin-left thay vì transform:translateX(-50%) để không bị ghi đè bởi animation */
+    margin-left: calc(var(--sb-pot-w) / -2);
+    touch-action: none;
+    transition: box-shadow 0.15s;
+  }
+  .layout-pot-drag:active { cursor: grabbing; }
+  .layout-pot-drag.dragging {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    z-index: 100;
+  }
+  .layout-pot-badge {
+    position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+    background: #FFD700; color: #1a1f2e; font-size: 10px; font-weight: 700;
+    padding: 2px 6px; border-radius: 10px; white-space: nowrap; z-index: 10;
+  }
 </style>
 </head>
 <body>
@@ -193,6 +265,7 @@
     <div class="sep"></div>
     <button id="btn-solve">🧠 Solve</button>
     <button id="btn-play" class="primary">▶ Test Play</button>
+    <button id="btn-layout">📐 Layout</button>
     <button id="btn-validate">✔ Validate</button>
   </div>
 
@@ -269,6 +342,24 @@
         <option value="C">✈️ C · Float</option>
         <option value="D">✈️ D · Crossfade</option>
       </select>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LAYOUT EDITOR OVERLAY ═══ -->
+<div class="layout-overlay" id="layout-overlay">
+  <div class="layout-panel">
+    <div class="layout-toolbar-row">
+      <span style="color:#FFD700;font-weight:700;font-size:14px;">📐 Pot Layout Editor</span>
+      <button id="layout-reset" style="background:#3a3f4e;color:#e8e4d8;border:1px solid #4a4f5e;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">Reset</button>
+      <button id="layout-save" style="background:#FFD700;color:#1a1f2e;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;">Save Layout</button>
+      <button id="layout-close" style="background:#3a3f4e;color:#e8e4d8;border:1px solid #4a4f5e;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;">✖ Close</button>
+    </div>
+    <div class="layout-phone" id="layout-phone">
+      <div class="layout-fake-top">🌹 Sort Blossom &nbsp;·&nbsp; <span id="layout-level-name" style="opacity:.8">Level Preview</span> &nbsp; <span style="margin-left:auto;font-size:11px;opacity:.7">Moves: 0 / 15</span></div>
+      <div class="layout-fake-stats">★★★ &nbsp;<span style="flex:1;height:8px;background:#ddd;border-radius:4px;overflow:hidden;"><span style="display:block;width:40%;height:100%;background:#e3b25a;border-radius:4px;"></span></span></div>
+      <div class="layout-area sb-compact" id="layout-area"></div>
+      <div class="layout-fake-bottom">🌿 &nbsp; 💧 &nbsp; ✨ &nbsp; ↩</div>
     </div>
   </div>
 </div>
@@ -367,7 +458,7 @@ function renderGrid() {
 
 function renderPalette() {
   palette.innerHTML = '';
-  Object.keys(COLOR_KEYS).forEach(key => {
+  COLOR_KEYS.forEach(key => {
     const c = SortBlossomRender.COLORS[key];
     const el = document.createElement('div');
     el.className = 'swatch' + (activeColor === key ? ' active' : '');
@@ -533,7 +624,22 @@ function doCopyCurrent() {
 function doPushToGame() {
   syncFromForm();
   const ok = SortBlossomData.saveLevels(levels);
-  log(ok ? `⬆ Pushed ${levels.length} levels to localStorage (game reads on reload)` : '✗ localStorage failed');
+  const btn = document.getElementById('btn-push');
+  if (ok) {
+    log(`⬆ Pushed ${levels.length} levels to localStorage ✓ — reload game to apply`);
+    const orig = btn.textContent;
+    btn.textContent = '✅ Pushed!';
+    btn.style.background = '#4caf50';
+    btn.style.color = '#fff';
+    setTimeout(() => { btn.textContent = orig; btn.style.background = ''; btn.style.color = ''; }, 2000);
+  } else {
+    log('✗ Push failed — localStorage blocked (try serving via localhost)');
+    const orig = btn.textContent;
+    btn.textContent = '✗ Failed';
+    btn.style.background = '#e53935';
+    btn.style.color = '#fff';
+    setTimeout(() => { btn.textContent = orig; btn.style.background = ''; btn.style.color = ''; }, 2500);
+  }
 }
 
 function doLoad() {
@@ -810,6 +916,136 @@ if (flightSel) {
 
 log(`Editor v2 ready · ${levels.length} levels loaded · engine v${SortBlossomEngine.VERSION}`);
 render();
+
+// ─── LAYOUT EDITOR ────────────────────────────────
+let _layoutPositions = []; // working copy [{x,y}]
+
+function openLayout() {
+  try {
+  syncFromForm();
+  const lv = level();
+  const N = lv.pots.length;
+
+  // Init positions: use saved or auto-grid
+  if (lv.potLayout && lv.potLayout.length === N) {
+    _layoutPositions = lv.potLayout.map(p => ({...p}));
+  } else {
+    // Auto arrange: 2 per row, centered
+    _layoutPositions = lv.pots.map((_, i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const cols = Math.min(N, 2);
+      const xStep = 390 / (cols + 1);
+      const yStep = 700 / (Math.ceil(N / 2) + 1);
+      return { x: xStep * (col + 1), y: yStep * (row + 1) - 80 };
+    });
+  }
+
+  renderLayoutEditor();
+  const nameEl = document.getElementById('layout-level-name');
+  if (nameEl) nameEl.textContent = lv.name || `Level ${lv.id}`;
+
+  // Scale phone to fit viewport
+  const phone = document.getElementById('layout-phone');
+  const availH = window.innerHeight - 120;
+  const scale = Math.min(1, availH / 890);
+  phone.style.transform = `scale(${scale})`;
+  phone.style.marginBottom = `${(890 * scale - 890)}px`;
+
+  document.getElementById('layout-overlay').classList.add('show');
+  } catch(err) {
+    alert('Layout editor error: ' + err.message);
+    console.error('[openLayout]', err);
+  }
+}
+
+function renderLayoutEditor() {
+  const area = document.getElementById('layout-area');
+  area.innerHTML = '';
+  const lv = level();
+  const REF_H = 700; // matches game coordinate space (cont.clientHeight ref = 700)
+
+  lv.pots.forEach((pot, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'layout-pot-drag';
+    wrap.dataset.idx = idx;
+
+    const badge = document.createElement('div');
+    badge.className = 'layout-pot-badge';
+    badge.textContent = `Pot #${idx}`;
+    wrap.appendChild(badge);
+
+    const cell = SortBlossomRender.buildPotCell({
+      idx, pot, assetPath: ASSETS,
+      showPosLabel: false, showQueue: true, queueMax: 6,
+    });
+    cell.style.pointerEvents = 'none';
+    wrap.appendChild(cell);
+
+    const pos = _layoutPositions[idx];
+    wrap.style.left = (pos.x / 390 * 100) + '%';
+    wrap.style.top = (pos.y / REF_H * 100) + '%';
+
+    // Drag logic
+    let dragging = false, startX, startY, startPX, startPY;
+
+    wrap.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      wrap.setPointerCapture(e.pointerId);
+      wrap.classList.add('dragging');
+      const phone = document.getElementById('layout-phone');
+      const scaleMatch = phone.style.transform.match(/scale\(([^)]+)\)/);
+      const scale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+      startX = e.clientX / scale;
+      startY = e.clientY / scale;
+      startPX = _layoutPositions[idx].x;
+      startPY = _layoutPositions[idx].y;
+      e.preventDefault();
+    });
+
+    wrap.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const phone = document.getElementById('layout-phone');
+      const scaleMatch = phone.style.transform.match(/scale\(([^)]+)\)/);
+      const scale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+      const dx = (e.clientX / scale - startX);
+      const dy = (e.clientY / scale - startY);
+      const areaW = area.clientWidth || 390;
+      const areaH = area.clientHeight || REF_H;
+      const newX = Math.max(0, Math.min(390, startPX + dx * (390 / areaW)));
+      const newY = Math.max(0, Math.min(REF_H, startPY + dy * (REF_H / areaH)));
+      _layoutPositions[idx] = { x: Math.round(newX), y: Math.round(newY) };
+      wrap.style.left = (newX / 390 * 100) + '%';
+      wrap.style.top = (newY / REF_H * 100) + '%';
+    });
+
+    wrap.addEventListener('pointerup', () => {
+      dragging = false;
+      wrap.classList.remove('dragging');
+    });
+
+    area.appendChild(wrap);
+  });
+}
+
+function saveLayout() {
+  level().potLayout = _layoutPositions.map(p => ({...p}));
+  document.getElementById('layout-overlay').classList.remove('show');
+  log(`💾 Layout saved for ${_layoutPositions.length} pots`);
+}
+
+function resetLayout() {
+  delete level().potLayout;
+  _layoutPositions = [];
+  document.getElementById('layout-overlay').classList.remove('show');
+  log('Layout cleared — using default flex');
+}
+
+document.getElementById('btn-layout').addEventListener('click', openLayout);
+document.getElementById('layout-save').addEventListener('click', saveLayout);
+document.getElementById('layout-reset').addEventListener('click', resetLayout);
+document.getElementById('layout-close').addEventListener('click', () => {
+  document.getElementById('layout-overlay').classList.remove('show');
+});
 </script>
 
 </body>

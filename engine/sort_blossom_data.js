@@ -64,8 +64,8 @@
       { active: ["R", "Y", "R"], queue: [] },
       { active: [null, null, null], queue: [] }
       ],
-      moveLimit: 5,
-      starThresholds: [3, 4, 5],
+      moveLimit: 10,
+      starThresholds: [6, 7, 8],
       schemaVersion: 2,
     },
 
@@ -77,8 +77,8 @@
       { active: ["P", "P", "R"], queue: [] },
       { active: [null, null, null], queue: [] }
       ],
-      moveLimit: 5,
-      starThresholds: [3, 4, 5],
+      moveLimit: 10,
+      starThresholds: [6, 7, 8],
       schemaVersion: 2,
     },
 
@@ -90,8 +90,8 @@
       { active: ["Y", "Y", "P"], queue: [] },
       { active: [null, null, null], queue: [] }
       ],
-      moveLimit: 5,
-      starThresholds: [3, 4, 5],
+      moveLimit: 10,
+      starThresholds: [6, 7, 8],
       schemaVersion: 2,
     },
 
@@ -486,11 +486,13 @@
   ];
 
   function loadLevels() {
+    // Read from localStorage only if pushed data has >= hardcoded level count
+    // (prevents old 3-level editor data from overriding new 30-level production data)
     try {
-      const raw = (typeof localStorage !== 'undefined') && localStorage.getItem('kvtm2_levels_v2');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length) return parsed;
+      const r = localStorage.getItem('kvtm2_levels_v2');
+      if (r) {
+        const p = JSON.parse(r);
+        if (Array.isArray(p) && p.length >= SORT_BLOSSOM_LEVELS.length) return p;
       }
     } catch {}
     return SORT_BLOSSOM_LEVELS;
