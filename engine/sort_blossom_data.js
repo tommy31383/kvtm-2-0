@@ -486,13 +486,21 @@
   ];
 
   function loadLevels() {
-    // Read from localStorage only if pushed data has >= hardcoded level count
-    // (prevents old 3-level editor data from overriding new 30-level production data)
     try {
       const r = localStorage.getItem('kvtm2_levels_v2');
       if (r) {
         const p = JSON.parse(r);
+        // Accept if same or more levels than hardcoded (editor push)
         if (Array.isArray(p) && p.length >= SORT_BLOSSOM_LEVELS.length) return p;
+        // Accept partial push: merge potLayout overrides into hardcoded levels
+        // (editor may have pushed only layout changes, not full level data)
+        if (Array.isArray(p) && p.length > 0) {
+          const merged = SORT_BLOSSOM_LEVELS.map(lv => {
+            const override = p.find(x => x.id === lv.id);
+            return override ? Object.assign({}, lv, override) : lv;
+          });
+          return merged;
+        }
       }
     } catch {}
     return SORT_BLOSSOM_LEVELS;
