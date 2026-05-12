@@ -6715,11 +6715,14 @@ Scenes._levelBlossomV2 = function(cfg) {
         cell.style.marginLeft = 'calc(var(--sb-pot-w) / -2)';
       }
 
-      // Tap anywhere on cell — pot-level selection (no slot precision needed)
-      cell.addEventListener('click', (ev) => {
+      cell.querySelector('.sb-pot-visual').addEventListener('click', (ev) => {
         if (gameOver) return;
-        ev.stopPropagation();
-        onTapPot(idx);
+        const hitPos = Render.eventToFlowerHitPos(ev, cell);
+        const rawPos = selected ? Render.eventToPos(ev, cell) : Render.eventToNearestFlowerPos(ev, cell, state[idx]);
+        const p = selected
+          ? (hitPos !== null ? hitPos : Render.nearestEmptyPos(state[idx], rawPos))
+          : Render.nearestOccupiedPos(state[idx], rawPos);
+        onTap(idx, p);
       });
     });
   }
@@ -6749,100 +6752,87 @@ Scenes._levelBlossomV2 = function(cfg) {
     div.querySelector('#blv2-stars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
   }
 
-  // Auto-pick best occupied slot: center preferred, else left, else right
-  function bestOccupied(pot) {
-    for (const p of [1, 0, 2]) if (pot.active[p]) return p;
-    return -1;
-  }
-  // Auto-pick first valid move from srcPot:srcPos → destPot
-  function findValidDest(srcPot, srcPos, destPotIdx) {
-    for (const destPos of [1, 0, 2]) {
-      if (Engine.canMove(state, srcPot, srcPos, destPotIdx, destPos)) return destPos;
-    }
-    return -1;
-  }
-  // Highlight pots that can receive the selected flower
-  function paintValidDests() {
-    cells.forEach((c, i) => {
-      if (!selected) { c.classList.remove('sb-valid-dest'); return; }
-      const hasSlot = findValidDest(selected.pot, selected.pos, i) >= 0;
-      c.classList.toggle('sb-valid-dest', hasSlot);
-    });
-  }
-
-  // Pot-level tap — no slot precision needed
-  function onTapPot(potIdx) {
+  // Phase 2 dispatcher — 4 outcomes per canon: PLACE / RESELECT / CANCEL / IGNORE
+  function onTap(potIdx, pos) {
     if (gameOver) return;
     const pot = state[potIdx];
 
-    // ── PHASE 1: nothing selected ─────────────────────
+    // ── PHASE 1: chưa cầm bông ───────────────────────
     if (!selected) {
-      const srcPos = bestOccupied(pot);
-      if (srcPos < 0) return; // pot empty, ignore
-      selected = { pot: potIdx, pos: srcPos };
+      // IGNORE: pot không có bông active để chọn
+      if (pot.active.every(x => x === null)) return;
+      // Resolve nearest occupied if tap landed on empty slot
+      const targetPos = pot.active[pos] ? pos : Render.nearestOccupiedPos(pot, pos);
+      if (!pot.active[targetPos]) return;
+      selected = { pot: potIdx, pos: targetPos };
       Sfx.play('tap'); Haptic.tap();
       repaint();
-      paintValidDests();
       return;
     }
 
-    // ── PHASE 2: flower in hand ───────────────────────
+    // ── PHASE 2: đang cầm bông ───────────────────────
 
-    // CANCEL: tap same pot → deselect
-    if (selected.pot === potIdx) {
+    // CANCEL: tap chính bông đang cầm
+    if (selected.pot === potIdx && selected.pos === pos) {
       selected = null;
       Sfx.play('tap');
       repaint();
-      paintValidDests();
       return;
     }
 
-    // DEST has empty slot → try to place
-    const destPos = findValidDest(selected.pot, selected.pos, potIdx);
-    if (destPos >= 0) {
-      onTap(selected.pot, selected.pos, potIdx, destPos);
+    // SAME POT (khác slot) → RESELECT (no move)
+    if (selected.pot === potIdx) {
+      if (pot.active[pos]) {
+        selected = { pot: potIdx, pos };
+        Sfx.play('tap'); Haptic.tap();
+        repaint();
+      }
+      // Tap slot rỗng cùng pot nguồn → ignored
       return;
     }
 
-    // DEST full or invalid → reselect to that pot's best flower
-    const srcPos = bestOccupied(pot);
-    if (srcPos >= 0) {
-      selected = { pot: potIdx, pos: srcPos };
-      Sfx.play('tap'); Haptic.tap();
-      repaint();
-      paintValidDests();
-    }
-  }
+    // ── DIFFERENT POT ────────────────────────────────
+    const destHasEmpty = pot.active.some(x => x === null);
 
-  // Phase 2 dispatcher — 4 outcomes per canon: PLACE / RESELECT / CANCEL / IGNORE
-  function onTap(potIdx, pos, destPotIdx, destPos) {
-    // Called only for PLACE now (from onTapPot)
-    if (destPotIdx !== undefined) {
-      // Direct place call from onTapPot
-      _doPlace(potIdx, pos, destPotIdx, destPos);
+    if (!destHasEmpty) {
+      // RESELECT: pot đích FULL → đổi held sang bông vừa tap
+      const targetPos = pot.active[pos] ? pos : Render.nearestOccupiedPos(pot, pos);
+      if (pot.active[targetPos]) {
+        selected = { pot: potIdx, pos: targetPos };
+        Sfx.play('tap'); Haptic.tap();
+        repaint();
+      }
       return;
     }
-  }
 
-  function _doPlace(srcPot, srcPos, destPot, destPos) {
-    if (gameOver) return;
+    // PLACE: pot đích có slot trống → đặt bông
+    const placePos = pot.active[pos] === null ? pos : Render.nearestEmptyPos(pot, pos);
+    if (pot.active[placePos] !== null) return; // safety
+
+    if (!Engine.canMove(state, selected.pot, selected.pos, potIdx, placePos)) {
+      const cell = cells[potIdx];
+      if (cell) { cell.classList.remove('lv-shake'); void cell.offsetWidth; cell.classList.add('lv-shake'); setTimeout(() => cell.classList.remove('lv-shake'), 350); }
+      Sfx.play('invalid');
+      return;
+    }
+
     // Arc flight animation — defer state mutation until landing
-    const flyColor = state[srcPot].active[srcPos];
-    selected = null;
-    paintValidDests();
+    const srcSel = selected;
+    const flyColor = state[srcSel.pot].active[srcSel.pos];
+    selected = null;  // clear selection visually before flight
     Sfx.play('pour'); Haptic.tap();
 
     Render.animateFlight({
-      srcCell: cells[srcPot],
-      destCell: cells[destPot],
-      srcPos: srcPos,
-      destPos: destPos,
+      srcCell: cells[srcSel.pot],
+      destCell: cells[potIdx],
+      srcPos: srcSel.pos,
+      destPos: placePos,
       color: flyColor,
       assetPath: ASSETS,
       onLand: () => {
         // Step 1: PLACE only — show flower seated in slot, NO vanish yet
         history.push(Engine.clone(state));
-        const r = Engine.applyMovePlace(state, srcPot, srcPos, destPot, destPos);
+        const r = Engine.applyMovePlace(state, srcSel.pot, srcSel.pos, potIdx, placePos);
         moves++;
         // Capture pre-promote state to detect newly-promoted slots
         const wasNullBefore = state.map(p => p.active.map(x => x === null));
@@ -6850,13 +6840,13 @@ Scenes._levelBlossomV2 = function(cfg) {
         state.forEach(p => Engine.promote(p));
         repaint();   // Player thấy bông cắm chậu + queue auto-shift lên nếu source rỗng
         // Bloom on destination flower (every landing)
-        const destImg = cells[destPot]?.querySelector(`.sb-active-flowers img[data-pos="${destPos}"]`);
+        const destImg = cells[potIdx]?.querySelector(`.sb-active-flowers img[data-pos="${placePos}"]`);
         if (destImg) Render.playBloom(destImg, flyColor, ASSETS);
         // Bloom on newly-promoted slots (queue → active)
         state.forEach((pot, pi) => {
           pot.active.forEach((color, posi) => {
             const wasNull = wasNullBefore[pi][posi];
-            const isNewDest = (pi === destPot && posi === destPos);
+            const isNewDest = (pi === potIdx && posi === placePos);
             if (color && wasNull && !isNewDest) {
               const imgEl = cells[pi]?.querySelector(`.sb-active-flowers img[data-pos="${posi}"]`);
               if (imgEl) Render.playBloom(imgEl, color, ASSETS);
@@ -6866,7 +6856,7 @@ Scenes._levelBlossomV2 = function(cfg) {
         // Step 2: nếu có match → đợi 220ms cho mắt thấy bông, RỒI mới vanish
         if (r.willVanish) {
           setTimeout(() => {
-            Render.playVanish(cells[destPot], () => {
+            Render.playVanish(cells[potIdx], () => {
               const settled = Engine.settle(state);
               repaint();
               if (settled.vanished.length > 0) { Sfx.play('lock'); Haptic.success(); }
@@ -7058,7 +7048,7 @@ Scenes._levelBlossomV2 = function(cfg) {
       moves = Math.max(0, moves - 1);
       selected = null;
       Sfx.play('tap');
-      build(); repaint(); paintValidDests();
+      build(); repaint();
     });
 
     // Hint

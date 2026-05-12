@@ -245,18 +245,6 @@
 }
 
 /* ─── SELECTED POT GLOW ───────────────────────────────────── */
-/* Valid destination highlight (mobile tap) */
-.sb-pot-cell.sb-valid-dest .sb-pot-back {
-  filter: drop-shadow(0 0 10px rgba(100,220,100,0.75));
-}
-.sb-pot-cell.sb-valid-dest {
-  animation: sbValidPulse 1s ease-in-out infinite;
-}
-@keyframes sbValidPulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.78; }
-}
-
 .sb-pot-cell.sb-selected .sb-pot-back {
   filter: drop-shadow(0 0 12px rgba(255,215,0,0.6));
 }
