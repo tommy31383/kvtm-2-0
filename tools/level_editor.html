@@ -638,10 +638,11 @@ async function doSaveAndPush() {
       log('🚀 ' + data.message);
       btn.textContent = '✅ Done!'; btn.style.background = '#27ae60';
     } else {
-      throw new Error(data.error);
+      throw new Error(data.error || JSON.stringify(data));
     }
   } catch (e) {
-    log('✗ Save & Push failed: ' + e.message + ' — make sure dev-server is running: node scripts/dev-server.js');
+    log('✗ Save & Push failed: ' + e.message);
+    log('  levels count: ' + (Array.isArray(levels) ? levels.length : 'NOT ARRAY: ' + typeof levels));
     btn.textContent = '✗ Failed'; btn.style.background = '#e53935';
   }
   setTimeout(() => { btn.textContent = orig; btn.disabled = false; btn.style.background = ''; }, 3000);

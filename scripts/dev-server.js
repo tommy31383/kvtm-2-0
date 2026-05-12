@@ -69,7 +69,6 @@ const server = http.createServer((req, res) => {
         const newContent = existing.slice(0, start)
           + `const SORT_BLOSSOM_LEVELS = ${JSON.stringify(levels, null, 2)};\n`
           + existing.slice(tail);
-        if (newContent === existing) throw new Error('Replacement produced no change');
         fs.writeFileSync(dataFile, newContent, 'utf8');
 
         let gitMsg = '';
