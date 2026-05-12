@@ -749,13 +749,108 @@
     return `<img class="sb-queue-bud" data-pos="${pos}" data-color="${color}" src="${assetPath}${staticFile}" style="background-image:url('${assetPath}${bloomFile}');background-position:0 0;background-repeat:no-repeat;"/>`;
   }
 
+  // ─── WIN CELEBRATION ────────────────────────────────────────────
+  /**
+   * Play staggered win celebration on each pot cell.
+   * Combo: burst particles + ring pulse + emoji fountain, staggered per pot.
+   * @param {HTMLElement[]} cells  pot cell elements
+   * @param {number} stars  1-3 stars earned
+   */
+  function playWinCelebration(cells, stars) {
+    const emojis = stars === 3 ? ['🌸','✨','🌟','💐','🎉'] :
+                   stars === 2 ? ['🌸','✨','💮','🌼'] :
+                                 ['🌸','🌿','💧'];
+    const colors  = ['#f9a8d4','#fde68a','#a5f3fc','#bbf7d0','#e9d5ff','#fed7aa'];
+
+    cells.forEach((cell, idx) => {
+      if (!cell) return;
+      const delay = idx * 120;   // stagger 120ms per pot
+
+      setTimeout(() => {
+        if (!cell.isConnected) return;
+        const rect = cell.getBoundingClientRect();
+        const cx = rect.left + rect.width  / 2;
+        const cy = rect.top  + rect.height / 2;
+
+        // 1. Scale pop on the pot itself
+        cell.animate([
+          { transform: 'scale(1)',    offset: 0   },
+          { transform: 'scale(1.18)', offset: 0.3 },
+          { transform: 'scale(0.95)', offset: 0.6 },
+          { transform: 'scale(1)',    offset: 1   },
+        ], { duration: 480, easing: 'ease-out' });
+
+        // 2. Ring pulse (position:fixed so not clipped)
+        const ring = document.createElement('div');
+        ring.style.cssText = `
+          position:fixed; left:${cx}px; top:${cy}px;
+          width:20px; height:20px;
+          border-radius:50%;
+          border:3px solid ${colors[idx % colors.length]};
+          transform:translate(-50%,-50%) scale(0);
+          pointer-events:none; z-index:9998;
+        `;
+        document.body.appendChild(ring);
+        ring.animate([
+          { transform:'translate(-50%,-50%) scale(0)', opacity:1   },
+          { transform:'translate(-50%,-50%) scale(4)', opacity:0   },
+        ], { duration: 600, easing:'ease-out' }).onfinish = () => ring.remove();
+
+        // 3. Burst 10 particles
+        const count = 10;
+        for (let i = 0; i < count; i++) {
+          const angle  = (i / count) * Math.PI * 2;
+          const dist   = 55 + Math.random() * 35;
+          const dx     = Math.cos(angle) * dist;
+          const dy     = Math.sin(angle) * dist;
+          const dot    = document.createElement('div');
+          const color  = colors[Math.floor(Math.random() * colors.length)];
+          const size   = 5 + Math.random() * 5;
+          dot.style.cssText = `
+            position:fixed; left:${cx}px; top:${cy}px;
+            width:${size}px; height:${size}px;
+            border-radius:50%; background:${color};
+            pointer-events:none; z-index:9998;
+            transform:translate(-50%,-50%);
+          `;
+          document.body.appendChild(dot);
+          dot.animate([
+            { transform:`translate(-50%,-50%) translate(0,0) scale(1)`,          opacity:1 },
+            { transform:`translate(-50%,-50%) translate(${dx}px,${dy}px) scale(0)`, opacity:0 },
+          ], { duration: 500 + Math.random()*300, easing:'ease-out' }).onfinish = () => dot.remove();
+        }
+
+        // 4. Emoji fountain — 3 emojis float up from pot
+        for (let e = 0; e < 3; e++) {
+          setTimeout(() => {
+            const em = document.createElement('div');
+            const offsetX = (Math.random() - 0.5) * 60;
+            em.style.cssText = `
+              position:fixed; left:${cx + offsetX}px; top:${cy}px;
+              font-size:${18 + Math.random()*10}px;
+              pointer-events:none; z-index:9999;
+              transform:translate(-50%,-50%);
+              user-select:none;
+            `;
+            em.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            document.body.appendChild(em);
+            em.animate([
+              { transform:`translate(-50%,-50%) translateY(0)   scale(1)`,   opacity:1 },
+              { transform:`translate(-50%,-50%) translateY(-90px) scale(0.6)`, opacity:0 },
+            ], { duration: 900 + Math.random()*400, easing:'ease-out' }).onfinish = () => em.remove();
+          }, e * 80);
+        }
+      }, delay);
+    });
+  }
+
   // ─── EXPORT ─────────────────────────────────────────
   const api = {
     COLORS,
     BLOOM_COLS, BLOOM_ROWS, BLOOM_FRAMES, BLOOM_DURATION_MS,
     buildPotCell,
     paintActive, paintQueue, paintAll,
-    setSelected, playVanish, animateFlight, playBloom, buildQueueBud, upgradeQueueBuds,
+    setSelected, playVanish, animateFlight, playBloom, playWinCelebration, buildQueueBud, upgradeQueueBuds,
     renderQueueStrip,
     eventToPos, eventToNearestFlowerPos, eventToFlowerHitPos,
     nearestOccupiedPos, nearestEmptyPos, nearestBoardFlower,
