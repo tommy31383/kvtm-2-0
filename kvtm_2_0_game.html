@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
@@ -2043,6 +2043,16 @@
   <!-- Dev dot (top-right, always visible) -->
   <div id="dev-dot" title="Dev Console"></div>
 
+  <!-- Always-visible flight mode picker (R = random per move) -->
+  <div id="flight-mode-picker" style="position:fixed;top:12px;left:12px;z-index:99999;background:#1a1f2e;border:2px solid #FFD700;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.6);font-family:sans-serif;">
+    <span style="color:#FFD700;font-size:12px;font-weight:bold;">✈️ Anim:</span>
+    <button onclick="Dev.setFlightMode('R');Dev.initFlightMode();" style="background:#3a3f4e;color:#fff;border:1px solid #FFD700;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:bold;" data-mode="R">🎲 Random</button>
+    <button onclick="Dev.setFlightMode('B');Dev.initFlightMode();" style="background:#3a3f4e;color:#fff;border:1px solid #FFD700;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:bold;" data-mode="B">B Arc</button>
+    <button onclick="Dev.setFlightMode('C');Dev.initFlightMode();" style="background:#3a3f4e;color:#fff;border:1px solid #FFD700;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:bold;" data-mode="C">C Float</button>
+    <button onclick="Dev.setFlightMode('D');Dev.initFlightMode();" style="background:#3a3f4e;color:#fff;border:1px solid #FFD700;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:bold;" data-mode="D">D Fade</button>
+    <button onclick="document.getElementById('flight-mode-picker').style.display='none';" style="background:transparent;color:#888;border:none;font-size:14px;cursor:pointer;" title="Hide">✕</button>
+  </div>
+
   <!-- Dev console panel -->
   <div id="dev-panel">
     <h3>Dev Console</h3>
@@ -2064,6 +2074,14 @@
         <span style="font-size:10px;color:#aaa;">Jump L:</span>
         <select id="dev-level-select" style="flex:1;background:#222;color:#eee;border:1px solid #555;border-radius:6px;font-size:11px;padding:3px;"></select>
         <div class="dev-btn" style="padding:5px 8px;flex-shrink:0;" onclick="Dev.jumpToLevel()">▶</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;margin-top:4px;background:#1a1f2e;padding:4px;border-radius:6px;">
+        <span style="font-size:10px;color:#FFD700;">Flight:</span>
+        <select id="dev-flight-mode" onchange="Dev.setFlightMode(this.value)" style="flex:1;background:#222;color:#eee;border:1px solid #555;border-radius:4px;font-size:11px;padding:3px;">
+          <option value="B">B · Arc (WebAnim)</option>
+          <option value="C">C · Float drift</option>
+          <option value="D">D · Crossfade</option>
+        </select>
       </div>
       <div class="dev-btn" onclick="Dev.completeNextDecor()">✅ Complete Next Decor</div>
       <div class="dev-btn" onclick="Dev.resetDecor()">🔄 Reset Decor</div>
@@ -3212,826 +3230,33 @@ function triggerVib(ms) {
 }
 
 // ════════════════════════════════════════════════
-// ════ SORT VASE LEVEL CONFIGS ════
+// ════ SORT BLOSSOM SHIM (dev helpers only) ════
 // ════════════════════════════════════════════════
 
-const SORT_BLOSSOM_PATH = 'assets/sort_blossom/';
-const SORT_COLORS = {
-  R: { hex:'#C8302E', light:'#F08080', name:'Red',    img:'flower_red.png'    },
-  P: { hex:'#FF6B9D', light:'#FFB3CF', name:'Pink',   img:'flower_pink.png'   },
-  Y: { hex:'#FFD700', light:'#FFF176', name:'Yellow', img:'flower_yellow.png' },
-  V: { hex:'#9B59B6', light:'#CE93D8', name:'Purple', img:'flower_purple.png' },
-  W: { hex:'#F0EAD6', light:'#FFFFF0', name:'White',  img:'flower_white.png'  },
-  O: { hex:'#FF8C00', light:'#FFD080', name:'Orange', img:'flower_orange.png' },
-  B: { hex:'#4A90E2', light:'#80B0F0', name:'Blue',   img:'flower_blue.png'   },
-  C: { hex:'#A52A2A', light:'#D08080', name:'Camellia', img:'flower_camellia.png' }
+// SortBlossom dev shim — delegates to active _levelBlossomV2 closure
+// (exposed via window so dev panel can call without needing a ref into the closure)
+const SortVase = {
+  devSkip3Star() { if (window._sbDevSkip3Star) window._sbDevSkip3Star(); },
+  devWin()       { if (window._sbDevWin)       window._sbDevWin(); },
+  devLose()      { if (window._sbDevLose)       window._sbDevLose(); },
+  gotoNextLevel(){ if (window._sbGotoNext)      window._sbGotoNext(); },
 };
 
-const SORT_VASE_LEVELS = [
-  // ── L1-L3: Tutorial — 3-4 vases, 2 colors ──
-  { id:1, name:'Hoa Hồng Đầu Tiên', vases:4, capacity:4, colors:2,
-    initial:[['R','P','R','P'],['P','R','P','R'],[],[]],
-    moveLimit:12, starThresholds:[4,7,10],
-    palette:['#C8302E','#FF6B9D'], tutorial:true },
-  { id:2, name:'Buổi Sáng Êm Ả', vases:4, capacity:4, colors:2,
-    initial:[['R','P','P','R'],['P','R','R','P'],[],[]],
-    moveLimit:12, starThresholds:[4,7,10],
-    palette:['#C8302E','#FF6B9D'] },
-  { id:3, name:'Vườn Nhỏ Xinh', vases:4, capacity:4, colors:2,
-    initial:[['Y','R','Y','R'],['R','Y','R','Y'],[],[]],
-    moveLimit:12, starThresholds:[4,7,10],
-    palette:['#FFD700','#C8302E'] },
-
-  // ── L4-L7: 4-5 vases, 3 colors ──
-  { id:4, name:'Ba Sắc Hoa', vases:5, capacity:4, colors:3,
-    initial:[['R','P','Y','R'],['Y','R','P','Y'],['P','Y','R','P'],[],[]],
-    moveLimit:15, starThresholds:[8,11,14],
-    palette:['#C8302E','#FF6B9D','#FFD700'] },
-  { id:5, name:'Nắng Chiều', vases:5, capacity:4, colors:3,
-    initial:[['Y','V','R','Y'],['R','Y','V','R'],['V','R','Y','V'],[],[]],
-    moveLimit:15, starThresholds:[8,11,14],
-    palette:['#FFD700','#9B59B6','#C8302E'] },
-  { id:6, name:'Mùa Xuân Đến', vases:5, capacity:4, colors:3,
-    initial:[['P','R','V','P'],['V','P','R','V'],['R','V','P','R'],[],[]],
-    moveLimit:16, starThresholds:[9,12,15],
-    palette:['#FF6B9D','#C8302E','#9B59B6'] },
-  { id:7, name:'Hoa Tím Tươi', vases:5, capacity:4, colors:3,
-    initial:[['V','P','Y','V'],['P','V','Y','P'],['Y','P','V','Y'],[],[]],
-    moveLimit:16, starThresholds:[9,12,15],
-    palette:['#9B59B6','#FF6B9D','#FFD700'] },
-
-  // ── L8-L12: 5-6 vases, 4 colors ──
-  { id:8, name:'Bốn Mùa', vases:6, capacity:4, colors:4,
-    initial:[['R','Y','P','V'],['V','P','Y','R'],['Y','R','V','P'],['P','V','R','Y'],[],[]],
-    moveLimit:18, starThresholds:[10,14,17],
-    palette:['#C8302E','#FFD700','#FF6B9D','#9B59B6'] },
-  { id:9, name:'Vườn Muôn Hoa', vases:6, capacity:4, colors:4,
-    initial:[['P','R','V','Y'],['Y','V','R','P'],['R','P','Y','V'],['V','Y','P','R'],[],[]],
-    moveLimit:18, starThresholds:[10,14,17],
-    palette:['#FF6B9D','#C8302E','#9B59B6','#FFD700'] },
-  { id:10, name:'Cơn Mưa Hoa', vases:6, capacity:4, colors:4,
-    initial:[['Y','P','R','V'],['R','V','P','Y'],['V','R','Y','P'],['P','Y','V','R'],[],[]],
-    moveLimit:18, starThresholds:[10,14,17],
-    palette:['#FFD700','#FF6B9D','#C8302E','#9B59B6'] },
-  { id:11, name:'Ánh Hoàng Hôn', vases:6, capacity:4, colors:4,
-    initial:[['O','R','P','V'],['V','P','R','O'],['P','V','O','R'],['R','O','V','P'],[],[]],
-    moveLimit:18, starThresholds:[11,15,17],
-    palette:['#FF8C00','#C8302E','#FF6B9D','#9B59B6'] },
-  { id:12, name:'Vũ Điệu Màu Sắc', vases:6, capacity:4, colors:4,
-    initial:[['W','Y','R','P'],['P','R','Y','W'],['Y','W','P','R'],['R','P','W','Y'],[],[]],
-    moveLimit:18, starThresholds:[11,15,17],
-    palette:['#F0EAD6','#FFD700','#C8302E','#FF6B9D'] },
-
-  // ── L13-L17: 6-7 vases, 4-5 colors ──
-  { id:13, name:'Hội Hoa Xuân', vases:7, capacity:4, colors:5,
-    initial:[['R','P','Y','V'],['O','V','R','P'],['P','O','V','R'],['Y','R','P','O'],['V','Y','O','Y'],[],[]],
-    moveLimit:20, starThresholds:[12,16,19],
-    palette:['#C8302E','#FF6B9D','#FFD700','#9B59B6','#FF8C00'] },
-  { id:14, name:'Ngũ Sắc Hoa', vases:7, capacity:4, colors:5,
-    initial:[['W','R','O','P'],['P','O','W','R'],['O','W','R','P'],['R','P','O','W'],['W','O','P','R'],[],[]],
-    moveLimit:20, starThresholds:[12,16,19],
-    palette:['#F0EAD6','#C8302E','#FF8C00','#FF6B9D'] },
-  { id:15, name:'Rừng Hoa Bí Ẩn', vases:7, capacity:4, colors:5,
-    initial:[['V','Y','W','R'],['R','W','V','Y'],['Y','V','R','W'],['W','R','Y','V'],['V','W','Y','R'],[],[]],
-    moveLimit:20, starThresholds:[12,16,19],
-    palette:['#9B59B6','#FFD700','#F0EAD6','#C8302E'] },
-  { id:16, name:'Biển Hoa Hồng', vases:7, capacity:4, colors:5,
-    initial:[['P','O','Y','V'],['V','Y','O','P'],['O','P','V','Y'],['Y','V','P','O'],['P','Y','V','O'],[],[]],
-    moveLimit:20, starThresholds:[12,16,19],
-    palette:['#FF6B9D','#FF8C00','#FFD700','#9B59B6'] },
-  { id:17, name:'Hoàng Hôn Tím', vases:7, capacity:4, colors:5,
-    initial:[['V','W','R','P'],['P','R','W','V'],['W','V','P','R'],['R','P','V','W'],['V','R','P','W'],[],[]],
-    moveLimit:20, starThresholds:[12,16,19],
-    palette:['#9B59B6','#F0EAD6','#C8302E','#FF6B9D'] },
-
-  // ── L18-L20: 7-8 vases, 5 colors, 2 rows, CHALLENGING ──
-  { id:18, name:'Đêm Hoa Rực Rỡ', vases:8, capacity:4, colors:5,
-    initial:[['R','P','Y','V'],['O','V','R','P'],['P','O','V','R'],['Y','R','P','O'],['V','Y','O','Y'],['R','V','P','O'],[],[]],
-    moveLimit:25, starThresholds:[14,19,24],
-    palette:['#C8302E','#FF6B9D','#FFD700','#9B59B6','#FF8C00'] },
-  { id:19, name:'Vũ Hội Mùa Hè', vases:8, capacity:4, colors:5,
-    initial:[['W','Y','R','O'],['O','R','Y','W'],['Y','W','O','R'],['R','O','W','Y'],['W','O','R','Y'],['Y','R','O','W'],[],[]],
-    moveLimit:25, starThresholds:[14,19,24],
-    palette:['#F0EAD6','#FFD700','#C8302E','#FF8C00'] },
-  { id:20, name:'Bản Giao Hưởng Cuối', vases:8, capacity:4, colors:5,
-    initial:[['V','P','W','O'],['O','W','P','V'],['P','V','O','W'],['W','O','V','P'],['P','W','O','V'],['O','V','P','W'],[],[]],
-    moveLimit:25, starThresholds:[14,19,24],
-    palette:['#9B59B6','#FF6B9D','#F0EAD6','#FF8C00'] }
-];
+// (old SORT_VASE_LEVELS data removed — see engine/sort_blossom_data.js)
 
 // ════════════════════════════════════════════════
-// ════ SORT VASE ENGINE ════
+// ════ OLD SORT VASE ENGINE — DELETED ════
+// ════ Replaced by shared engine (engine/*.js) ════
 // ════════════════════════════════════════════════
 
-const SortVase = (() => {
-
-  // State
-  let _cfg = null;       // current level config
-  let _vases = [];       // array of flower stacks (LIFO, index 0 = bottom)
-  let _locked = [];      // which vases are mono-full
-  let _selected = null;  // selected vase index or null
-  let _moves = 0;        // move counter
-  let _undosLeft = 3;
-  let _hintsLeft = 2;
-  let _history = [];     // snapshots for undo
-  let _animating = false;
-  let _gameOver = false;
-  let _hintPair = null;  // {from, to}
-  let _tutStep = 0;      // tutorial step (0=not started, 1=shown first, 2=done)
-  let _container = null; // DOM container for the level scene
-  let _numVases = 0;
-
-  // ── Core helpers ──
-  function top(i) {
-    const v = _vases[i];
-    return v.length ? v[v.length-1] : null;
-  }
-  function topRun(i) {
-    const v = _vases[i];
-    if (!v.length) return 0;
-    const c = v[v.length-1];
-    let n = 0;
-    for (let j = v.length-1; j >= 0; j--) {
-      if (v[j] === c) n++; else break;
-    }
-    return n;
-  }
-  function isValid(from, to) {
-    if (from === to) return false;
-    if (_locked[from] || _locked[to]) return false;
-    const src = top(from);
-    if (src === null) return false;
-    const dst = _vases[to];
-    if (dst.length >= _cfg.capacity) return false;
-    return dst.length === 0 || dst[dst.length-1] === src;
-  }
-  function pourCount(from, to) {
-    const space = _cfg.capacity - _vases[to].length;
-    return Math.min(topRun(from), space);
-  }
-  function clone() {
-    return { vases: _vases.map(v=>[...v]), locked:[..._locked], moves:_moves };
-  }
-
-  // ── Execute move ──
-  function execMove(from, to) {
-    _history.push(clone());
-    const n = pourCount(from, to);
-    const flowers = _vases[from].splice(_vases[from].length - n, n);
-    _vases[to].push(...flowers);
-    _moves++;
-    checkLock(to);
-    updateStatsBar();
-    if (_cfg.tutorial && _tutStep === 1) {
-      _tutStep = 2;
-      removeTutorial();
-    }
-  }
-
-  function checkLock(i) {
-    const v = _vases[i];
-    if (v.length === _cfg.capacity && topRun(i) === _cfg.capacity) {
-      _locked[i] = true;
-      sfxPlay('lock');
-      triggerVib(50);
-      doSparkles(i);
-      setTimeout(() => {
-        const solvedCount = _locked.filter(Boolean).length;
-        const colorCount = _cfg.colors;
-        if (solvedCount === colorCount) {
-          setTimeout(() => triggerWin(), 300);
-        } else {
-          checkDeadlock();
-        }
-      }, 450);
-    }
-  }
-
-  function checkDeadlock() {
-    for (let a = 0; a < _numVases; a++)
-      for (let b = 0; b < _numVases; b++)
-        if (isValid(a, b)) return;
-    setTimeout(() => showLoseOverlay('deadlock'), 350);
-  }
-
-  function checkMoveLimit() {
-    if (_moves >= _cfg.moveLimit) {
-      checkDeadlock();
-      setTimeout(() => {
-        // only show lose if not won
-        if (!_gameOver) showLoseOverlay('moves');
-      }, 500);
-    }
-  }
-
-  // ── Input ──
-  function onTap(idx) {
-    if (_animating || _gameOver) return;
-
-    if (_selected === null) {
-      if (!_vases[idx].length || _locked[idx]) return;
-      _selected = idx;
-      _hintPair = null;
-      clearHintGlow();
-      sfxPlay('tap');
-      triggerVib(20);
-      renderAll();
-      if (_cfg.tutorial && _tutStep === 0) {
-        _tutStep = 1;
-        showTutorial('step2');
-      }
-    } else if (_selected === idx) {
-      _selected = null;
-      renderAll();
-    } else {
-      if (isValid(_selected, idx)) {
-        const from = _selected, to = idx;
-        _selected = null;
-        _hintPair = null;
-        clearHintGlow();
-        animatePour(from, to, () => {
-          execMove(from, to);
-          renderAll();
-          checkMoveLimit();
-        });
-        sfxPlay('pour');
-        triggerVib(20);
-      } else {
-        doShake(idx);
-        sfxPlay('invalid');
-        _selected = null;
-        renderAll();
-      }
-    }
-  }
-
-  // ── Win ──
-  function triggerWin() {
-    if (_gameOver) return;
-    _gameOver = true;
-    sfxPlay('win');
-    triggerVib(80);
-
-    const moves = _moves;
-    const thr = _cfg.starThresholds; // [3star, 2star, 1star]
-    const stars = moves <= thr[0] ? 3 : moves <= thr[1] ? 2 : 1;
-
-    // Persist to save
-    const save = Save.get();
-    const existing = save.progress.levelsCompleted || [];
-    const prevBest = existing.find(e => e.id === _cfg.id);
-    const prevStars = prevBest ? prevBest.stars : 0;
-    if (!prevBest) {
-      existing.push({ id:_cfg.id, stars, moves });
-      Save.set('progress.levelsCompleted', existing);
-    } else if (stars > prevStars) {
-      prevBest.stars = stars; prevBest.moves = moves;
-      Save.set('progress.levelsCompleted', existing);
-    }
-
-    const starsEarned = 1 + (stars === 3 ? 1 : 0);
-    Save.inc('progress.starsBalance', starsEarned);
-
-    // Advance level if this is current level
-    if (_cfg.id >= save.progress.currentLevel) {
-      Save.set('progress.currentLevel', _cfg.id + 1);
-    }
-
-    Hub.refreshStarsUI();
-    showWinOverlay(stars, starsEarned, moves);
-  }
-
-  // ── Lose ──
-  function showLoseOverlay(reason) {
-    if (_gameOver) return;
-    _gameOver = true;
-    sfxPlay('lose');
-    triggerVib(80);
-    const overlay = _container.querySelector('.lv-win-overlay');
-    if (!overlay) return;
-    overlay.innerHTML = buildLoseBox(reason);
-    overlay.classList.add('visible');
-  }
-
-  function buildLoseBox(reason) {
-    const title = reason === 'deadlock' ? '😓 Hết nước đi!' : '⏱️ Hết lượt!';
-    const sub = reason === 'deadlock' ? 'Không còn nước đi hợp lệ.' : `Đã dùng hết ${_cfg.moveLimit} lượt.`;
-    return `
-      <div class="lv-result-box">
-        <div class="lv-result-title">${title}</div>
-        <div class="lv-result-sub">${sub}</div>
-        <div class="lv-result-btns">
-          <button class="lv-result-btn primary" onclick="SortVase.retryLevel()">↺ Chơi lại (tốn 1❤)</button>
-          <button class="lv-result-btn warn" onclick="SortVase.buyMoreMoves()">+5 nước (1⭐)</button>
-          <button class="lv-result-btn muted" onclick="Game.goto('hub')">← Bỏ cuộc</button>
-        </div>
-      </div>`;
-  }
-
-  // ── Win overlay ──
-  function showWinOverlay(stars, starsEarned, moves) {
-    const overlay = _container.querySelector('.lv-win-overlay');
-    if (!overlay) return;
-    const s3 = stars >= 3 ? '⭐' : '☆';
-    const s2 = stars >= 2 ? '⭐' : '☆';
-    const s1 = '⭐';
-
-    overlay.innerHTML = `
-      <div class="lv-result-box">
-        <div class="lv-result-title">The path clears.</div>
-        <div class="lv-result-sub">Level ${_cfg.id} · ${moves} nước đi</div>
-        <div class="lv-stars-row">
-          <div class="lv-star-big grey" id="ws1">⭐</div>
-          <div class="lv-star-big grey" id="ws2">⭐</div>
-          <div class="lv-star-big grey" id="ws3">⭐</div>
-        </div>
-        <div class="lv-reward-row" id="win-reward-row">+${starsEarned}⭐ vào kho</div>
-        <div class="lv-result-btns">
-          <button class="lv-result-btn primary" onclick="SortVase.gotoNextLevel()">→ TIẾP TỤC</button>
-          <button class="lv-result-btn muted" onclick="Game.goto('hub')">🏡 Về Hub</button>
-        </div>
-      </div>`;
-    overlay.classList.add('visible');
-
-    // Animate stars sequentially
-    setTimeout(() => overlay.querySelector('#ws1').classList.replace('grey','reveal'), 300);
-    if (stars >= 2) setTimeout(() => overlay.querySelector('#ws2').classList.replace('grey','reveal'), 600);
-    if (stars >= 3) setTimeout(() => overlay.querySelector('#ws3').classList.replace('grey','reveal'), 900);
-
-    // Star fly to inventory
-    setTimeout(() => {
-      spawnStarFly();
-      sfxPlay('win');
-    }, 1200);
-
-    // Check if next decor task affordable
-    setTimeout(() => {
-      const nextTask = Hub.getNextTask();
-      if (nextTask) {
-        const bal = Save.get().progress.starsBalance;
-        if (bal >= nextTask.cost) {
-          showToast(`🌱 Đủ sao làm "${nextTask.label}"! Về Hub nhé!`, 3000);
-        }
-      }
-    }, 1800);
-  }
-
-  function spawnStarFly() {
-    if (!_container) return;
-
-    // Get start position: center of win result box (roughly screen center)
-    const frame = document.getElementById('phone-frame');
-    const frameRect = frame ? frame.getBoundingClientRect() : { left: 0, top: 0 };
-
-    // Approximate source: center of win popup
-    const srcX = frameRect.left + 195;
-    const srcY = frameRect.top + 380;
-
-    // Approximate target: the ⭐ pill in topbar
-    const pillEl = document.getElementById('rm-stars-pill') || document.getElementById('hub-stars-count');
-    let tgtX = frameRect.left + 340;
-    let tgtY = frameRect.top + 58;
-    if (pillEl) {
-      const pillRect = pillEl.getBoundingClientRect();
-      tgtX = pillRect.left + pillRect.width / 2;
-      tgtY = pillRect.top + pillRect.height / 2;
-    }
-
-    const fly = document.createElement('div');
-    fly.className = 'star-fly-to-pill';
-    fly.textContent = '⭐';
-    fly.style.cssText = `left:${srcX}px;top:${srcY}px;transform:translate(-50%,-50%);transition:none;`;
-    document.body.appendChild(fly);
-
-    // Animate via requestAnimationFrame for smoothness
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        fly.style.transition = 'left 0.7s cubic-bezier(0.4,0,0.2,1), top 0.7s cubic-bezier(0.4,0,0.2,1), transform 0.7s ease, opacity 0.7s ease';
-        fly.style.left = tgtX + 'px';
-        fly.style.top = tgtY + 'px';
-        fly.style.transform = 'translate(-50%,-50%) scale(0.3)';
-        fly.style.opacity = '0.6';
-      });
-    });
-
-    // Sparkle burst on pill landing
-    setTimeout(() => {
-      fly.remove();
-      // Bounce animation on pill
-      const starCount = document.getElementById('hub-stars-count');
-      if (starCount) {
-        starCount.classList.remove('star-pop');
-        void starCount.offsetWidth;
-        starCount.classList.add('star-pop');
-        setTimeout(() => starCount.classList.remove('star-pop'), 400);
-      }
-    }, 750);
-  }
-
-  // ── Actions ──
-  function doUndo() {
-    if (_undosLeft <= 0 || _history.length === 0 || _animating) {
-      sfxPlay('invalid'); return;
-    }
-    const snap = _history.pop();
-    _vases = snap.vases; _locked = snap.locked; _moves = snap.moves;
-    _undosLeft--; _selected = null; _hintPair = null;
-    clearHintGlow();
-    renderAll(); updateStatsBar(); updateToolbar();
-    sfxPlay('tap');
-  }
-
-  function doHint() {
-    if (_hintsLeft <= 0 || _animating) {
-      sfxPlay('invalid'); return;
-    }
-    for (let a = 0; a < _numVases; a++) {
-      for (let b = 0; b < _numVases; b++) {
-        if (isValid(a, b)) {
-          _hintPair = { from:a, to:b };
-          _hintsLeft--;
-          renderAll(); updateToolbar();
-          document.getElementById('lv-vc-'+a)?.classList.add('lv-hint-glow');
-          document.getElementById('lv-vc-'+b)?.classList.add('lv-hint-glow');
-          sfxPlay('tap');
-          setTimeout(() => { _hintPair = null; clearHintGlow(); }, 2200);
-          return;
-        }
-      }
-    }
-    showToast('Không có gợi ý hợp lệ!');
-  }
-
-  function doRestart() {
-    if (_gameOver) return;
-    const overlay = _container.querySelector('.lv-pause-modal');
-    if (overlay) overlay.classList.remove('visible');
-    _initState();
-    renderAll(); updateStatsBar(); updateToolbar();
-    sfxPlay('tap');
-  }
-
-  function retryLevel() {
-    const ok = Lives.consume();
-    if (!ok) { showToast('Hết tim rồi! ❤'); return; }
-    _initState();
-    const overlay = _container.querySelector('.lv-win-overlay');
-    if (overlay) overlay.classList.remove('visible');
-    renderAll(); updateStatsBar(); updateToolbar();
-    sfxPlay('tap');
-  }
-
-  function buyMoreMoves() {
-    const save = Save.get();
-    if (save.progress.starsBalance < 1) {
-      showToast('Không đủ ⭐'); return;
-    }
-    Save.inc('progress.starsBalance', -1);
-    Hub.refreshStarsUI();
-    _cfg = Object.assign({}, _cfg, { moveLimit: _cfg.moveLimit + 5 });
-    _gameOver = false;
-    const overlay = _container.querySelector('.lv-win-overlay');
-    if (overlay) overlay.classList.remove('visible');
-    updateStatsBar();
-    showToast('+5 nước đi!');
-  }
-
-  function gotoNextLevel() {
-    const nextId = _cfg.id + 1;
-    if (nextId > SORT_VASE_LEVELS.length) {
-      Game.goto('hub');
-      setTimeout(() => showToast('🎉 Bạn đã hoàn thành tất cả level!', 3000), 500);
-    } else {
-      Game.goto('level', { levelId: nextId });
-    }
-  }
-
-  function pauseGame() {
-    const modal = _container.querySelector('.lv-pause-modal');
-    if (modal) modal.classList.toggle('visible');
-  }
-
-  // ── Render ──
-  function renderAll() {
-    for (let i = 0; i < _numVases; i++) renderVase(i);
-    if (_hintPair) {
-      document.getElementById('lv-vc-'+_hintPair.from)?.classList.add('lv-hint-glow');
-      document.getElementById('lv-vc-'+_hintPair.to)?.classList.add('lv-hint-glow');
-    }
-  }
-
-  function renderVase(i) {
-    const vc = document.getElementById('lv-vc-'+i);
-    if (!vc) return;
-    vc.classList.toggle('lv-selected', _selected === i);
-    vc.classList.toggle('lv-locked', !!_locked[i]);
-    vc.classList.remove('lv-hint-glow');
-    updateFlowers(i);
-  }
-
-  // Fan layouts — stems converge at pot rim, blooms spread radially.
-  // Index 0 = back/bottom of LIFO, last index = TOP (front-center, liftable).
-  const FAN_LAYOUT = {
-    1: { ang:[0],                scl:[1.00],                  bot:[68] },
-    2: { ang:[-26, 22],           scl:[0.95, 1.00],            bot:[58, 68] },
-    3: { ang:[-32, 30, -2],       scl:[0.90, 0.90, 1.00],      bot:[54, 54, 72] },
-    4: { ang:[-38, 36, -16, 10],  scl:[0.86, 0.86, 0.94, 1.00], bot:[48, 48, 56, 72] },
-  };
-
-  function updateFlowers(idx) {
-    const wrap = document.getElementById('lv-vsvg-'+idx);
-    if (!wrap) return;
-    const stack = wrap.querySelector('.lv-flower-group');
-    if (!stack) return;
-    while (stack.firstChild) stack.removeChild(stack.firstChild);
-    const flowers = _vases[idx];
-    const N = flowers.length;
-    const lay = FAN_LAYOUT[Math.min(N, 4)] || FAN_LAYOUT[4];
-
-    flowers.forEach((key, i) => {
-      const col = SORT_COLORS[key];
-      if (!col || !col.img) return;
-      const img = document.createElement('img');
-      img.className = 'lv-flower-img';
-      img.src = SORT_BLOSSOM_PATH + col.img;
-      img.draggable = false;
-      img.alt = '';
-      img.style.zIndex = String(10 + i);
-
-      const angle = lay.ang[i] ?? 0;
-      const scale = lay.scl[i] ?? 1;
-      const bot   = lay.bot[i] ?? 30;
-      const isTop = i === N - 1;
-
-      img.style.bottom = bot + 'px';
-      // Back flowers darker for depth
-      const bright = isTop ? 1.0 : (i < N - 2 ? 0.82 : 0.92);
-      img.style.filter = `drop-shadow(0 3px 4px rgba(0,0,0,0.3)) brightness(${bright})`;
-      // Compose transform: fan rotation + scale + lift on selected
-      const liftY = (isTop && _selected === idx) ? -14 : 0;
-      img.style.transformOrigin = '50% 92%'; // anchor near stem base
-      img.style.transform = `translateX(-50%) translateY(${liftY}px) rotate(${angle}deg) scale(${scale})`;
-      stack.appendChild(img);
-    });
-
-    // Pot variant — only back layer changes (empty/done/locked)
-    const potBack = wrap.querySelector('.lv-pot-back');
-    if (potBack) {
-      potBack.src = SORT_BLOSSOM_PATH + (_locked[idx] ? 'pot_done.png' : 'pot_empty.png');
-    }
-  }
-
-  function clearHintGlow() {
-    for (let i = 0; i < _numVases; i++) {
-      document.getElementById('lv-vc-'+i)?.classList.remove('lv-hint-glow');
-    }
-  }
-
-  // ── Animation ──
-  function animatePour(from, to, cb) {
-    _animating = true;
-    const n = pourCount(from, to);
-    if (n === 0) { _animating = false; cb(); return; }
-    const key = top(from);
-    const layer = _container.querySelector('.lv-anim-layer');
-    const scr = _container.getBoundingClientRect();
-    const fEl = document.getElementById('lv-vsvg-'+from);
-    const tEl = document.getElementById('lv-vsvg-'+to);
-    if (!fEl || !tEl) { _animating = false; cb(); return; }
-    const fR = fEl.getBoundingClientRect();
-    const tR = tEl.getBoundingClientRect();
-    const sx = fR.left - scr.left + fR.width/2;
-    const sy = fR.top  - scr.top  + 32;
-    const ex = tR.left - scr.left + tR.width/2;
-    const ey = tR.top  - scr.top  + 32;
-    let done = 0;
-    for (let i = 0; i < n; i++) {
-      setTimeout(() => {
-        const svg = makeFlySVG(key, 20);
-        svg.style.cssText = `position:absolute;left:${sx-10}px;top:${sy-10}px;z-index:65;pointer-events:none;`;
-        layer.appendChild(svg);
-        const cpX = (sx+ex)/2 + (Math.random()-0.5)*36;
-        const cpY = Math.min(sy,ey) - 52;
-        const dur = 300; const t0 = performance.now();
-        function fr(now) {
-          const t = Math.min((now-t0)/dur, 1);
-          const e = t<0.5 ? 2*t*t : -1+(4-2*t)*t;
-          const x = (1-e)*(1-e)*sx + 2*(1-e)*e*cpX + e*e*ex;
-          const y = (1-e)*(1-e)*sy + 2*(1-e)*e*cpY + e*e*ey;
-          svg.style.left = (x-10)+'px'; svg.style.top = (y-10)+'px';
-          if (t<1) requestAnimationFrame(fr);
-          else { svg.remove(); done++; if (done===n) { _animating=false; cb(); } }
-        }
-        requestAnimationFrame(fr);
-      }, i*85);
-    }
-  }
-
-  function makeFlySVG(key, size) {
-    // PNG-based fly element (replaces old SVG flower)
-    const col = SORT_COLORS[key];
-    const img = document.createElement('img');
-    img.className = 'lv-fly-img';
-    img.src = SORT_BLOSSOM_PATH + (col?.img || 'flower_red.png');
-    img.draggable = false;
-    img.alt = '';
-    const flySize = (size || 20) * 2.6; // scale up since flower has stem+leaves
-    img.style.width = flySize + 'px';
-    img.style.height = 'auto';
-    return img;
-  }
-
-  function doShake(idx) {
-    const el = document.getElementById('lv-vc-'+idx);
-    if (!el) return;
-    el.classList.remove('lv-shake'); void el.offsetWidth;
-    el.classList.add('lv-shake');
-    setTimeout(() => el.classList.remove('lv-shake'), 350);
-  }
-
-  function doSparkles(idx) {
-    const el = document.getElementById('lv-vsvg-'+idx);
-    if (!el || !_container) return;
-    const r = el.getBoundingClientRect();
-    const sr = _container.getBoundingClientRect();
-    const cx = r.left-sr.left+r.width/2, cy = r.top-sr.top+r.height/2;
-    const layer = _container.querySelector('.lv-anim-layer');
-    if (!layer) return;
-    ['✦','★','✨','✧','⭐','✦','★','✨'].forEach((s,i) => {
-      const d = document.createElement('div');
-      d.className = 'lv-sparkle'; d.textContent = s;
-      d.style.color = '#FFD700';
-      d.style.left = (cx + Math.cos(i/8*Math.PI*2)*30 - 7)+'px';
-      d.style.top  = (cy + Math.sin(i/8*Math.PI*2)*30 - 7)+'px';
-      d.style.setProperty('--dx', (Math.cos(i/8*Math.PI*2)*20)+'px');
-      d.style.setProperty('--dy', (Math.sin(i/8*Math.PI*2)*20)+'px');
-      layer.appendChild(d);
-      setTimeout(() => d.remove(), 700);
-    });
-  }
-
-  // ── HUD updates ──
-  function updateStatsBar() {
-    const movesEl = _container.querySelector('.lv-moves-val');
-    if (movesEl) movesEl.textContent = `${_moves}/${_cfg.moveLimit}`;
-    // Stars tier
-    const thr = _cfg.starThresholds;
-    const stars = _moves <= thr[0] ? 3 : _moves <= thr[1] ? 2 : 1;
-    for (let i = 1; i <= 3; i++) {
-      const el = _container.querySelector(`.lv-star-s${i}`);
-      if (el) el.classList.toggle('off', i > stars);
-    }
-  }
-
-  function updateToolbar() {
-    const u = _container.querySelector('.lv-undo-btn');
-    const h = _container.querySelector('.lv-hint-btn');
-    if (u) { u.textContent = `🔄×${_undosLeft} Undo`; u.classList.toggle('depleted', _undosLeft===0); }
-    if (h) { h.textContent = `💡×${_hintsLeft} Hint`; h.classList.toggle('depleted', _hintsLeft===0); }
-  }
-
-  // ── Tutorial ──
-  function showTutorial(step) {
-    removeTutorial();
-    if (!_container) return;
-    const t = document.createElement('div');
-    t.className = 'lv-tutorial-toast'; t.id = 'lv-tut';
-    if (step === 'step1') {
-      t.textContent = '👆 Chạm vào vase để chọn hoa';
-    } else if (step === 'step2') {
-      t.textContent = '👆 Chạm vase trống hoặc cùng màu để chuyển';
-    }
-    _container.appendChild(t);
-  }
-
-  function removeTutorial() {
-    const t = document.getElementById('lv-tut');
-    if (t) t.remove();
-    const f = document.getElementById('lv-finger');
-    if (f) f.remove();
-  }
-
-  // ── Build DOM ──
-  function buildVaseSVG(idx) {
-    // 2-layer pot: back pot (full) → flowers → front pot (rim/face overlay)
-    // Stems "go into" pot — front layer hides stem bases naturally.
-    const wrap = document.createElement('div');
-    wrap.className = 'lv-vsvg lv-pot-wrap';
-    wrap.id = 'lv-vsvg-' + idx;
-
-    // Layer 1: back pot (full pot for state — empty/locked/done)
-    const potBack = document.createElement('img');
-    potBack.className = 'lv-pot-img lv-pot-back';
-    potBack.src = SORT_BLOSSOM_PATH + 'pot_empty.png';
-    potBack.draggable = false;
-    potBack.alt = '';
-    wrap.appendChild(potBack);
-
-    // Layer 2: flower stack
-    const stack = document.createElement('div');
-    stack.className = 'lv-flower-group';
-    wrap.appendChild(stack);
-
-    // Layer 3: front pot (rim/face overlay — covers stem bases)
-    const potFront = document.createElement('img');
-    potFront.className = 'lv-pot-img lv-pot-front';
-    potFront.src = SORT_BLOSSOM_PATH + 'pot_front.png';
-    potFront.draggable = false;
-    potFront.alt = '';
-    wrap.appendChild(potFront);
-
-    return wrap;
-  }
-
-  function buildGrid(containerEl) {
-    containerEl.innerHTML = '';
-    const n = _numVases;
-    // Split into rows: ≤8 → up to 4 per row
-    const perRow = n <= 4 ? n : n <= 6 ? Math.ceil(n/2) : 4;
-    const rows = [];
-    for (let i = 0; i < n; i += perRow) rows.push(_vases.slice(i, i+perRow).map((_,j) => i+j));
-
-    rows.forEach(idxArr => {
-      const row = document.createElement('div');
-      row.className = 'lv-vase-row';
-      idxArr.forEach(idx => {
-        const vc = document.createElement('div');
-        vc.className = 'lv-vc'; vc.id = 'lv-vc-'+idx;
-        const badge = document.createElement('div');
-        badge.className = 'lv-lock-badge'; badge.textContent = '✓';
-        vc.appendChild(badge);
-        vc.appendChild(buildVaseSVG(idx));
-        const handler = (e) => { e.preventDefault(); onTap(idx); };
-        vc.addEventListener('click', handler);
-        vc.addEventListener('touchstart', handler, { passive:false });
-        row.appendChild(vc);
-      });
-      containerEl.appendChild(row);
-    });
-  }
-
-  // ── Init ──
-  function _initState() {
-    _vases = _cfg.initial.map(v => [...v]);
-    // Ensure we have enough vases
-    while (_vases.length < _cfg.vases) _vases.push([]);
-    _numVases = _vases.length;
-    _locked = new Array(_numVases).fill(false);
-    _selected = null; _moves = 0;
-    _undosLeft = 3; _hintsLeft = 2;
-    _history = []; _hintPair = null;
-    _gameOver = false; _animating = false;
-    _tutStep = 0;
-  }
-
-  // ── Public API ──
-  return {
-    // Build the level scene DOM and return it
-    buildScene(cfg, containerEl) {
-      _cfg = cfg;
-      _container = containerEl;
-      _initState();
-
-      // Build grid
-      const vaseArea = containerEl.querySelector('.lv-vase-area');
-      if (vaseArea) buildGrid(vaseArea);
-
-      renderAll();
-      updateStatsBar();
-      updateToolbar();
-
-      // Tutorial L1
-      if (cfg.tutorial) {
-        setTimeout(() => showTutorial('step1'), 800);
-      }
-    },
-
-    // Re-expose helpers for button callbacks
-    doUndo,
-    doHint,
-    doRestart,
-    retryLevel,
-    buyMoreMoves,
-    gotoNextLevel,
-    pauseGame,
-
-    // Dev helpers
-    devSkip3Star() {
-      if (_gameOver) return;
-      _moves = Math.max(0, _cfg.starThresholds[0] - 1);
-      triggerWin();
-    },
-    devWin() {
-      if (_gameOver) return;
-      triggerWin();
-    },
-    devLose() {
-      showLoseOverlay('moves');
-    }
-  };
-})();
-
-// ════════════════════════════════════════════════
+// (engine code removed — ~700 lines of old internal water-sort engine)
+// All Sort Blossom gameplay now uses:
+//   SortBlossomEngine  (engine/sort_blossom_engine.js)
+//   SortBlossomRender  (engine/sort_blossom_render.js)
+//   SortBlossomData    (engine/sort_blossom_data.js)
+// Scene entry point: Scenes._levelBlossomV2(cfg)
+
+// (Old SortVase IIFE body deleted — all engine code lives in engine/*.js)
 // ════ SCENES ════
 // ════════════════════════════════════════════════
 
@@ -4536,81 +3761,27 @@ const Scenes = {
   level(params) {
     const levelId = (params && params.levelId) ? params.levelId : Save.get().progress.currentLevel;
 
-    // Phase 4: Route to Triple Tile engine for L21+
+    // L21+ → Triple Tile engine (unchanged)
     if (LEVEL_TYPE(levelId) === 'triple_tile') {
       return Scenes._levelTripleTile(levelId);
     }
 
-    // ─── Sort Blossom v2 routing (gated — opt-in via flag) ───────
-    // To avoid mid-pack rule discontinuity, v2 engine only kicks in when
-    // EXPLICITLY enabled. Enable via:
-    //   - URL: ?blossom_v2=1
-    //   - DevTools: localStorage.setItem('kvtm2_blossom_v2','1')
-    // Future: flip default to true once L1-L20 all migrated to v2 data.
-    const _v2Flag = (new URLSearchParams(location.search).get('blossom_v2') === '1')
-                 || (localStorage.getItem('kvtm2_blossom_v2') === '1');
-    if (_v2Flag && typeof SortBlossomData !== 'undefined') {
-      const v2Levels = SortBlossomData.loadLevels();
-      const v2 = v2Levels.find(l => l.id === levelId && l.schemaVersion === 2);
-      if (v2) return Scenes._levelBlossomV2(v2);
+    // L1-L20 → Sort Blossom shared engine (single source of truth)
+    const allLevels = SortBlossomData.loadLevels();
+    const cfg = allLevels.find(l => l.id === levelId);
+    if (cfg) {
+      return Scenes._levelBlossomV2(cfg);
     }
 
-    const cfgIdx  = Math.min(Math.max(levelId, 1), SORT_VASE_LEVELS.length) - 1;
-    const cfg     = SORT_VASE_LEVELS[cfgIdx];
-
+    // Level not yet in data (L4-L20 coming soon) — show placeholder
     const div = document.createElement('div');
-    div.className = 'level-bg';
-
+    div.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,#f5e8c4 0%,#d8c39e 100%);padding:24px;text-align:center;color:#3a2a1a;';
     div.innerHTML = `
-      <!-- Top bar -->
-      <div class="lv-topbar">
-        <button class="lv-back-btn" onclick="Game.goto('hub')">←</button>
-        <div class="lv-topbar-title">🌹 Level ${cfg.id} · ${cfg.name}</div>
-        <button class="lv-pause-btn" onclick="SortVase.pauseGame()">⏸</button>
-      </div>
-
-      <!-- Stats bar -->
-      <div class="lv-stats">
-        <div class="lv-moves">Lượt: <span class="lv-moves-val">0/${cfg.moveLimit}</span></div>
-        <div class="lv-stars-tier">
-          <span class="lv-star lv-star-s3">⭐</span>
-          <span class="lv-star lv-star-s2">⭐</span>
-          <span class="lv-star lv-star-s1">⭐</span>
-        </div>
-      </div>
-
-      <!-- Vase area -->
-      <div class="lv-vase-area" id="lv-vase-area"></div>
-
-      <!-- Anim layer -->
-      <div class="lv-anim-layer"></div>
-
-      <!-- Bottom toolbar -->
-      <div class="lv-toolbar">
-        <button class="lv-tool-btn lv-undo-btn" onclick="SortVase.doUndo()">🔄×3 Undo</button>
-        <button class="lv-tool-btn lv-hint-btn" onclick="SortVase.doHint()">💡×2 Hint</button>
-        <button class="lv-tool-btn restart-btn" onclick="SortVase.doRestart()">↺ Reset</button>
-      </div>
-
-      <!-- Win/Lose overlay (shared) -->
-      <div class="lv-win-overlay"></div>
-
-      <!-- Pause modal -->
-      <div class="lv-pause-modal">
-        <div class="lv-pause-box">
-          <h2>⏸ Tạm Dừng</h2>
-          <button class="lv-result-btn primary" onclick="SortVase.pauseGame()" style="width:100%;margin-bottom:8px;">▶ Tiếp tục</button>
-          <button class="lv-result-btn muted" onclick="SortVase.doRestart()" style="width:100%;margin-bottom:8px;">↺ Chơi lại</button>
-          <button class="lv-result-btn muted" onclick="Game.goto('hub')" style="width:100%;">🏡 Về Hub</button>
-        </div>
-      </div>
+      <div style="font-size:64px;margin-bottom:16px;">🌱</div>
+      <h2 style="font-family:'Gloria Hallelujah',cursive;font-size:22px;margin:0 0 8px;">Level ${levelId}</h2>
+      <p style="font-family:'Kalam',cursive;font-size:15px;opacity:.7;max-width:280px;line-height:1.6;">Đang chờ dữ liệu từ Level Editor.<br>Dùng tools/level_editor.html để tạo level và "Push to Game"!</p>
+      <button onclick="Game.goto('hub')" style="margin-top:24px;padding:10px 24px;background:#FFD700;border:2px solid #3a2a1a;border-radius:12px;font-family:'Gloria Hallelujah',cursive;font-size:14px;cursor:pointer;color:#3a2a1a;">← Về Hub</button>
     `;
-
-    // Init engine after DOM is in stage (next frame)
-    requestAnimationFrame(() => {
-      SortVase.buildScene(cfg, div);
-    });
-
     return div;
   },
 
@@ -4961,11 +4132,12 @@ const Dev = (() => {
 
   return {
     init() {
-      // Populate level jump dropdown (Sort Vase + Triple Tile)
+      // Populate level jump dropdown (Sort Blossom + Triple Tile)
       const sel = document.getElementById('dev-level-select');
       if (sel) {
+        const sbLevels = SortBlossomData.loadLevels().map(l => ({ id: l.id, name: l.name, type: 'SB' }));
         const allLevels = [
-          ...SORT_VASE_LEVELS.map(l => ({ id: l.id, name: l.name, type: 'SV' })),
+          ...sbLevels,
           ...TRIPLE_TILE_LEVELS.map(l => ({ id: l.id, name: l.name, type: 'TT' })),
         ];
         allLevels.forEach(l => {
@@ -4975,6 +4147,9 @@ const Dev = (() => {
           sel.appendChild(opt);
         });
       }
+
+      // Init flight mode from localStorage
+      this.initFlightMode();
 
       const dot = document.getElementById('dev-dot');
       if (!dot) return;
@@ -5053,13 +4228,13 @@ const Dev = (() => {
       if (Game.currentScene !== 'level') { showToast('Vào level trước!'); return; }
       const lvl = Save.get().progress.currentLevel;
       if (LEVEL_TYPE(lvl) === 'triple_tile') { TripleTile.devWin(); }
-      else { SortVase.devWin(); }
+      else { SortVase.devWin(); }   // SortVase shim → window._sbDevWin
     },
     loseCurrent() {
       if (Game.currentScene !== 'level') { showToast('Vào level trước!'); return; }
       const lvl = Save.get().progress.currentLevel;
       if (LEVEL_TYPE(lvl) === 'triple_tile') { TripleTile.devLose(); }
-      else { SortVase.devLose(); }
+      else { SortVase.devLose(); }  // SortVase shim → window._sbDevLose
     },
     jumpToLevel() {
       const sel = document.getElementById('dev-level-select');
@@ -5083,6 +4258,25 @@ const Dev = (() => {
       Hub.refreshTaskCard();
       showToast('🔄 Decor reset');
       this.refresh();
+    },
+    setFlightMode(mode) {
+      window._flightMode = mode;
+      try { localStorage.setItem('kvtm_flight_mode', mode); } catch(e) {}
+      const labels = { R: '🎲 Random per move', B: 'Arc (WebAnim)', C: 'Float drift', D: 'Crossfade' };
+      showToast('✈️ Flight: ' + (labels[mode] || mode));
+    },
+    initFlightMode() {
+      let mode = 'R';
+      try { mode = localStorage.getItem('kvtm_flight_mode') || 'R'; } catch(e) {}
+      window._flightMode = mode;
+      const sel = document.getElementById('dev-flight-mode');
+      if (sel) sel.value = mode;
+      // Highlight active button in floating picker
+      document.querySelectorAll('#flight-mode-picker button[data-mode]').forEach(b => {
+        const isActive = b.dataset.mode === mode;
+        b.style.background = isActive ? '#FFD700' : '#3a3f4e';
+        b.style.color = isActive ? '#1a1f2e' : '#fff';
+      });
     },
     skipDay() {
       const save = Save.get();
@@ -5476,12 +4670,12 @@ ${LORE}
 
   // Local fallbacks if AI unavailable
   const FALLBACKS = {
-    daily_unclaimed:   'Phần thưởng hôm nay vẫn chờ con đó. 🎁',
-    welcome_back:      'Chào con. Vườn vẫn ở đây, chờ một bàn tay quen. 🌿',
-    welcome_new:       'Hôm nay là ngày đầu của con với khu vườn. Hãy bắt đầu chậm rãi. 🌱',
+    daily_unclaimed:   'Có một món nhỏ Mây để dành cho chủ nhân. 🎁',
+    welcome_back:      'Chủ nhân về rồi. Vườn vẫn ở đây, chờ một bàn tay quen. 🌿',
+    welcome_new:       'Ngày đầu với khu vườn, chủ nhân cứ thong thả. 🌱',
     idle_in_hub:       'Một khoảnh khắc tĩnh. Vườn cũng cần lắng nghe.',
     level_failed:      'Khó nhằn nhỉ. Nghỉ một hơi rồi thử lại nhé.',
-    decor_unlocked:    'Có việc mới ở vườn. Con để ý chưa?',
+    decor_unlocked:    'Có việc mới ở vườn. Mây đã ghi sẵn cho chủ nhân.',
     out_of_lives:      'Tim cần thời gian hồi sức. Đi pha trà đã.',
     streak_milestone:  'Bền bỉ là phép màu của khu vườn này.',
     profile_updated:   'Em đã ghi nhớ tên mới của chủ.',
@@ -5746,6 +4940,27 @@ function _kvtmBoot() {
     console.error('[KVTM] BOOT ERROR:', e.message, e.stack);
   }
 }
+
+// ════ LEVEL SYNC FROM EDITOR ════
+// When tool saves levels to localStorage['kvtm2_levels_v2'],
+// other tabs receive a 'storage' event and we live-reload.
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'kvtm2_levels_v2') return;
+  console.log('[KVTM] Detected level edit from tool — syncing...');
+  showToast('🔄 Levels đã sync từ Editor', 2200);
+  // If currently in a level scene → reload it to pick up edits
+  const scene = Game.currentSceneName();
+  if (scene === 'level') {
+    const params = (Game._history && Game._history[Game._history.length-1]?.params) || {};
+    Game.goto('level', params);
+  } else if (scene === 'hub') {
+    // Refresh level number badge on play CTA
+    const lvlNum = document.getElementById('rm-level-num');
+    if (lvlNum) lvlNum.textContent = String(Save.get().progress.currentLevel);
+  }
+  // Refresh dev console level list
+  if (Dev && Dev.refresh) Dev.refresh();
+});
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', _kvtmBoot);
 } else {
@@ -5784,7 +4999,8 @@ if (document.readyState === 'loading') {
 // ════════════════════════════════════════════════
 
 function LEVEL_TYPE(id) {
-  return id <= 20 ? 'sort_vase' : 'triple_tile';
+  // L1-L20 = Sort Blossom (shared engine), L21+ = Triple Tile
+  return id <= 20 ? 'sort_blossom' : 'triple_tile';
 }
 
 // ════════════════════════════════════════════════
@@ -7416,7 +6632,7 @@ Scenes._levelBlossomV2 = function(cfg) {
 
   const div = document.createElement('div');
   div.className = 'scene-blossom-v2';
-  div.style.cssText = 'flex:1;display:flex;flex-direction:column;background:linear-gradient(180deg,#f5e8c4 0%,#d8c39e 100%);overflow:hidden;';
+  div.style.cssText = 'position:relative;flex:1;display:flex;flex-direction:column;background:linear-gradient(180deg,#f5e8c4 0%,#d8c39e 100%);overflow:hidden;';
 
   // State
   let state = Engine.initState(cfg.pots);
@@ -7429,7 +6645,7 @@ Scenes._levelBlossomV2 = function(cfg) {
     <div class="lv-topbar" style="background:rgba(122,146,168,0.92);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #3a2a1a;">
       <button class="lv-back-btn" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:4px 10px;border-radius:6px;cursor:pointer;" onclick="Game.goto('hub')">←</button>
       <div style="font-family:'Gloria Hallelujah',cursive;font-size:14px;text-align:center;">🌹 ${cfg.name}</div>
-      <button class="lv-pause-btn" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:4px 10px;border-radius:6px;cursor:pointer;">⏸</button>
+      <button id="blv2-pause-btn" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:4px 10px;border-radius:6px;cursor:pointer;">⏸</button>
     </div>
     <div class="lv-stats" style="background:rgba(255,255,255,0.6);padding:8px 14px;display:flex;justify-content:space-between;color:#3a2a1a;font-size:13px;font-weight:700;">
       <span>Lượt: <span id="blv2-moves">0</span>/${cfg.moveLimit}</span>
@@ -7441,6 +6657,15 @@ Scenes._levelBlossomV2 = function(cfg) {
       <button id="blv2-hint" style="flex:1;background:#fff;color:#3a2a1a;border:2px solid #3a2a1a;padding:6px;border-radius:6px;cursor:pointer;font-size:12px;">💡 Hint</button>
       <button id="blv2-reset" style="flex:1;background:#fff;color:#3a2a1a;border:2px solid #3a2a1a;padding:6px;border-radius:6px;cursor:pointer;font-size:12px;">🔄 Reset</button>
     </div>
+    <!-- Pause modal -->
+    <div id="blv2-pause-modal" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;z-index:180;">
+      <div style="background:#fdf6e3;border:3px solid #3a2a1a;border-radius:18px;padding:24px 20px;width:260px;text-align:center;font-family:'Gloria Hallelujah',cursive;color:#3a2a1a;">
+        <h2 style="font-size:18px;margin-bottom:12px;">⏸ Tạm Dừng</h2>
+        <button id="blv2-resume-btn" style="width:100%;margin-bottom:8px;padding:10px;background:#FFD700;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:14px;cursor:pointer;color:#3a2a1a;">▶ Tiếp tục</button>
+        <button id="blv2-restart-btn" style="width:100%;margin-bottom:8px;padding:10px;background:#fff;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:14px;cursor:pointer;color:#3a2a1a;">↺ Chơi lại</button>
+        <button onclick="Game.goto('hub')" style="width:100%;padding:10px;background:#fff;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:14px;cursor:pointer;color:#3a2a1a;">🏡 Về Hub</button>
+      </div>
+    </div>
   `;
 
   const cells = [];
@@ -7448,19 +6673,36 @@ Scenes._levelBlossomV2 = function(cfg) {
     const cont = div.querySelector('#blv2-pots');
     cont.innerHTML = '';
     cells.length = 0;
+    cont.onclick = (ev) => {
+      if (gameOver) return;
+      if (ev.target !== cont) return;
+      if (selected) {
+        // CANCEL: tap khoảng không ngoài chậu → hủy chọn
+        selected = null;
+        Sfx.play('tap');
+        repaint();
+      } else {
+        // PHASE 1: chọn bông gần nhất trên board
+        const nearest = Render.nearestBoardFlower(ev, cells);
+        if (nearest) onTap(nearest.pot, nearest.pos);
+      }
+    };
     state.forEach((pot, idx) => {
       const cell = Render.buildPotCell({
         idx, pot, assetPath: ASSETS,
-        showPosLabel: false, showQueue: true, queueMax: 6,
+        showPosLabel: false, showQueue: false, queueMax: 6,
+        showQueuePreview: true,
       });
       cont.appendChild(cell);
       cells.push(cell);
-      cell.querySelectorAll('.sb-active-slot').forEach(slotEl => {
-        slotEl.addEventListener('click', () => {
-          if (gameOver) return;
-          const p = parseInt(slotEl.dataset.pos, 10);
-          onTap(idx, p);
-        });
+      cell.querySelector('.sb-pot-visual').addEventListener('click', (ev) => {
+        if (gameOver) return;
+        const hitPos = Render.eventToFlowerHitPos(ev, cell);
+        const rawPos = selected ? Render.eventToPos(ev, cell) : Render.eventToNearestFlowerPos(ev, cell, state[idx]);
+        const p = selected
+          ? (hitPos !== null ? hitPos : Render.nearestEmptyPos(state[idx], rawPos))
+          : Render.nearestOccupiedPos(state[idx], rawPos);
+        onTap(idx, p);
       });
     });
   }
@@ -7473,47 +6715,122 @@ Scenes._levelBlossomV2 = function(cfg) {
     div.querySelector('#blv2-stars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
   }
 
+  // Phase 2 dispatcher — 4 outcomes per canon: PLACE / RESELECT / CANCEL / IGNORE
   function onTap(potIdx, pos) {
+    if (gameOver) return;
     const pot = state[potIdx];
+
+    // ── PHASE 1: chưa cầm bông ───────────────────────
     if (!selected) {
-      if (!pot.active[pos]) return;
-      selected = { pot: potIdx, pos };
+      // IGNORE: pot không có bông active để chọn
+      if (pot.active.every(x => x === null)) return;
+      // Resolve nearest occupied if tap landed on empty slot
+      const targetPos = pot.active[pos] ? pos : Render.nearestOccupiedPos(pot, pos);
+      if (!pot.active[targetPos]) return;
+      selected = { pot: potIdx, pos: targetPos };
       Sfx.play('tap'); Haptic.tap();
       repaint();
       return;
     }
+
+    // ── PHASE 2: đang cầm bông ───────────────────────
+
+    // CANCEL: tap chính bông đang cầm
     if (selected.pot === potIdx && selected.pos === pos) {
       selected = null;
+      Sfx.play('tap');
       repaint();
       return;
     }
-    if (!Engine.canMove(state, selected.pot, selected.pos, potIdx, pos)) {
-      selected = null;
-      Sfx.play('invalid');
-      repaint();
-      return;
-    }
-    history.push(Engine.clone(state));
-    const r = Engine.applyMove(state, selected.pot, selected.pos, potIdx, pos);
-    moves++;
-    selected = null;
-    Sfx.play('pour'); Haptic.tap();
-    if (r.vanished) { Sfx.play('lock'); Haptic.success(); }
-    repaint();
 
-    if (Engine.isWon(state)) {
-      gameOver = true;
-      Sfx.play('win'); Haptic.success();
-      setTimeout(() => triggerWin(), 350);
-    } else if (moves >= cfg.moveLimit) {
-      gameOver = true;
-      Sfx.play('lose'); Haptic.fail();
-      setTimeout(() => triggerLose('moves'), 350);
-    } else if (Engine.isDeadlock(state)) {
-      gameOver = true;
-      Sfx.play('lose'); Haptic.fail();
-      setTimeout(() => triggerLose('deadlock'), 350);
+    // SAME POT (khác slot) → RESELECT (no move)
+    if (selected.pot === potIdx) {
+      if (pot.active[pos]) {
+        selected = { pot: potIdx, pos };
+        Sfx.play('tap'); Haptic.tap();
+        repaint();
+      }
+      // Tap slot rỗng cùng pot nguồn → ignored
+      return;
     }
+
+    // ── DIFFERENT POT ────────────────────────────────
+    const destHasEmpty = pot.active.some(x => x === null);
+
+    if (!destHasEmpty) {
+      // RESELECT: pot đích FULL → đổi held sang bông vừa tap
+      const targetPos = pot.active[pos] ? pos : Render.nearestOccupiedPos(pot, pos);
+      if (pot.active[targetPos]) {
+        selected = { pot: potIdx, pos: targetPos };
+        Sfx.play('tap'); Haptic.tap();
+        repaint();
+      }
+      return;
+    }
+
+    // PLACE: pot đích có slot trống → đặt bông
+    const placePos = pot.active[pos] === null ? pos : Render.nearestEmptyPos(pot, pos);
+    if (pot.active[placePos] !== null) return; // safety
+
+    if (!Engine.canMove(state, selected.pot, selected.pos, potIdx, placePos)) {
+      const cell = cells[potIdx];
+      if (cell) { cell.classList.remove('lv-shake'); void cell.offsetWidth; cell.classList.add('lv-shake'); setTimeout(() => cell.classList.remove('lv-shake'), 350); }
+      Sfx.play('invalid');
+      return;
+    }
+
+    // Arc flight animation — defer state mutation until landing
+    const srcSel = selected;
+    const flyColor = state[srcSel.pot].active[srcSel.pos];
+    selected = null;  // clear selection visually before flight
+    Sfx.play('pour'); Haptic.tap();
+
+    Render.animateFlight({
+      srcCell: cells[srcSel.pot],
+      destCell: cells[potIdx],
+      srcPos: srcSel.pos,
+      destPos: placePos,
+      color: flyColor,
+      assetPath: ASSETS,
+      onLand: () => {
+        // Step 1: PLACE only — show flower seated in slot, NO vanish yet
+        history.push(Engine.clone(state));
+        const r = Engine.applyMovePlace(state, srcSel.pot, srcSel.pos, potIdx, placePos);
+        moves++;
+        // Promote any pot whose active row went empty (source pot, typically)
+        state.forEach(p => Engine.promote(p));
+        repaint();   // Player thấy bông cắm chậu + queue auto-shift lên nếu source rỗng
+        // Step 2: nếu có match → đợi 220ms cho mắt thấy bông, RỒI mới vanish
+        if (r.willVanish) {
+          setTimeout(() => {
+            Render.playVanish(cells[potIdx], () => {
+              const settled = Engine.settle(state);
+              repaint();
+              if (settled.vanished.length > 0) { Sfx.play('lock'); Haptic.success(); }
+            });
+          }, 220);
+        }
+      },
+      onDone: () => {
+        // Defer win/lose check until after potential vanish animation (~500ms buffer)
+        const checkDelay = Engine.isWon(state) || moves >= cfg.moveLimit ? 500 : 0;
+        setTimeout(() => {
+          if (Engine.isWon(state)) {
+            gameOver = true;
+            Sfx.play('win'); Haptic.success();
+            setTimeout(() => triggerWin(), 250);
+          } else if (moves >= cfg.moveLimit) {
+            gameOver = true;
+            Sfx.play('lose'); Haptic.fail();
+            setTimeout(() => triggerLose('moves'), 250);
+          } else if (Engine.isDeadlock(state)) {
+            gameOver = true;
+            Sfx.play('lose'); Haptic.fail();
+            setTimeout(() => triggerLose('deadlock'), 250);
+          }
+        }, checkDelay);
+      }
+    });
   }
 
   function triggerWin() {
@@ -7524,31 +6841,52 @@ Scenes._levelBlossomV2 = function(cfg) {
     if (!prev) existing.push({ id: cfg.id, stars, moves });
     else if (stars > prev.stars) { prev.stars = stars; prev.moves = moves; }
     Save.set('progress.levelsCompleted', existing);
-    if (save.progress.currentLevel === cfg.id) {
+    if ((save.progress.currentLevel || 1) <= cfg.id) {
       Save.set('progress.currentLevel', cfg.id + 1);
     }
-    Save.set('progress.starsBalance', (save.progress.starsBalance || 0) + stars);
+    const starsEarned = Math.max(1, stars);
+    Save.inc('progress.starsBalance', starsEarned);
+    Hub.refreshStarsUI();
 
-    // Build win overlay (in-game, not confirm()) — matches SortVase/TripleTile UX
+    // Star fly animation
+    _sbSpawnStarFly(div);
+
+    // Build win overlay — proper DOM (no confirm())
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:200;';
     overlay.innerHTML = `
       <div style="background:#fdf6e3;border:3px solid #3a2a1a;border-radius:18px;padding:24px 20px;width:280px;text-align:center;font-family:'Gloria Hallelujah',cursive;color:#3a2a1a;box-shadow:0 16px 40px rgba(0,0,0,.4);">
         <div style="font-size:34px;margin-bottom:4px;">🌸</div>
-        <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Hoàn thành!</div>
-        <div style="font-size:32px;color:#FFD700;margin:8px 0;">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</div>
-        <div style="font-size:13px;color:#666;margin-bottom:16px;">${cfg.name} · ${moves} lượt</div>
+        <div style="font-size:22px;font-weight:700;margin-bottom:8px;">Hoàn thành!</div>
+        <div id="blv2-win-stars" style="font-size:32px;color:#FFD700;margin:8px 0;">${'☆'.repeat(3)}</div>
+        <div style="font-size:13px;color:#666;margin-bottom:4px;">${cfg.name} · ${moves} lượt</div>
+        <div style="font-size:12px;color:#888;margin-bottom:16px;">+${starsEarned}⭐ vào kho</div>
         <button id="blv2-next-btn" style="width:100%;padding:10px;background:#FFD700;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:#3a2a1a;">→ TIẾP TỤC</button>
+        <button onclick="Game.goto('hub')" style="width:100%;margin-top:8px;padding:8px;background:#fff;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:13px;cursor:pointer;color:#3a2a1a;">🏡 Về Hub</button>
       </div>
     `;
     div.appendChild(overlay);
+    // Animate stars
+    setTimeout(() => {
+      const s = overlay.querySelector('#blv2-win-stars');
+      if (s) s.textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+    }, 300);
     overlay.querySelector('#blv2-next-btn').addEventListener('click', () => {
       overlay.remove();
       goNextWithStoryCheck();
     });
+
+    // Notify affordable decor
+    setTimeout(() => {
+      const nextTask = (typeof Hub !== 'undefined' && Hub.getNextTask) ? Hub.getNextTask() : null;
+      if (nextTask) {
+        const bal = Save.get().progress.starsBalance;
+        if (bal >= nextTask.cost) showToast(`🌱 Đủ sao làm "${nextTask.label}"! Về Hub nhé!`, 3000);
+      }
+    }, 1800);
   }
 
-  // Story unlock hook — mirrors SortVase.gotoNextLevel patch behavior
+  // Story unlock hook
   function goNextWithStoryCheck() {
     const completedId = cfg.id;
     const beatId = (typeof Story !== 'undefined' && Story.checkTrigger) ? Story.checkTrigger(completedId) : null;
@@ -7557,56 +6895,167 @@ Scenes._levelBlossomV2 = function(cfg) {
       window._storyReturnScene = 'hub';
       setTimeout(() => Game.goto('story', { beatId }), 200);
     } else {
-      Game.goto('hub');
+      // Advance to next available level or back to hub
+      const allLevels = SortBlossomData.loadLevels();
+      const nextLevel = allLevels.find(l => l.id === cfg.id + 1);
+      if (nextLevel) {
+        Game.goto('level', { levelId: nextLevel.id });
+      } else {
+        Game.goto('hub');
+        setTimeout(() => showToast('🎉 Bạn đã hoàn thành tất cả Sort Blossom levels!', 3000), 500);
+      }
     }
   }
 
   function triggerLose(reason) {
-    const msg = reason === 'deadlock' ? 'Bí cờ! Không còn nước đi.' : `Hết ${cfg.moveLimit} lượt.`;
+    const title = reason === 'deadlock' ? '😓 Hết nước đi!' : '⏱️ Hết lượt!';
+    const sub = reason === 'deadlock' ? 'Không còn nước đi hợp lệ.' : `Đã dùng hết ${cfg.moveLimit} lượt.`;
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:200;';
+    overlay.innerHTML = `
+      <div style="background:#fdf6e3;border:3px solid #3a2a1a;border-radius:18px;padding:24px 20px;width:280px;text-align:center;font-family:'Gloria Hallelujah',cursive;color:#3a2a1a;box-shadow:0 16px 40px rgba(0,0,0,.4);">
+        <div style="font-size:34px;margin-bottom:4px;">💔</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:6px;">${title}</div>
+        <div style="font-size:13px;color:#666;margin-bottom:16px;">${sub}</div>
+        <button id="blv2-retry-btn" style="width:100%;padding:10px;background:#FFD700;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:#3a2a1a;margin-bottom:8px;">↺ Chơi lại (tốn 1❤)</button>
+        <button id="blv2-more-moves-btn" style="width:100%;padding:10px;background:#fff;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:13px;cursor:pointer;color:#3a2a1a;margin-bottom:8px;">+5 nước (1⭐)</button>
+        <button onclick="Game.goto('hub')" style="width:100%;padding:8px;background:#fff;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:13px;cursor:pointer;color:#3a2a1a;">← Bỏ cuộc</button>
+      </div>
+    `;
+    div.appendChild(overlay);
+    overlay.querySelector('#blv2-retry-btn').addEventListener('click', () => {
+      const ok = (typeof Lives !== 'undefined') ? Lives.consume() : true;
+      if (!ok) { showToast('Hết tim rồi! ❤'); return; }
+      overlay.remove();
+      state = Engine.initState(cfg.pots);
+      moves = 0; selected = null; history = []; gameOver = false;
+      build(); repaint();
+    });
+    overlay.querySelector('#blv2-more-moves-btn').addEventListener('click', () => {
+      const save = Save.get();
+      if (save.progress.starsBalance < 1) { showToast('Không đủ ⭐'); return; }
+      Save.inc('progress.starsBalance', -1);
+      Hub.refreshStarsUI();
+      cfg = Object.assign({}, cfg, { moveLimit: cfg.moveLimit + 5 });
+      gameOver = false;
+      overlay.remove();
+      repaint();
+      div.querySelector('#blv2-moves').textContent = moves;
+      showToast('+5 nước đi!');
+    });
+  }
+
+  // Shared star fly helper (extracted so it works without _container ref)
+  function _sbSpawnStarFly(container) {
+    const frame = document.getElementById('phone-frame');
+    const frameRect = frame ? frame.getBoundingClientRect() : { left: 0, top: 0 };
+    const srcX = frameRect.left + 195;
+    const srcY = frameRect.top + 380;
+    const pillEl = document.getElementById('rm-stars-pill') || document.getElementById('hub-stars-count');
+    let tgtX = frameRect.left + 340, tgtY = frameRect.top + 58;
+    if (pillEl) { const r = pillEl.getBoundingClientRect(); tgtX = r.left + r.width / 2; tgtY = r.top + r.height / 2; }
+    const fly = document.createElement('div');
+    fly.className = 'star-fly-to-pill';
+    fly.textContent = '⭐';
+    fly.style.cssText = `left:${srcX}px;top:${srcY}px;transform:translate(-50%,-50%);transition:none;`;
+    document.body.appendChild(fly);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      fly.style.transition = 'left 0.7s cubic-bezier(0.4,0,0.2,1), top 0.7s cubic-bezier(0.4,0,0.2,1), transform 0.7s ease, opacity 0.7s ease';
+      fly.style.left = tgtX + 'px'; fly.style.top = tgtY + 'px';
+      fly.style.transform = 'translate(-50%,-50%) scale(0.3)'; fly.style.opacity = '0.6';
+    }));
     setTimeout(() => {
-      if (confirm(`💔 ${msg}\n\nChơi lại?`)) {
-        state = Engine.initState(cfg.pots);
-        moves = 0; selected = null; history = []; gameOver = false;
-        build(); repaint();
-      } else {
-        Game.goto('hub');
-      }
-    }, 200);
+      fly.remove();
+      const sc = document.getElementById('hub-stars-count');
+      if (sc) { sc.classList.remove('star-pop'); void sc.offsetWidth; sc.classList.add('star-pop'); setTimeout(() => sc.classList.remove('star-pop'), 400); }
+    }, 750);
   }
 
   // Build after DOM mount
   setTimeout(() => {
     build();
     repaint();
+
+    // Pause
+    div.querySelector('#blv2-pause-btn').addEventListener('click', () => {
+      const modal = div.querySelector('#blv2-pause-modal');
+      if (modal) modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+    });
+    div.querySelector('#blv2-resume-btn').addEventListener('click', () => {
+      const modal = div.querySelector('#blv2-pause-modal');
+      if (modal) modal.style.display = 'none';
+    });
+    div.querySelector('#blv2-restart-btn').addEventListener('click', () => {
+      const modal = div.querySelector('#blv2-pause-modal');
+      if (modal) modal.style.display = 'none';
+      state = Engine.initState(cfg.pots);
+      moves = 0; selected = null; history = []; gameOver = false;
+      build(); repaint();
+    });
+
+    // Undo
     div.querySelector('#blv2-undo').addEventListener('click', () => {
-      if (!history.length || gameOver) return;
+      if (!history.length || gameOver) { Sfx.play('invalid'); return; }
       state = history.pop();
       moves = Math.max(0, moves - 1);
       selected = null;
       Sfx.play('tap');
-      repaint();
+      build(); repaint();
     });
+
+    // Hint
     div.querySelector('#blv2-hint').addEventListener('click', () => {
       if (gameOver) return;
       const h = Engine.findHint(state);
       if (!h) { showToast('Không có gợi ý hợp lệ!'); return; }
-      // Briefly highlight
       const fromCell = cells[h.fromPot];
       const toCell = cells[h.toPot];
       if (fromCell) fromCell.classList.add('sb-selected');
       if (toCell) toCell.classList.add('sb-selected');
+      Sfx.play('tap');
       setTimeout(() => {
         if (fromCell) fromCell.classList.remove('sb-selected');
         if (toCell) toCell.classList.remove('sb-selected');
       }, 1500);
     });
+
+    // Reset (same as restart via pause)
     div.querySelector('#blv2-reset').addEventListener('click', () => {
-      if (!confirm('Chơi lại từ đầu?')) return;
       state = Engine.initState(cfg.pots);
       moves = 0; selected = null; history = []; gameOver = false;
       build(); repaint();
     });
+
+    // Wire dev hooks so SortVase shim + Dev panel can trigger them
+    window._sbDevSkip3Star = () => {
+      if (gameOver) return;
+      moves = Math.max(0, cfg.starThresholds[0] - 1);
+      gameOver = true;
+      Sfx.play('win');
+      setTimeout(() => triggerWin(), 100);
+    };
+    window._sbDevWin = () => {
+      if (gameOver) return;
+      gameOver = true;
+      Sfx.play('win');
+      setTimeout(() => triggerWin(), 100);
+    };
+    window._sbDevLose = () => {
+      if (gameOver) return;
+      gameOver = true;
+      setTimeout(() => triggerLose('moves'), 100);
+    };
+    window._sbGotoNext = () => goNextWithStoryCheck();
   }, 30);
+
+  // Clean up window hooks when scene is replaced
+  div.addEventListener('remove', () => {
+    delete window._sbDevSkip3Star;
+    delete window._sbDevWin;
+    delete window._sbDevLose;
+    delete window._sbGotoNext;
+  });
 
   return div;
 };
@@ -7734,20 +7183,8 @@ Scenes.credits = function(params) {
 // ════ STORY TRIGGER: hook into level win ════
 // ════════════════════════════════════════════════
 
-// Patch SortVase win to check story beats
-const _origSortVaseGotoNext = SortVase.gotoNextLevel.bind(SortVase);
-SortVase.gotoNextLevel = function() {
-  const levelId = Save.get().progress.currentLevel - 1; // just completed
-  const beatId = Story.checkTrigger(levelId);
-  if (beatId) {
-    Story.unlock(beatId);
-    window._storyReturnScene = 'hub';
-    // Small delay so win overlay is visible first
-    setTimeout(() => Game.goto('story', { beatId }), 600);
-  } else {
-    _origSortVaseGotoNext();
-  }
-};
+// Sort Blossom v2 story trigger is handled inside Scenes._levelBlossomV2
+// via goNextWithStoryCheck() — no external patch needed.
 
 // Patch TripleTile nextLevel similarly
 const _origTTNextLevel = TripleTile.nextLevel.bind(TripleTile);
@@ -7853,7 +7290,7 @@ Object.assign(Dev, {
     const save = Save.get();
     Save.set('progress.currentLevel', 30);
     Save.set('progress.starsBalance', (save.progress.starsBalance || 0) + 200);
-    Save.set('progress.levelsCompleted', SORT_VASE_LEVELS.map(l=>({id:l.id,stars:3})).concat(TRIPLE_TILE_LEVELS.map(l=>({id:l.id,stars:3}))));
+    Save.set('progress.levelsCompleted', SortBlossomData.loadLevels().map(l=>({id:l.id,stars:3})).concat(TRIPLE_TILE_LEVELS.map(l=>({id:l.id,stars:3}))));
     Save.set('hub.decorTasksDone', DECOR_TASKS.map(t=>t.id));
     const allBeats = STORY_BEATS.map(b=>b.id);
     Save.set('story.beatsUnlocked', allBeats);

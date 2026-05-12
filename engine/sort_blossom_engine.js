@@ -61,7 +61,7 @@
    * Pure function — does NOT mutate.
    */
   function canMove(state, a, posA, b, posB) {
-    if (a === b && posA === posB) return false;
+    if (a === b) return false;
     const A = state[a], B = state[b];
     if (!A || !B) return false;
     if (!A.active[posA]) return false;          // source empty
@@ -79,24 +79,22 @@
     state[b].active[posB] = flower;
     state[a].active[posA] = null;
 
-    let vanished = false;
-    // Vanish check on destination pot
-    const B = state[b];
-    if (B.active[0] && B.active[0] === B.active[1] && B.active[1] === B.active[2]) {
-      B.active = [null, null, null];
-      vanished = true;
-    }
+    const settled = settle(state);
+    return { ok: true, vanished: settled.vanished.length > 0, ...settled };
+  }
 
-    // Promotion: any pot with all-empty active + non-empty queue → shift 3
-    const promoted = [];
-    state.forEach((p, i) => {
-      if (p.active.every(x => x === null) && p.queue.length > 0) {
-        promote(p);
-        promoted.push(i);
-      }
-    });
-
-    return { ok: true, vanished, promoted };
+  /**
+   * Place-only variant: moves flower without vanish/promotion settle.
+   * Use this when you want to animate landing, THEN call settle() separately.
+   */
+  function applyMovePlace(state, a, posA, b, posB) {
+    if (!canMove(state, a, posA, b, posB)) return { ok: false };
+    const flower = state[a].active[posA];
+    state[b].active[posB] = flower;
+    state[a].active[posA] = null;
+    // Detect if this move WILL trigger a match (caller can use for pacing)
+    const willVanish = isTriple(state[b].active);
+    return { ok: true, willVanish };
   }
 
   /** Shift up to 3 flowers from queue head into active L/C/R (in order). */
@@ -114,7 +112,36 @@
   function initState(pots) {
     const s = clone(pots);
     s.forEach(promote);
+    settle(s);
     return s;
+  }
+
+  function isTriple(active) {
+    return active[0] && active[0] === active[1] && active[1] === active[2];
+  }
+
+  function settle(state) {
+    const vanished = [];
+    const promoted = [];
+    let changed = true;
+    while (changed) {
+      changed = false;
+      state.forEach((p, i) => {
+        if (isTriple(p.active)) {
+          p.active = [null, null, null];
+          vanished.push(i);
+          changed = true;
+        }
+      });
+      state.forEach((p, i) => {
+        if (p.active.every(x => x === null) && p.queue.length > 0) {
+          promote(p);
+          promoted.push(i);
+          changed = true;
+        }
+      });
+    }
+    return { vanished, promoted };
   }
 
   function isWon(state) {
@@ -186,7 +213,7 @@
    * @param {number} maxStates safety cap
    * @returns {{moves:number, states:number, solvable:boolean, timeout?:boolean}}
    */
-  function bfsSolve(pots, maxStates = 50000) {
+  function bfsSolve(pots, maxStates = 100000) {
     const start = initState(pots);
     if (isWon(start)) return { moves: 0, states: 1, solvable: true };
 
@@ -260,12 +287,12 @@
     POS, POS_NAMES, COLORS,
     emptyPot, clonePot, clone, encode,
     pickPosFromX,
-    canMove, applyMove, promote, initState,
+    canMove, applyMove, applyMovePlace, settle, promote, initState,
     isWon, isDeadlock,
     starsFor,
     validate, countColors,
     bfsSolve, findHint, difficultyScore,
-    VERSION: 2,
+    VERSION: 3,
   };
 
   if (typeof module !== 'undefined' && module.exports) {

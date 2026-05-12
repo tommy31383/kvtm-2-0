@@ -29,7 +29,7 @@
    *   - active-flowers visual layer (3 fanned imgs based on pot.active)
    *   - active-row hit zones (3 columns)
    *   - pot-front image
-   *   - queue strip
+   *   - queue preview / queue strip
    *
    * @param {Object} opts
    * @param {number} opts.idx
@@ -39,7 +39,7 @@
    * @param {boolean} opts.showQueue
    * @param {number} opts.queueMax     max queue cells to render (editor); pass 0 to render only filled
    */
-  function buildPotCell({ idx, pot, assetPath, showPosLabel = false, showQueue = true, queueMax = 6, showIndex = false }) {
+  function buildPotCell({ idx, pot, assetPath, showPosLabel = false, showQueue = true, queueMax = 6, showIndex = false, showQueuePreview = true }) {
     const cell = document.createElement('div');
     cell.className = 'sb-pot-cell';
     cell.dataset.idx = idx;
@@ -57,12 +57,14 @@
       </div>
     `).join('');
 
+    const queuePreviewHTML = showQueuePreview ? renderQueuePreview(pot, assetPath) : '';
     const queueHTML = showQueue ? renderQueueStrip(pot.queue, queueMax, assetPath) : '';
 
     cell.innerHTML = `
       ${indexHTML}
       <div class="sb-pot-visual">
         <img class="sb-pot-back" src="${assetPath}pot_empty.png" draggable="false">
+        <div class="sb-queue-preview">${queuePreviewHTML}</div>
         <div class="sb-active-flowers">${flowersHTML}</div>
         <div class="sb-active-row">${slotsHTML}</div>
         <img class="sb-pot-front" src="${assetPath}pot_front.png" draggable="false">
@@ -70,6 +72,15 @@
       ${queueHTML}
     `;
     return cell;
+  }
+
+  function renderQueuePreview(pot, assetPath) {
+    return [0,1,2].map(p => {
+      if (pot.active[p] !== null) return '';
+      const f = pot.queue[p];
+      if (!f) return '';
+      return `<img src="${assetPath}${COLORS[f].img}" data-pos="${p}" draggable="false">`;
+    }).join('');
   }
 
   function renderQueueStrip(queue, queueMax, assetPath) {
@@ -104,6 +115,8 @@
         flowersEl.appendChild(img);
       });
     }
+    const previewEl = cell.querySelector('.sb-queue-preview');
+    if (previewEl) previewEl.innerHTML = renderQueuePreview(pot, assetPath);
   }
 
   function paintQueue(cell, pot, assetPath, queueMax = 6) {
@@ -142,6 +155,311 @@
     setTimeout(() => { onDone && onDone(); }, 420);
   }
 
+  /**
+   * Animate a flower flying from source slot to dest slot with arc bezier flight.
+   * Source flower is hidden during flight. Caller commits state change & repaints onDone.
+   *
+   * @param {Object} opts
+   * @param {HTMLElement} opts.srcCell   source pot cell
+   * @param {HTMLElement} opts.destCell  dest pot cell
+   * @param {number} opts.srcPos         0/1/2
+   * @param {number} opts.destPos        0/1/2
+   * @param {string} opts.color          flower color key (R/P/Y/V/W/O/B/C)
+   * @param {string} opts.assetPath      'assets/sort_blossom/'
+   * @param {Function} opts.onLand       called when flower lands (commit state here)
+   * @param {Function} opts.onDone       called after land bounce settles
+   */
+  /**
+   * Smooth rAF-driven arc flight (60fps, ~24 frames over 400ms).
+   * Parabolic Y arc + linear X + easeInOutCubic time mapping → silky smooth.
+   */
+  /**
+   * Flight animation with 3 modes for A/B testing.
+   * Mode B: Web Animations API arc (browser-native compositor, GPU-smooth)
+   * Mode C: Float drift, NO arc (smoothest possible, linear-eased translate)
+   * Mode D: Crossfade replace, NO travel (instant fade A→B + sparkle trail)
+   */
+  function animateFlight(opts) {
+    let mode = opts.mode || (typeof window !== 'undefined' && window._flightMode) ||
+               (typeof localStorage !== 'undefined' && localStorage.getItem('kvtm_flight_mode')) || 'R';
+    // Random: roll one of B/C/D each call
+    if (mode === 'R') {
+      mode = ['B', 'C', 'D'][Math.floor(Math.random() * 3)];
+    }
+    if (mode === 'C') return animateFlightDrift(opts);
+    if (mode === 'D') return animateFlightCrossfade(opts);
+    return animateFlightArc(opts);
+  }
+
+  /** Mode B — Web Animations API arc. Compositor-driven, GPU smooth. */
+  function animateFlightArc({ srcCell, destCell, srcPos, destPos, color, assetPath, onLand, onDone, duration = 550 }) {
+    const ctx = _prepFlight(srcCell, destCell, srcPos, destPos, color, assetPath);
+    if (!ctx) { onLand && onLand(); onDone && onDone(); return; }
+    const { fly, srcImg, startX, startY, endX, endY } = ctx;
+
+    const midX = (startX + endX) / 2;
+    const peakY = Math.min(startY, endY) - Math.max(48, Math.hypot(endX - startX, endY - startY) * 0.3);
+
+    const anim = fly.animate([
+      { transform: `translate3d(${startX}px, ${startY}px, 0) scale(1.1)`, offset: 0 },
+      { transform: `translate3d(${midX}px, ${peakY}px, 0) scale(1.14)`, offset: 0.4 },
+      { transform: `translate3d(${endX}px, ${endY}px, 0) scale(1.0)`, offset: 1 }
+    ], {
+      duration,
+      easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+      fill: 'forwards',
+    });
+
+    anim.onfinish = () => _finalizeFlight(fly, destCell, onLand, onDone);
+    _fadeOutSource(srcImg);
+  }
+
+  /** Mode C — Smooth float drift, no arc. Pure linear-eased translate. */
+  function animateFlightDrift({ srcCell, destCell, srcPos, destPos, color, assetPath, onLand, onDone, duration = 480 }) {
+    const ctx = _prepFlight(srcCell, destCell, srcPos, destPos, color, assetPath);
+    if (!ctx) { onLand && onLand(); onDone && onDone(); return; }
+    const { fly, srcImg, startX, startY, endX, endY } = ctx;
+
+    const anim = fly.animate([
+      { transform: `translate3d(${startX}px, ${startY}px, 0) scale(1.08)`, offset: 0 },
+      { transform: `translate3d(${endX}px, ${endY}px, 0) scale(1.0)`, offset: 1 }
+    ], {
+      duration,
+      easing: 'cubic-bezier(0.22, 1, 0.36, 1)',  // smooth easeOutQuart
+      fill: 'forwards',
+    });
+
+    anim.onfinish = () => _finalizeFlight(fly, destCell, onLand, onDone);
+    _fadeOutSource(srcImg);
+  }
+
+  /** Mode D — Crossfade replace, no travel. Sparkle trail across the gap. */
+  function animateFlightCrossfade({ srcCell, destCell, srcPos, destPos, color, assetPath, onLand, onDone, duration = 260 }) {
+    const ctx = _prepFlight(srcCell, destCell, srcPos, destPos, color, assetPath);
+    if (!ctx) { onLand && onLand(); onDone && onDone(); return; }
+    const { fly, srcImg, startX, startY, endX, endY } = ctx;
+
+    // Sparkle trail: 6 dots along the line
+    const trail = [];
+    for (let i = 1; i <= 6; i++) {
+      const tt = i / 7;
+      const x = startX + (endX - startX) * tt + (Math.random() - 0.5) * 8;
+      const y = startY + (endY - startY) * tt + (Math.random() - 0.5) * 8;
+      const d = document.createElement('div');
+      d.style.cssText = `
+        position: fixed; left: ${x}px; top: ${y}px;
+        width: 8px; height: 8px; border-radius: 50%;
+        background: radial-gradient(circle, #fff7c0, rgba(255,215,0,0));
+        z-index: 9998; pointer-events: none;
+        opacity: 0;
+      `;
+      document.body.appendChild(d);
+      trail.push(d);
+      d.animate([
+        { opacity: 0, transform: 'scale(0.6)' },
+        { opacity: 1, transform: 'scale(1.2)', offset: 0.4 },
+        { opacity: 0, transform: 'scale(0.4)' }
+      ], { duration: 280, delay: i * 18, fill: 'forwards' }).onfinish = () => d.remove();
+    }
+
+    // Clone scale-fades down at A
+    fly.animate([
+      { transform: `translate3d(${startX}px, ${startY}px, 0) scale(1.1)`, opacity: 1 },
+      { transform: `translate3d(${startX}px, ${startY}px, 0) scale(0.7)`, opacity: 0 }
+    ], { duration: duration * 0.45, fill: 'forwards', easing: 'ease-in' });
+
+    // Mid-way: commit place + dest flower pop-in
+    setTimeout(() => {
+      onLand && onLand();
+      fly.remove();
+      // Pop-in animation on dest cell's new flower
+      const destImg = destCell.querySelector(`.sb-active-flowers img[data-pos="${destPos}"]`);
+      if (destImg) {
+        destImg.animate([
+          { transform: 'translateX(-50%) scale(0.4)', opacity: 0 },
+          { transform: 'translateX(-50%) scale(1.15)', opacity: 1, offset: 0.6 },
+          { transform: 'translateX(-50%) scale(1.0)', opacity: 1 }
+        ], { duration: duration * 0.55, fill: 'none', easing: 'cubic-bezier(0.34,1.4,0.64,1)' });
+      }
+      // Subtle pot bounce
+      destCell.classList.remove('sb-land-bounce');
+      void destCell.offsetWidth;
+      destCell.classList.add('sb-land-bounce');
+      setTimeout(() => {
+        destCell.classList.remove('sb-land-bounce');
+        onDone && onDone();
+      }, 220);
+    }, duration * 0.45);
+
+    _fadeOutSource(srcImg);
+  }
+
+  // ─── shared helpers ────────────────────────────────────
+  function _prepFlight(srcCell, destCell, srcPos, destPos, color, assetPath) {
+    if (!srcCell || !destCell) return null;
+    const srcImg = srcCell.querySelector(`.sb-active-flowers img[data-pos="${srcPos}"]`);
+    const destFlowers = destCell.querySelector('.sb-active-flowers');
+    if (!srcImg || !destFlowers) return null;
+    const srcRect = srcImg.getBoundingClientRect();
+    const destRect = destFlowers.getBoundingClientRect();
+    const slotWidth = destRect.width / 3;
+    const startX = srcRect.left;
+    const startY = srcRect.top;
+    const endX = destRect.left + slotWidth * destPos + slotWidth / 2 - srcRect.width / 2;
+    const endY = destRect.top + destRect.height - srcRect.height - 12;
+
+    const fly = document.createElement('img');
+    fly.src = assetPath + COLORS[color].img;
+    fly.style.cssText = `
+      position: fixed;
+      left: 0; top: 0;
+      width: ${srcRect.width}px;
+      height: auto;
+      z-index: 9999;
+      pointer-events: none;
+      filter: drop-shadow(0 8px 14px rgba(0,0,0,.3));
+      will-change: transform, opacity;
+      transform: translate3d(${startX}px, ${startY}px, 0) scale(1.1);
+      backface-visibility: hidden;
+    `;
+    document.body.appendChild(fly);
+    return { fly, srcImg, startX, startY, endX, endY };
+  }
+
+  function _fadeOutSource(srcImg) {
+    srcImg.style.transition = 'opacity .1s';
+    srcImg.style.opacity = '0';
+    setTimeout(() => {
+      srcImg.style.visibility = 'hidden';
+      srcImg.style.opacity = '';
+      srcImg.style.transition = '';
+    }, 110);
+  }
+
+  function _finalizeFlight(fly, destCell, onLand, onDone) {
+    onLand && onLand();
+    // Crossfade clone out as real flower appears at same spot
+    fly.style.transition = 'opacity .1s ease-out';
+    fly.style.opacity = '0';
+    setTimeout(() => fly.remove(), 110);
+    destCell.classList.remove('sb-land-bounce');
+    void destCell.offsetWidth;
+    destCell.classList.add('sb-land-bounce');
+    setTimeout(() => {
+      destCell.classList.remove('sb-land-bounce');
+      onDone && onDone();
+    }, 220);
+  }
+
+  // Legacy stub (renamed earlier rAF version, no longer used directly)
+  function animateFlightLegacy(opts) { return animateFlightArc(opts); }
+  void animateFlightLegacy;
+
+  function animateFlightDispatcher(opts) {  // not used, kept for clarity
+    return animateFlight(opts);
+  }
+  void animateFlightDispatcher;
+
+  // Original rAF function disabled — replaced by mode dispatcher
+  function _disabledLegacy_animateFlight({ srcCell, destCell, srcPos, destPos, color, assetPath, onLand, onDone, duration = 780 }) {
+    if (!srcCell || !destCell) { onLand && onLand(); onDone && onDone(); return; }
+    const srcImg = srcCell.querySelector(`.sb-active-flowers img[data-pos="${srcPos}"]`);
+    const destFlowers = destCell.querySelector('.sb-active-flowers');
+    if (!srcImg || !destFlowers) { onLand && onLand(); onDone && onDone(); return; }
+
+    const srcRect = srcImg.getBoundingClientRect();
+    const destRect = destFlowers.getBoundingClientRect();
+    const slotWidth = destRect.width / 3;
+
+    const startX = srcRect.left;
+    const startY = srcRect.top;
+    const endX = destRect.left + slotWidth * destPos + slotWidth / 2 - srcRect.width / 2;
+    const endY = destRect.top + destRect.height - srcRect.height - 12;
+
+    // Peak height: very gentle arc — lower peak = softer floating feel
+    const distance = Math.hypot(endX - startX, endY - startY);
+    const peakH = Math.max(34, distance * 0.22);
+
+    // Build flying clone — constant scale 1.12, smooth transform updates
+    const fly = document.createElement('img');
+    fly.src = assetPath + COLORS[color].img;
+    fly.style.cssText = `
+      position: fixed;
+      left: 0; top: 0;
+      width: ${srcRect.width}px;
+      height: auto;
+      z-index: 9999;
+      pointer-events: none;
+      filter: drop-shadow(0 8px 14px rgba(0,0,0,.32));
+      will-change: transform;
+      transform: translate3d(${startX}px, ${startY}px, 0) scale(1.12);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    `;
+    document.body.appendChild(fly);
+
+    // Hide source flower (smooth fade to invisible)
+    srcImg.style.transition = 'opacity .12s';
+    srcImg.style.opacity = '0';
+    setTimeout(() => { srcImg.style.visibility = 'hidden'; srcImg.style.opacity = ''; srcImg.style.transition = ''; }, 130);
+
+    // Composite easing — extra gentle feather landing
+    //   - Body (0→0.48): easeInOutQuint covers 85% of distance
+    //   - Tail (0.48→1): easeOutExpo covers last 15% of distance over 52% of time
+    //     → bông "lướt nhẹ" cuối hành trình, hạ xuống như lông vũ
+    const easeBody = (t) => (t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2);
+    const easeTail = (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));   // easeOutExpo
+    const ease = (t) => {
+      if (t < 0.48) return easeBody(t / 0.48) * 0.85;
+      const tt = (t - 0.48) / 0.52;
+      return 0.85 + easeTail(tt) * 0.15;
+    };
+
+    const start = performance.now();
+    function frame(now) {
+      const elapsed = now - start;
+      const t = Math.min(1, elapsed / duration);
+      const e = ease(t);
+
+      // X & Y travel
+      const x = startX + (endX - startX) * e;
+      const yLinear = startY + (endY - startY) * e;
+      const arcLift = Math.sin(Math.PI * e) * peakH;
+      const y = yLinear - arcLift;
+
+      // Scale ramp down 1.10 → 1.0 over last 52% of TIME (very gentle settle)
+      let scale = 1.10;
+      if (t > 0.48) {
+        const k = (t - 0.48) / 0.52;
+        const ks = k * k * (3 - 2 * k);   // smoothstep
+        scale = 1.10 - 0.10 * ks;
+      }
+
+      fly.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        // t=1 → clone is at (endX, endY) with scale 1.0 (no snap)
+        // Commit state immediately. Clone fades out as real flower paints in same spot.
+        onLand && onLand();
+        // Crossfade clone out (real flower now visible underneath at same position)
+        fly.style.transition = 'opacity .12s ease-out';
+        fly.style.opacity = '0';
+        setTimeout(() => fly.remove(), 130);
+        // Gentle pot bounce starting now (overlaps with crossfade for smoothness)
+        destCell.classList.remove('sb-land-bounce');
+        void destCell.offsetWidth;
+        destCell.classList.add('sb-land-bounce');
+        setTimeout(() => {
+          destCell.classList.remove('sb-land-bounce');
+          onDone && onDone();
+        }, 220);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
   /** Convert click event to position 0/1/2 within the pot's bounds. */
   function eventToPos(ev, cell) {
     const rect = cell.querySelector('.sb-pot-visual').getBoundingClientRect();
@@ -154,14 +472,81 @@
     return r < 0.34 ? 0 : r > 0.66 ? 2 : 1;
   }
 
+  function eventToNearestFlowerPos(ev, cell, pot) {
+    const flowers = [...cell.querySelectorAll('.sb-active-flowers img')];
+    const clientX = ev.clientX || (ev.touches && ev.touches[0].clientX) || 0;
+    if (!flowers.length) return eventToPos(ev, cell);
+    let best = null;
+    flowers.forEach(img => {
+      const rect = img.getBoundingClientRect();
+      const dist = Math.abs(clientX - (rect.left + rect.width / 2));
+      const pos = parseInt(img.dataset.pos, 10);
+      if (!best || dist < best.dist) best = { pos, dist };
+    });
+    return best ? best.pos : eventToPos(ev, cell);
+  }
+
+  function eventToFlowerHitPos(ev, cell) {
+    const clientX = ev.clientX || (ev.touches && ev.touches[0].clientX) || 0;
+    const clientY = ev.clientY || (ev.touches && ev.touches[0].clientY) || 0;
+    const flowers = [...cell.querySelectorAll('.sb-active-flowers img')];
+    for (let i = flowers.length - 1; i >= 0; i--) {
+      const img = flowers[i];
+      const rect = img.getBoundingClientRect();
+      const padX = rect.width * 0.08;
+      const padY = rect.height * 0.08;
+      if (
+        clientX >= rect.left + padX &&
+        clientX <= rect.right - padX &&
+        clientY >= rect.top + padY &&
+        clientY <= rect.bottom - padY
+      ) {
+        return parseInt(img.dataset.pos, 10);
+      }
+    }
+    return null;
+  }
+
+  function nearestOccupiedPos(pot, pos) {
+    if (pot.active[pos]) return pos;
+    const order = pos === 1 ? [1,0,2] : (pos === 0 ? [0,1,2] : [2,1,0]);
+    return order.find(p => pot.active[p]) ?? pos;
+  }
+
+  function nearestEmptyPos(pot, pos) {
+    if (pot.active[pos] === null) return pos;
+    const order = pos === 1 ? [1,0,2] : (pos === 0 ? [0,1,2] : [2,1,0]);
+    return order.find(p => pot.active[p] === null) ?? pos;
+  }
+
+  function nearestBoardFlower(ev, cells) {
+    const clientX = ev.clientX || (ev.touches && ev.touches[0].clientX) || 0;
+    const clientY = ev.clientY || (ev.touches && ev.touches[0].clientY) || 0;
+    let best = null;
+    cells.forEach((cell, pot) => {
+      cell.querySelectorAll('.sb-active-flowers img').forEach(img => {
+        const rect = img.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+        const dist = dx * dx + dy * dy;
+        const pos = parseInt(img.dataset.pos, 10);
+        if (!best || dist < best.dist) best = { pot, pos, dist };
+      });
+    });
+    return best ? { pot: best.pot, pos: best.pos } : null;
+  }
+
   // ─── EXPORT ─────────────────────────────────────────
   const api = {
     COLORS,
     buildPotCell,
     paintActive, paintQueue, paintAll,
-    setSelected, playVanish,
+    setSelected, playVanish, animateFlight,
     renderQueueStrip,
-    eventToPos,
+    eventToPos, eventToNearestFlowerPos, eventToFlowerHitPos,
+    nearestOccupiedPos, nearestEmptyPos, nearestBoardFlower,
   };
 
   if (typeof module !== 'undefined' && module.exports) {

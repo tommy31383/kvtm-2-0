@@ -104,14 +104,63 @@
   transform: translateX(-50%) rotate(var(--sb-flower-angle));
   z-index: 2;
 }
+
+.sb-queue-preview {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: calc(var(--sb-flower-bottom) - 8px);
+  height: var(--sb-active-h);
+  z-index: 12;
+  pointer-events: none;
+}
+.sb-queue-preview img {
+  position: absolute;
+  bottom: 0;
+  width: calc(var(--sb-flower-w-side) * .52);
+  height: auto;
+  opacity: .42;
+  filter: brightness(.75) saturate(.8);
+  transform-origin: 50% 95%;
+}
+.sb-queue-preview img[data-pos="0"] {
+  left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread));
+  transform: translateX(-50%) translateY(10px) rotate(calc(-1 * var(--sb-flower-angle))) scale(.82);
+}
+.sb-queue-preview img[data-pos="1"] {
+  left: calc(50% + var(--sb-stem-x));
+  width: calc(var(--sb-flower-w-mid) * .52);
+  transform: translateX(-50%) translateY(10px) scale(.82);
+}
+.sb-queue-preview img[data-pos="2"] {
+  left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread));
+  transform: translateX(-50%) translateY(10px) rotate(var(--sb-flower-angle)) scale(.82);
+}
+/* Selected flower: scale +15%, lift up, z-index above siblings, glow */
+.sb-active-flowers img.sb-lifted {
+  z-index: 50;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,.35)) drop-shadow(0 0 10px rgba(255,215,0,.45));
+  transition: transform .12s ease-out;
+}
 .sb-active-flowers img.sb-lifted[data-pos="0"] {
-  transform: translateX(-50%) translateY(-14px) rotate(calc(-1 * var(--sb-flower-angle))) scale(1.06);
+  transform: translateX(-50%) translateY(-12px) rotate(calc(-1 * var(--sb-flower-angle))) scale(1.15);
 }
 .sb-active-flowers img.sb-lifted[data-pos="1"] {
-  transform: translateX(-50%) translateY(-14px) rotate(0deg) scale(1.06);
+  transform: translateX(-50%) translateY(-12px) rotate(0deg) scale(1.15);
 }
 .sb-active-flowers img.sb-lifted[data-pos="2"] {
-  transform: translateX(-50%) translateY(-14px) rotate(var(--sb-flower-angle)) scale(1.06);
+  transform: translateX(-50%) translateY(-12px) rotate(var(--sb-flower-angle)) scale(1.15);
+}
+
+/* ─── FLIGHT clone is positioned/animated by JS (rAF) ───── */
+/* No CSS animation here — see SortBlossomRender.animateFlight() */
+
+/* Land bounce on dest pot — feather-soft */
+.sb-pot-cell.sb-land-bounce { animation: sbLandBounce 320ms cubic-bezier(.25,.46,.45,.94); }
+@keyframes sbLandBounce {
+  0%   { transform: translateY(0) scale(1); }
+  35%  { transform: translateY(-2px) scale(1.012); }
+  70%  { transform: translateY(0) scale(1.005); }
+  100% { transform: translateY(0) scale(1); }
 }
 
 /* ─── HIT ZONES (invisible, 3 columns L/C/R) ───────────────── */

@@ -7,7 +7,6 @@
 // Optional env: ALLOWED_ORIGIN (CORS), MODEL (default llama-3.3-70b-versatile)
 
 // PERSONA — keep in sync with kvtm_2_0_game.html Companion module.
-// See docs/sort_blossom_rules.md (no — actually see Companion section).
 const PERSONA = `Bạn là Mây, quản gia của trang viên Camellia trong "Khu Vườn Trên Mây 2.0".
 
 ## NHÂN VẬT

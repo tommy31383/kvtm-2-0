@@ -263,6 +263,12 @@
     <div class="play-actions">
       <button id="play-reset">🔄 Reset</button>
       <button id="play-undo">↶ Undo</button>
+      <select id="play-flight-mode" style="background:#2a2f3e;color:#FFD700;border:1px solid #4a4f5e;border-radius:6px;padding:6px;font-size:12px;cursor:pointer;">
+        <option value="R">🎲 Random</option>
+        <option value="B">✈️ B · Arc</option>
+        <option value="C">✈️ C · Float</option>
+        <option value="D">✈️ D · Crossfade</option>
+      </select>
     </div>
   </div>
 </div>
@@ -580,18 +586,34 @@ function renderPlay() {
   const cont = document.getElementById('play-pots');
   cont.innerHTML = '';
   const cells = [];
+  cont.onclick = (ev) => {
+    if (playState.won) return;
+    if (ev.target !== cont) return;
+    // Tap on empty board area
+    if (playState.selected) {
+      // CANCEL rule: tap khoảng không ngoài chậu → hủy chọn
+      playState.selected = null;
+      renderPlay();
+    } else {
+      // PHASE 1: chọn bông gần nhất trên board
+      const nearest = SortBlossomRender.nearestBoardFlower(ev, cells);
+      if (nearest) onPlayTap(nearest.pot, nearest.pos);
+    }
+  };
   playState.pots.forEach((pot, idx) => {
     const cell = SortBlossomRender.buildPotCell({
       idx, pot, assetPath: ASSETS,
-      showPosLabel: false, showQueue: true, queueMax: 6,
+      showPosLabel: false, showQueue: false, queueMax: 6,
     });
     cont.appendChild(cell);
     cells.push(cell);
-    cell.querySelectorAll('.sb-active-slot').forEach(slotEl => {
-      slotEl.addEventListener('click', () => {
-        const p = parseInt(slotEl.dataset.pos, 10);
-        onPlayTap(idx, p);
-      });
+    cell.querySelector('.sb-pot-visual').addEventListener('click', (ev) => {
+      const hitPos = SortBlossomRender.eventToFlowerHitPos(ev, cell);
+      const rawPos = playState.selected ? SortBlossomRender.eventToPos(ev, cell) : SortBlossomRender.eventToNearestFlowerPos(ev, cell, pot);
+      const p = playState.selected
+        ? (hitPos !== null ? hitPos : SortBlossomRender.nearestEmptyPos(pot, rawPos))
+        : SortBlossomRender.nearestOccupiedPos(pot, rawPos);
+      onPlayTap(idx, p);
     });
   });
   SortBlossomRender.setSelected(cells, playState.selected);
@@ -600,42 +622,117 @@ function renderPlay() {
   document.getElementById('play-stars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
 }
 
+// Phase 2 dispatcher — 4 outcomes: PLACE / RESELECT / CANCEL / IGNORE
 function onPlayTap(potIdx, pos) {
   if (playState.won) return;
   const pot = playState.pots[potIdx];
-  if (!playState.selected) {
-    if (!pot.active[pos]) return;
-    playState.selected = { pot: potIdx, pos };
+  const sel = playState.selected;
+
+  // ── PHASE 1: chưa cầm bông ─────────────────────────
+  if (!sel) {
+    // IGNORE: pot không có bông active để chọn
+    if (pot.active.every(x => x === null)) return;
+    // Tap đúng bông → chọn. Tap slot rỗng → resolve nearest occupied
+    const targetPos = pot.active[pos] ? pos : SortBlossomRender.nearestOccupiedPos(pot, pos);
+    if (!pot.active[targetPos]) return;
+    playState.selected = { pot: potIdx, pos: targetPos };
     renderPlay();
     return;
   }
-  if (playState.selected.pot === potIdx && playState.selected.pos === pos) {
+
+  // ── PHASE 2: đang cầm bông ─────────────────────────
+
+  // CANCEL: tap chính bông đang cầm
+  if (sel.pot === potIdx && sel.pos === pos) {
     playState.selected = null;
     renderPlay();
     return;
   }
-  if (!SortBlossomEngine.canMove(playState.pots, playState.selected.pot, playState.selected.pos, potIdx, pos)) {
-    playState.selected = null;
+
+  // SAME POT (khác slot) → RESELECT (no move)
+  if (sel.pot === potIdx) {
+    // Tap bông khác cùng pot → reselect held sang bông đó
+    if (pot.active[pos]) {
+      playState.selected = { pot: potIdx, pos };
+      renderPlay();
+      return;
+    }
+    // Tap slot rỗng trong same pot → ignored (no place vào pot nguồn)
+    return;
+  }
+
+  // ── DIFFERENT POT ──────────────────────────────────
+  const destHasEmpty = pot.active.some(x => x === null);
+
+  if (!destHasEmpty) {
+    // FULL active → RESELECT (held = bông vừa tap)
+    const targetPos = pot.active[pos] ? pos : SortBlossomRender.nearestOccupiedPos(pot, pos);
+    if (pot.active[targetPos]) {
+      playState.selected = { pot: potIdx, pos: targetPos };
+      renderPlay();
+    }
+    return;
+  }
+
+  // Pot đích có slot trống → PLACE (with arc flight animation)
+  const placePos = pot.active[pos] === null ? pos : SortBlossomRender.nearestEmptyPos(pot, pos);
+  if (pot.active[placePos] !== null) return;
+
+  if (!SortBlossomEngine.canMove(playState.pots, sel.pot, sel.pos, potIdx, placePos)) {
     renderPlay();
     return;
   }
-  // Apply move
-  playState.history.push(SortBlossomEngine.clone(playState.pots));
-  SortBlossomEngine.applyMove(playState.pots, playState.selected.pot, playState.selected.pos, potIdx, pos);
-  playState.moves++;
+
+  // Capture cells refs before clearing selection
+  const cont = document.getElementById('play-pots');
+  const cells = [...cont.querySelectorAll('.sb-pot-cell')];
+  const srcSel = sel;
+  const flyColor = playState.pots[srcSel.pot].active[srcSel.pos];
   playState.selected = null;
-  if (SortBlossomEngine.isWon(playState.pots)) {
-    playState.won = true;
-    renderPlay();
-    setTimeout(() => alert(`🌸 Cleared in ${playState.moves} moves!`), 100);
-    return;
-  }
-  if (playState.moves >= playState.moveLimit) {
-    renderPlay();
-    setTimeout(() => alert(`💔 Out of moves at ${playState.moves}.`), 100);
-    return;
-  }
-  renderPlay();
+  SortBlossomRender.setSelected(cells, null);
+
+  SortBlossomRender.animateFlight({
+    srcCell: cells[srcSel.pot],
+    destCell: cells[potIdx],
+    srcPos: srcSel.pos,
+    destPos: placePos,
+    color: flyColor,
+    assetPath: ASSETS,
+    onLand: () => {
+      // Step 1: PLACE only — show flower seated, NO vanish yet
+      playState.history.push(SortBlossomEngine.clone(playState.pots));
+      const r = SortBlossomEngine.applyMovePlace(playState.pots, srcSel.pot, srcSel.pos, potIdx, placePos);
+      playState.moves++;
+      // Promote any pot whose active row went empty (source pot typically)
+      playState.pots.forEach(p => SortBlossomEngine.promote(p));
+      renderPlay();   // user thấy bông cắm + queue auto-shift nếu source rỗng
+      // Step 2: nếu match → đợi 220ms cho mắt thấy, RỒI vanish
+      if (r.willVanish) {
+        const destCellEl = document.querySelectorAll('#play-pots .sb-pot-cell')[potIdx];
+        setTimeout(() => {
+          SortBlossomRender.playVanish(destCellEl, () => {
+            SortBlossomEngine.settle(playState.pots);
+            renderPlay();
+          });
+        }, 220);
+      }
+    },
+    onDone: () => {
+      const delay = (SortBlossomEngine.isWon(playState.pots) || playState.moves >= playState.moveLimit) ? 500 : 0;
+      setTimeout(() => {
+        if (SortBlossomEngine.isWon(playState.pots)) {
+          playState.won = true;
+          renderPlay();
+          setTimeout(() => alert(`🌸 Cleared in ${playState.moves} moves!`), 100);
+          return;
+        }
+        if (playState.moves >= playState.moveLimit) {
+          renderPlay();
+          setTimeout(() => alert(`💔 Out of moves at ${playState.moves}.`), 100);
+        }
+      }, delay);
+    }
+  });
 }
 
 function playUndo() {
@@ -688,6 +785,17 @@ document.getElementById('mode-remove').addEventListener('click', () => {
 document.getElementById('play-close').addEventListener('click', closePlay);
 document.getElementById('play-undo').addEventListener('click', playUndo);
 document.getElementById('play-reset').addEventListener('click', playReset);
+
+// Flight mode selector (sync with game's localStorage key)
+const flightSel = document.getElementById('play-flight-mode');
+if (flightSel) {
+  try { flightSel.value = localStorage.getItem('kvtm_flight_mode') || 'R'; } catch(e) {}
+  window._flightMode = flightSel.value;
+  flightSel.addEventListener('change', () => {
+    window._flightMode = flightSel.value;
+    try { localStorage.setItem('kvtm_flight_mode', flightSel.value); } catch(e) {}
+  });
+}
 
 log(`Editor v2 ready · ${levels.length} levels loaded · engine v${SortBlossomEngine.VERSION}`);
 render();

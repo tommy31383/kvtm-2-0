@@ -51,13 +51,13 @@
       id: 3,
       name: 'Ba Sắc Hoa',
       pots: [
-        { active: ['R', 'Y', 'P'], queue: ['P', 'R', 'Y'] },
-        { active: ['Y', 'P', 'R'], queue: ['R', 'Y', 'P'] },
-        { active: ['P', 'R', 'Y'], queue: ['Y', 'P', 'R'] },
+        { active: ['R', 'P', 'R'], queue: [] },
+        { active: ['R', 'Y', 'Y'], queue: [] },
+        { active: ['P', 'P', 'Y'], queue: [] },
         { active: [null, null, null], queue: [] },
       ],
-      moveLimit: 22,
-      starThresholds: [10, 14, 20],
+      moveLimit: 12,
+      starThresholds: [4, 7, 10],
       schemaVersion: 2,
     },
   ];
