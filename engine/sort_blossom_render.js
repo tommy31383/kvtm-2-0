@@ -11,14 +11,14 @@
   'use strict';
 
   const COLORS = {
-    R: { name: 'Red',      img: 'flower_red.png',      bloom: 'flower_red_bloom.png',      rectsFile: 'bloom_rects_red.json'      },
-    P: { name: 'Pink',     img: 'flower_pink.png',     bloom: 'flower_pink_bloom.png',     rectsFile: 'bloom_rects_pink.json'     },
-    Y: { name: 'Yellow',   img: 'flower_yellow.png',   bloom: 'flower_yellow_bloom.png',   rectsFile: 'bloom_rects_yellow.json'   },
-    V: { name: 'Purple',   img: 'flower_purple.png',   bloom: 'flower_purple_bloom.png',   rectsFile: 'bloom_rects_purple.json'   },
-    W: { name: 'White',    img: 'flower_white.png',    bloom: 'flower_white_bloom.png',    rectsFile: 'bloom_rects_white.json'    },
-    O: { name: 'Orange',   img: 'flower_orange.png',   bloom: 'flower_orange_bloom.png',   rectsFile: 'bloom_rects_orange.json'   },
-    B: { name: 'Blue',     img: 'flower_blue.png',     bloom: 'flower_blue_bloom.png',     rectsFile: 'bloom_rects_blue.json'     },
-    C: { name: 'Camellia', img: 'flower_camellia.png', bloom: 'flower_camellia_bloom.png', rectsFile: 'bloom_rects_camellia.json' },
+    R: { name: 'Red',      img: 'flower_red.webp',      bloom: 'flower_red_bloom.webp',      rectsFile: 'bloom_rects_red.json'      },
+    P: { name: 'Pink',     img: 'flower_pink.webp',     bloom: 'flower_pink_bloom.webp',     rectsFile: 'bloom_rects_pink.json'     },
+    Y: { name: 'Yellow',   img: 'flower_yellow.webp',   bloom: 'flower_yellow_bloom.webp',   rectsFile: 'bloom_rects_yellow.json'   },
+    V: { name: 'Purple',   img: 'flower_purple.webp',   bloom: 'flower_purple_bloom.webp',   rectsFile: 'bloom_rects_purple.json'   },
+    W: { name: 'White',    img: 'flower_white.webp',    bloom: 'flower_white_bloom.webp',    rectsFile: 'bloom_rects_white.json'    },
+    O: { name: 'Orange',   img: 'flower_orange.webp',   bloom: 'flower_orange_bloom.webp',   rectsFile: 'bloom_rects_orange.json'   },
+    B: { name: 'Blue',     img: 'flower_blue.webp',     bloom: 'flower_blue_bloom.webp',     rectsFile: 'bloom_rects_blue.json'     },
+    C: { name: 'Camellia', img: 'flower_camellia.webp', bloom: 'flower_camellia_bloom.webp', rectsFile: 'bloom_rects_camellia.json' },
   };
 
   // Bloom sprite sheet config — 5 cols × 2 rows = 10 frames
@@ -69,11 +69,11 @@
     cell.innerHTML = `
       ${indexHTML}
       <div class="sb-pot-visual">
-        <img class="sb-pot-back" src="${assetPath}pot_empty.png" draggable="false">
+        <img class="sb-pot-back" src="${assetPath}pot_empty.webp" draggable="false">
         <div class="sb-queue-preview">${queuePreviewHTML}</div>
         <div class="sb-active-flowers">${flowersHTML}</div>
         <div class="sb-active-row">${slotsHTML}</div>
-        <img class="sb-pot-front" src="${assetPath}pot_front.png" draggable="false">
+        <img class="sb-pot-front" src="${assetPath}pot_front.webp" draggable="false">
       </div>
       ${queueHTML}
     `;
