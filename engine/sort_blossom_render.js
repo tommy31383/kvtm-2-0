@@ -769,14 +769,7 @@
         const cx = rect.left + rect.width / 2;
         const cy = rect.top  + rect.height * 0.4; // target near flower area
 
-        // a. Pot bounce
-        cell.animate([
-          { transform:'scale(1)'   },
-          { transform:'scale(1.15)', offset:0.35 },
-          { transform:'scale(1)'   },
-        ], { duration: POT_DUR, easing:'cubic-bezier(.34,1.56,.64,1)' });
-
-        // b. Single expanding ring
+        // a. Single expanding ring
         const ring = document.createElement('div');
         const ringColor = PETAL_COLORS[idx % PETAL_COLORS.length];
         ring.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;
