@@ -259,7 +259,8 @@
     <div class="sep"></div>
     <button id="btn-new">📄 New</button>
     <button id="btn-load">📂 Load JSON</button>
-    <button id="btn-save" class="primary">💾 Save All</button>
+    <button id="btn-save" class="primary">💾 Download JS</button>
+    <button id="btn-save-push" class="primary" style="background:#27ae60;" title="Write engine/sort_blossom_data.js + git push (requires dev-server)">🚀 Save & Push</button>
     <button id="btn-export-clip">📋 Copy current</button>
     <button id="btn-push" title="Push to localStorage (game reads same key)">⬆ Push to Game</button>
     <div class="sep"></div>
@@ -619,6 +620,31 @@ function doCopyCurrent() {
   syncFromForm();
   navigator.clipboard.writeText(JSON.stringify(level(), null, 2));
   log('📋 Copied current level to clipboard');
+}
+
+async function doSaveAndPush() {
+  syncFromForm();
+  const btn = document.getElementById('btn-save-push');
+  const orig = btn.textContent;
+  btn.textContent = '⏳ Pushing...'; btn.disabled = true;
+  try {
+    const res = await fetch('http://localhost:3456/api/save-levels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ levels, autoPush: true }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      log('🚀 ' + data.message);
+      btn.textContent = '✅ Done!'; btn.style.background = '#27ae60';
+    } else {
+      throw new Error(data.error);
+    }
+  } catch (e) {
+    log('✗ Save & Push failed: ' + e.message + ' — make sure dev-server is running: node scripts/dev-server.js');
+    btn.textContent = '✗ Failed'; btn.style.background = '#e53935';
+  }
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; btn.style.background = ''; }, 3000);
 }
 
 function doPushToGame() {
@@ -1040,6 +1066,7 @@ function resetLayout() {
   log('Layout cleared — using default flex');
 }
 
+document.getElementById('btn-save-push').addEventListener('click', doSaveAndPush);
 document.getElementById('btn-layout').addEventListener('click', openLayout);
 document.getElementById('layout-save').addEventListener('click', saveLayout);
 document.getElementById('layout-reset').addEventListener('click', resetLayout);
