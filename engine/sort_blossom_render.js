@@ -599,24 +599,26 @@
       const srcW = sheet.naturalWidth  / BLOOM_COLS;
       const srcH = sheet.naturalHeight / BLOOM_ROWS;
 
-      // Display size: match the flower img's rendered bounding rect
+      // Display size: width from rendered img, height ALWAYS from frame aspect ratio
+      // (img height:auto can return wrong value — frame ratio is ground truth)
       const rect = imgEl.getBoundingClientRect();
-      const dw = rect.width  || 80;
-      const dh = rect.height || (dw * srcH / srcW);
+      const dw = rect.width || 80;
+      const dh = dw * srcH / srcW;  // frame aspect: e.g. 94 * (512/307) ≈ 157px
 
-      // Canvas positioned FIXED over the img — no transform needed, no parent math
+      // Canvas positioned FIXED — anchor to img bottom-center (same as flower CSS)
+      const imgBottom = window.innerHeight - rect.bottom; // distance from viewport bottom
+      const cvLeft   = rect.left + rect.width / 2 - dw / 2; // center-align to img
       const cv = document.createElement('canvas');
       cv.width  = Math.round(dw);
       cv.height = Math.round(dh);
       cv.style.cssText = [
         'position:fixed',
-        `left:${rect.left}px`,
-        `top:${rect.top}px`,
+        `left:${cvLeft}px`,
+        `bottom:${imgBottom}px`,
         `width:${dw}px`,
         `height:${dh}px`,
         'pointer-events:none',
         'z-index:9999',
-        'image-rendering:pixelated',
       ].join(';');
       document.body.appendChild(cv);
       const ctx = cv.getContext('2d');
