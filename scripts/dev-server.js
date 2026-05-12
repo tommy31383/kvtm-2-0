@@ -25,11 +25,16 @@ const MIME = {
 };
 
 const server = http.createServer((req, res) => {
-  // CORS for local dev
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+  // CORS for local dev (origin:null from file:// needs explicit header on every response)
+  const CORS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, CORS); res.end(); return;
+  }
+  Object.entries(CORS).forEach(([k,v]) => res.setHeader(k, v));
 
   // ── API: save levels ───────────────────────────────────────────
   if (req.method === 'POST' && req.url === '/api/save-levels') {
@@ -43,12 +48,28 @@ const server = http.createServer((req, res) => {
         // Generate sort_blossom_data.js
         const dataFile = path.join(ROOT, 'engine', 'sort_blossom_data.js');
         const existing = fs.readFileSync(dataFile, 'utf8');
-        // Replace SORT_BLOSSOM_LEVELS block
-        const newContent = existing.replace(
-          /const SORT_BLOSSOM_LEVELS\s*=\s*\[[\s\S]*?\];(\s*\/\/[^\n]*)?\n/,
-          `const SORT_BLOSSOM_LEVELS = ${JSON.stringify(levels, null, 2)};\n`
-        );
-        if (newContent === existing) throw new Error('Could not find SORT_BLOSSOM_LEVELS in data file');
+        // Replace SORT_BLOSSOM_LEVELS block — dùng bracket depth tracking thay vì regex
+        // vì lazy \[[\s\S]*?\] sẽ dừng ở ] đầu tiên bên trong array (active:[null,null,null])
+        const marker = 'const SORT_BLOSSOM_LEVELS';
+        const start = existing.indexOf(marker);
+        if (start === -1) throw new Error('Could not find SORT_BLOSSOM_LEVELS in data file');
+        const arrStart = existing.indexOf('[', start);
+        if (arrStart === -1) throw new Error('Could not find [ after SORT_BLOSSOM_LEVELS');
+        let depth = 0, end = -1;
+        for (let i = arrStart; i < existing.length; i++) {
+          const ch = existing[i];
+          if (ch === '[') depth++;
+          else if (ch === ']') { depth--; if (depth === 0) { end = i; break; } }
+        }
+        if (end === -1) throw new Error('Could not find closing ] of SORT_BLOSSOM_LEVELS');
+        // skip optional ; and newline after ]
+        let tail = end + 1;
+        if (existing[tail] === ';') tail++;
+        if (existing[tail] === '\n') tail++;
+        const newContent = existing.slice(0, start)
+          + `const SORT_BLOSSOM_LEVELS = ${JSON.stringify(levels, null, 2)};\n`
+          + existing.slice(tail);
+        if (newContent === existing) throw new Error('Replacement produced no change');
         fs.writeFileSync(dataFile, newContent, 'utf8');
 
         let gitMsg = '';
@@ -80,14 +101,29 @@ const server = http.createServer((req, res) => {
   }
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); res.end('Forbidden'); return; }
 
-  fs.stat(filePath, (err, stat) => {
-    if (err || !stat.isFile()) {
-      res.writeHead(404); res.end('Not found: ' + req.url); return;
-    }
-    const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
-    fs.createReadStream(filePath).pipe(res);
-  });
+  // Try .html extension fallback
+  const tryPaths = [filePath, filePath + '.html', path.join(filePath, 'index.html')];
+
+  function tryNext(paths) {
+    if (!paths.length) { res.writeHead(404); res.end('Not found: ' + req.url); return; }
+    const p = paths.shift();
+    fs.stat(p, (err, stat) => {
+      if (err || !stat.isFile()) return tryNext(paths);
+      filePath = p;
+      serve();
+    });
+  }
+
+  function serve() {
+    fs.stat(filePath, (err, stat) => {
+    if (err || !stat.isFile()) { tryNext([]); return; }
+      const ext = path.extname(filePath).toLowerCase();
+      res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+      fs.createReadStream(filePath).pipe(res);
+    });
+  }
+
+  tryNext(tryPaths);
 });
 
 server.listen(PORT, '0.0.0.0', () => {

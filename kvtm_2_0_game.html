@@ -2043,15 +2043,6 @@
   <!-- Dev dot (top-right, always visible) -->
   <div id="dev-dot" title="Dev Console"></div>
 
-  <!-- Always-visible flight mode picker (R = random per move) -->
-  <div id="flight-mode-picker" style="position:fixed;top:12px;left:12px;z-index:99999;background:#1a1f2e;border:2px solid #FFD700;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.6);font-family:sans-serif;">
-    <span style="color:#FFD700;font-size:12px;font-weight:bold;">✈️ Anim:</span>
-    <button onclick="Dev.setFlightMode('R');Dev.initFlightMode();" style="background:#3a3f4e;color:#fff;border:1px solid #FFD700;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:bold;" data-mode="R">🎲 Random</button>
-    <button onclick="Dev.setFlightMode('B');Dev.initFlightMode();" style="background:#3a3f4e;color:#fff;border:1px solid #FFD700;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:bold;" data-mode="B">B Arc</button>
-    <button onclick="Dev.setFlightMode('C');Dev.initFlightMode();" style="background:#3a3f4e;color:#fff;border:1px solid #FFD700;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:bold;" data-mode="C">C Float</button>
-    <button onclick="Dev.setFlightMode('D');Dev.initFlightMode();" style="background:#3a3f4e;color:#fff;border:1px solid #FFD700;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:bold;" data-mode="D">D Fade</button>
-    <button onclick="document.getElementById('flight-mode-picker').style.display='none';" style="background:transparent;color:#888;border:none;font-size:14px;cursor:pointer;" title="Hide">✕</button>
-  </div>
 
   <!-- Dev console panel -->
   <div id="dev-panel">
@@ -6638,6 +6629,7 @@ Scenes._levelBlossomV2 = function(cfg) {
   let state = Engine.initState(cfg.pots);
   let moves = 0;
   let selected = null;
+  let readyColors = new Set();
   let history = [];
   let gameOver = false;
 
@@ -6744,7 +6736,17 @@ Scenes._levelBlossomV2 = function(cfg) {
     }
   }
 
+  function getReadyColors(st) {
+    const ready = new Set();
+    for (const pot of st) {
+      const flowers = pot.active.filter(x => x !== null);
+      if (flowers.length === 2 && flowers[0] === flowers[1]) ready.add(flowers[0]);
+    }
+    return ready;
+  }
+
   function repaint() {
+    readyColors = getReadyColors(state);
     cells.forEach((cell, i) => Render.paintAll(cell, state[i], ASSETS, 6));
     Render.setSelected(cells, selected);
     div.querySelector('#blv2-moves').textContent = moves;
@@ -6761,8 +6763,10 @@ Scenes._levelBlossomV2 = function(cfg) {
     if (!selected) {
       // IGNORE: pot không có bông active để chọn
       if (pot.active.every(x => x === null)) return;
-      // Resolve nearest occupied if tap landed on empty slot
-      const targetPos = pot.active[pos] ? pos : Render.nearestOccupiedPos(pot, pos);
+      // Ưu tiên chọn hoa ready-to-match nếu có trên pot này
+      const readyPos = pot.active.findIndex(c => c !== null && readyColors.has(c));
+      const targetPos = readyPos !== -1 ? readyPos
+        : (pot.active[pos] ? pos : Render.nearestOccupiedPos(pot, pos));
       if (!pot.active[targetPos]) return;
       selected = { pot: potIdx, pos: targetPos };
       Sfx.play('tap'); Haptic.tap();
@@ -6772,22 +6776,37 @@ Scenes._levelBlossomV2 = function(cfg) {
 
     // ── PHASE 2: đang cầm bông ───────────────────────
 
-    // CANCEL: tap chính bông đang cầm
-    if (selected.pot === potIdx && selected.pos === pos) {
-      selected = null;
-      Sfx.play('tap');
-      repaint();
-      return;
-    }
-
-    // SAME POT (khác slot) → RESELECT (no move)
+    // SAME POT logic
     if (selected.pot === potIdx) {
-      if (pot.active[pos]) {
+      // Helper: tìm hoa khác trên cùng pot (không phải selected.pos)
+      const otherOccupied = [0,1,2].filter(p => p !== selected.pos && pot.active[p] !== null && pot.active[p] !== undefined);
+
+      if (selected.pos === pos) {
+        // TH1: Tap đúng bông đang cầm → cycle sang hoa khác; nếu không có → deselect
+        if (otherOccupied.length > 0) {
+          const pick = otherOccupied[Math.floor(Math.random() * otherOccupied.length)];
+          selected = { pot: potIdx, pos: pick };
+          Sfx.play('tap'); Haptic.tap();
+        } else {
+          selected = null;
+          Sfx.play('tap');
+        }
+      } else if (pot.active[pos]) {
+        // TH2: Tap slot khác cùng pot, có hoa → reselect (như cũ)
         selected = { pot: potIdx, pos };
         Sfx.play('tap'); Haptic.tap();
-        repaint();
+      } else {
+        // TH3: Tap slot rỗng cùng pot → cycle sang hoa còn lại; nếu không có → deselect
+        if (otherOccupied.length > 0) {
+          const pick = otherOccupied[Math.floor(Math.random() * otherOccupied.length)];
+          selected = { pot: potIdx, pos: pick };
+          Sfx.play('tap'); Haptic.tap();
+        } else {
+          selected = null;
+          Sfx.play('tap');
+        }
       }
-      // Tap slot rỗng cùng pot nguồn → ignored
+      repaint();
       return;
     }
 
@@ -6822,6 +6841,8 @@ Scenes._levelBlossomV2 = function(cfg) {
     selected = null;  // clear selection visually before flight
     Sfx.play('pour'); Haptic.tap();
 
+    let moveResult = null; // hoist r lên scope flight để onDone access được
+
     Render.animateFlight({
       srcCell: cells[srcSel.pot],
       destCell: cells[potIdx],
@@ -6833,42 +6854,51 @@ Scenes._levelBlossomV2 = function(cfg) {
         // Step 1: PLACE only — show flower seated in slot, NO vanish yet
         history.push(Engine.clone(state));
         const r = Engine.applyMovePlace(state, srcSel.pot, srcSel.pos, potIdx, placePos);
+        moveResult = r;
         moves++;
         // Capture pre-promote state to detect newly-promoted slots
         const wasNullBefore = state.map(p => p.active.map(x => x === null));
         // Promote any pot whose active row went empty (source pot, typically)
         state.forEach(p => Engine.promote(p));
         repaint();   // Player thấy bông cắm chậu + queue auto-shift lên nếu source rỗng
-        // Bloom on destination flower (every landing)
+        // ── Animation queue: bloom(dest) → bloom(promoted×N) → vanish ──
+        // Promise chain đảm bảo từng anim xong mới trigger cái tiếp theo.
+        const wrap = fn => new Promise(resolve => fn(resolve));
+
+        // Collect bloom tasks: dest first, then promoted slots
+        const bloomTasks = [];
         const destImg = cells[potIdx]?.querySelector(`.sb-active-flowers img[data-pos="${placePos}"]`);
-        if (destImg) Render.playBloom(destImg, flyColor, ASSETS);
-        // Bloom on newly-promoted slots (queue → active)
+        if (destImg) bloomTasks.push(() => wrap(done => Render.playBloom(destImg, flyColor, ASSETS, done)));
+
         state.forEach((pot, pi) => {
           pot.active.forEach((color, posi) => {
             const wasNull = wasNullBefore[pi][posi];
             const isNewDest = (pi === potIdx && posi === placePos);
             if (color && wasNull && !isNewDest) {
               const imgEl = cells[pi]?.querySelector(`.sb-active-flowers img[data-pos="${posi}"]`);
-              if (imgEl) Render.playBloom(imgEl, color, ASSETS);
+              if (imgEl) bloomTasks.push(() => wrap(done => Render.playBloom(imgEl, color, ASSETS, done)));
             }
           });
         });
-        // Step 2: nếu có match → đợi 220ms cho mắt thấy bông, RỒI mới vanish
+
+        // Chain: dest bloom → promoted blooms → vanish (if any)
+        let chain = bloomTasks.reduce((p, task) => p.then(task), Promise.resolve());
+
         if (r.willVanish) {
-          setTimeout(() => {
-            Render.playVanish(cells[potIdx], () => {
-              const settled = Engine.settle(state);
-              repaint();
-              if (settled.vanished.length > 0) { Sfx.play('lock'); Haptic.success(); }
-              // Check win/lose AFTER settle — state mới đúng
-              checkEndGame();
-            });
-          }, 220);
+          chain = chain.then(() => wrap(done => {
+            Render.playVanish(cells[potIdx], done);
+          })).then(() => {
+            const settled = Engine.settle(state);
+            repaint();
+            if (settled.vanished.length > 0) { Sfx.play('lock'); Haptic.success(); }
+            checkEndGame();
+          });
         }
       },
       onDone: () => {
-        // Chỉ check ngay nếu KHÔNG có vanish (willVanish đã xử lý trong callback trên)
-        if (!Engine.hasPendingVanish(state)) checkEndGame();
+        // willVanish case: checkEndGame đã được gọi trong promise chain sau vanish
+        // Non-vanish case: check ngay khi flight xong
+        if (!moveResult?.willVanish) checkEndGame();
       }
     });
   }
@@ -6888,49 +6918,45 @@ Scenes._levelBlossomV2 = function(cfg) {
     Save.inc('progress.starsBalance', starsEarned);
     Hub.refreshStarsUI();
 
-    // Win celebration on each pot — popup appears AFTER celebration finishes
-    Render.playWinCelebration(cells, stars);
-    const celebDuration = cells.length * 180 + 520 + 100 + 28*40 + 900 + 200; // phase1 + phase2 confetti + buffer
+    // ── Win sequence (promise chain): celebration → star fly → popup ──
+    const wrap = fn => new Promise(resolve => fn(resolve));
 
-    setTimeout(() => {
-    // Star fly animation
-    _sbSpawnStarFly(div);
-
-    // Build win overlay — proper DOM (no confirm())
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:200;';
-    overlay.innerHTML = `
-      <div style="background:#fdf6e3;border:3px solid #3a2a1a;border-radius:18px;padding:24px 20px;width:280px;text-align:center;font-family:'Gloria Hallelujah',cursive;color:#3a2a1a;box-shadow:0 16px 40px rgba(0,0,0,.4);">
-        <div style="font-size:34px;margin-bottom:4px;">🌸</div>
-        <div style="font-size:22px;font-weight:700;margin-bottom:8px;">Hoàn thành!</div>
-        <div id="blv2-win-stars" style="font-size:32px;color:#FFD700;margin:8px 0;">${'☆'.repeat(3)}</div>
-        <div style="font-size:13px;color:#666;margin-bottom:4px;">${cfg.name} · ${moves} lượt</div>
-        <div style="font-size:12px;color:#888;margin-bottom:16px;">+${starsEarned}⭐ vào kho</div>
-        <button id="blv2-next-btn" style="width:100%;padding:10px;background:#FFD700;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:#3a2a1a;">→ TIẾP TỤC</button>
-        <button onclick="Game.goto('hub')" style="width:100%;margin-top:8px;padding:8px;background:#fff;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:13px;cursor:pointer;color:#3a2a1a;">🏡 Về Hub</button>
-      </div>
-    `;
-    div.appendChild(overlay);
-    // Animate stars
-    setTimeout(() => {
-      const s = overlay.querySelector('#blv2-win-stars');
-      if (s) s.textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
-    }, 300);
-    overlay.querySelector('#blv2-next-btn').addEventListener('click', () => {
-      overlay.remove();
-      goNextWithStoryCheck();
-    });
-
-    // Notify affordable decor
-    setTimeout(() => {
-      const nextTask = (typeof Hub !== 'undefined' && Hub.getNextTask) ? Hub.getNextTask() : null;
-      if (nextTask) {
-        const bal = Save.get().progress.starsBalance;
-        if (bal >= nextTask.cost) showToast(`🌱 Đủ sao làm "${nextTask.label}"! Về Hub nhé!`, 3000);
-      }
-    }, 1800);
-
-    }, celebDuration); // end setTimeout — wait for celebration before showing popup
+    wrap(done => Render.playWinCelebration(cells, stars, done))
+      .then(() => wrap(done => _sbSpawnStarFly(div, done)))
+      .then(() => {
+        // Build win overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:200;';
+        overlay.innerHTML = `
+          <div style="background:#fdf6e3;border:3px solid #3a2a1a;border-radius:18px;padding:24px 20px;width:280px;text-align:center;font-family:'Gloria Hallelujah',cursive;color:#3a2a1a;box-shadow:0 16px 40px rgba(0,0,0,.4);">
+            <div style="font-size:34px;margin-bottom:4px;">🌸</div>
+            <div style="font-size:22px;font-weight:700;margin-bottom:8px;">Hoàn thành!</div>
+            <div id="blv2-win-stars" style="font-size:32px;color:#FFD700;margin:8px 0;">${'☆'.repeat(3)}</div>
+            <div style="font-size:13px;color:#666;margin-bottom:4px;">${cfg.name} · ${moves} lượt</div>
+            <div style="font-size:12px;color:#888;margin-bottom:16px;">+${starsEarned}⭐ vào kho</div>
+            <button id="blv2-next-btn" style="width:100%;padding:10px;background:#FFD700;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:#3a2a1a;">→ TIẾP TỤC</button>
+            <button onclick="Game.goto('hub')" style="width:100%;margin-top:8px;padding:8px;background:#fff;border:2px solid #3a2a1a;border-radius:10px;font-family:inherit;font-size:13px;cursor:pointer;color:#3a2a1a;">🏡 Về Hub</button>
+          </div>
+        `;
+        div.appendChild(overlay);
+        // Animate stars count after popup appears
+        setTimeout(() => {
+          const s = overlay.querySelector('#blv2-win-stars');
+          if (s) s.textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+        }, 300);
+        overlay.querySelector('#blv2-next-btn').addEventListener('click', () => {
+          overlay.remove();
+          goNextWithStoryCheck();
+        });
+        // Notify affordable decor
+        const nextTask = (typeof Hub !== 'undefined' && Hub.getNextTask) ? Hub.getNextTask() : null;
+        if (nextTask) {
+          setTimeout(() => {
+            const bal = Save.get().progress.starsBalance;
+            if (bal >= nextTask.cost) showToast(`🌱 Đủ sao làm "${nextTask.label}"! Về Hub nhé!`, 3000);
+          }, 1800);
+        }
+      });
   }
 
   // Story unlock hook
@@ -6994,7 +7020,7 @@ Scenes._levelBlossomV2 = function(cfg) {
   }
 
   // Shared star fly helper (extracted so it works without _container ref)
-  function _sbSpawnStarFly(container) {
+  function _sbSpawnStarFly(container, onDone) {
     const frame = document.getElementById('phone-frame');
     const frameRect = frame ? frame.getBoundingClientRect() : { left: 0, top: 0 };
     const srcX = frameRect.left + 195;
@@ -7016,6 +7042,7 @@ Scenes._levelBlossomV2 = function(cfg) {
       fly.remove();
       const sc = document.getElementById('hub-stars-count');
       if (sc) { sc.classList.remove('star-pop'); void sc.offsetWidth; sc.classList.add('star-pop'); setTimeout(() => sc.classList.remove('star-pop'), 400); }
+      onDone && onDone();
     }, 750);
   }
 

@@ -625,10 +625,11 @@
   // ── A: Spring Scale Pop ───────────────────────────────────────
   function _bloomA(imgEl, onDone) {
     imgEl.animate([
-      { transform: 'translateX(-50%) scale(0)',   opacity: 0 },
-      { transform: 'translateX(-50%) scale(1.35)',opacity: 1, offset: 0.55 },
-      { transform: 'translateX(-50%) scale(1)',   opacity: 1 },
-    ], { duration: 520, easing: 'ease-out', fill: 'none' })
+      { transform: 'translateX(-50%) scale(0)',    opacity: 0 },
+      { transform: 'translateX(-50%) scale(1.5)',  opacity: 1, offset: 0.5 },
+      { transform: 'translateX(-50%) scale(0.92)', opacity: 1, offset: 0.75 },
+      { transform: 'translateX(-50%) scale(1)',    opacity: 1 },
+    ], { duration: 820, easing: 'ease-out', fill: 'none' })
       .onfinish = onDone;
   }
 
@@ -650,19 +651,20 @@
         + `transform:translate(-50%,-50%)`;
       document.body.appendChild(d);
       d.animate([
-        { transform: `translate(-50%,-50%) scale(1)`, opacity: 1 },
+        { transform: `translate(-50%,-50%) scale(1.2)`, opacity: 1 },
         { transform: `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px)) scale(0)`, opacity: 0 },
-      ], { duration: 600, easing: 'ease-out', fill: 'forwards' })
+      ], { duration: 900, easing: 'ease-out', fill: 'forwards' })
         .onfinish = () => d.remove();
       frags.push(d);
     }
     // Also spring-pop the flower itself
     imgEl.animate([
-      { transform: 'translateX(-50%) scale(0.6)', opacity: 0.5 },
-      { transform: 'translateX(-50%) scale(1.2)', opacity: 1, offset: 0.4 },
-      { transform: 'translateX(-50%) scale(1)',   opacity: 1 },
-    ], { duration: 500, easing: 'ease-out' });
-    setTimeout(onDone, 620);
+      { transform: 'translateX(-50%) scale(0.4)', opacity: 0 },
+      { transform: 'translateX(-50%) scale(1.45)', opacity: 1, offset: 0.45 },
+      { transform: 'translateX(-50%) scale(0.95)', opacity: 1, offset: 0.75 },
+      { transform: 'translateX(-50%) scale(1)',    opacity: 1 },
+    ], { duration: 780, easing: 'ease-out' });
+    setTimeout(onDone, 920);
   }
 
   // ── C: Ring Pulse ─────────────────────────────────────────────
@@ -678,16 +680,17 @@
       + `transform:translate(-50%,-50%) scale(0);opacity:1;`;
     document.body.appendChild(ring);
     ring.animate([
-      { transform: 'translate(-50%,-50%) scale(0)', opacity: 0.9 },
-      { transform: 'translate(-50%,-50%) scale(2.8)', opacity: 0 },
-    ], { duration: 550, easing: 'ease-out', fill: 'forwards' })
+      { transform: 'translate(-50%,-50%) scale(0)', opacity: 1 },
+      { transform: 'translate(-50%,-50%) scale(3.5)', opacity: 0 },
+    ], { duration: 800, easing: 'ease-out', fill: 'forwards' })
       .onfinish = () => ring.remove();
     imgEl.animate([
-      { transform: 'translateX(-50%) scale(0.5)', opacity: 0 },
-      { transform: 'translateX(-50%) scale(1.15)', opacity: 1, offset: 0.5 },
+      { transform: 'translateX(-50%) scale(0.3)', opacity: 0 },
+      { transform: 'translateX(-50%) scale(1.4)', opacity: 1, offset: 0.5 },
+      { transform: 'translateX(-50%) scale(0.95)',opacity: 1, offset: 0.78 },
       { transform: 'translateX(-50%) scale(1)',   opacity: 1 },
-    ], { duration: 480, easing: 'ease-out' });
-    setTimeout(onDone, 560);
+    ], { duration: 750, easing: 'ease-out' });
+    setTimeout(onDone, 820);
   }
 
   // ── D: Combo — Scale Pop + Particles ─────────────────────────
@@ -708,19 +711,19 @@
         + `transform:translate(-50%,-50%)`;
       document.body.appendChild(d);
       d.animate([
-        { transform: `translate(-50%,-50%) scale(1) rotate(0deg)`, opacity: 1 },
-        { transform: `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px)) scale(0) rotate(180deg)`, opacity: 0 },
-      ], { duration: 650, easing: 'ease-out', fill: 'forwards' })
+        { transform: `translate(-50%,-50%) scale(1.3) rotate(0deg)`, opacity: 1 },
+        { transform: `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px)) scale(0) rotate(240deg)`, opacity: 0 },
+      ], { duration: 950, easing: 'ease-out', fill: 'forwards' })
         .onfinish = () => d.remove();
     }
     // Big spring pop on flower
     imgEl.animate([
-      { transform: 'translateX(-50%) scale(0)',   opacity: 0 },
-      { transform: 'translateX(-50%) scale(1.4)', opacity: 1, offset: 0.5 },
-      { transform: 'translateX(-50%) scale(0.9)', opacity: 1, offset: 0.75 },
-      { transform: 'translateX(-50%) scale(1)',   opacity: 1 },
-    ], { duration: 580, easing: 'ease-out' });
-    setTimeout(onDone, 660);
+      { transform: 'translateX(-50%) scale(0)',    opacity: 0 },
+      { transform: 'translateX(-50%) scale(1.55)', opacity: 1, offset: 0.45 },
+      { transform: 'translateX(-50%) scale(0.88)', opacity: 1, offset: 0.72 },
+      { transform: 'translateX(-50%) scale(1)',    opacity: 1 },
+    ], { duration: 850, easing: 'ease-out' });
+    setTimeout(onDone, 960);
   }
 
   // ── playBloom: random pick A/B/C/D ───────────────────────────
@@ -755,7 +758,7 @@
    * Phase 1 — each pot fires sequentially: glow ring + 6 petal dots
    * Phase 2 — after all pots done: confetti rain from top + big emoji burst at center
    */
-  function playWinCelebration(cells, stars) {
+  function playWinCelebration(cells, stars, onDone) {
     const PETAL_COLORS = ['#f9a8d4','#fde68a','#bbf7d0','#e9d5ff','#a5f3fc','#fed7aa'];
     const STAGGER = 180; // ms between each pot
     const POT_DUR = 520; // ring + petals duration
@@ -764,10 +767,10 @@
     cells.forEach((cell, idx) => {
       if (!cell) return;
       setTimeout(() => {
-        if (!cell.isConnected) return;
-        const rect = cell.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top  + rect.height * 0.4; // target near flower area
+        const rect = cell.isConnected ? cell.getBoundingClientRect() : null;
+        if (rect && rect.width === 0 && rect.height === 0) return;
+        const cx = rect ? rect.left + rect.width / 2  : window.innerWidth  / 2;
+        const cy = rect ? rect.top  + rect.height * 0.4 : window.innerHeight * 0.4;
 
         // a. Single expanding ring
         const ring = document.createElement('div');
@@ -806,12 +809,17 @@
     const phase2Delay = cells.length * STAGGER + POT_DUR + 100;
     const emojis = stars === 3 ? ['🌸','🌟','✨','💐','🎉','⭐'] :
                    stars === 2 ? ['🌸','✨','🌼','💮'] : ['🌸','🌿','✨'];
+    const CONG_POOL = ['Hoàn Hảo! 🌟','Tuyệt Vời! 🌸','Xuất Sắc! ✨','Đỉnh Quá! 💐','Ngon Lành! 🎉','Hoàn Thành! 🌿','Đẹp Ghê! 🌼','Chuẩn Luôn! ⭐'];
+    const congText = CONG_POOL[Math.floor(Math.random() * CONG_POOL.length)];
 
     setTimeout(() => {
       // Confetti: 28 pieces fall from random X at top
-      const frameRect = (document.getElementById('phone-frame') || document.body).getBoundingClientRect();
-      const fLeft = frameRect.left, fWidth = frameRect.width || window.innerWidth;
-      const fTop  = frameRect.top;
+      const frameEl = document.getElementById('phone-frame') || document.body;
+      const frameRect = frameEl.getBoundingClientRect();
+      const fLeft  = frameRect.left  || 0;
+      const fWidth = frameRect.width  || window.innerWidth;
+      const fTop   = frameRect.top    || 0;
+      const fH     = frameRect.height || window.innerHeight;
 
       for (let i = 0; i < 28; i++) {
         setTimeout(() => {
@@ -833,9 +841,26 @@
         }, i * 40);
       }
 
-      // Big emoji burst from screen center
+      // ── Congratulatory text ──────────────────────────────────
+      const txt = document.createElement('div');
       const cx = fLeft + fWidth / 2;
-      const cy = fTop  + (frameRect.height || 500) * 0.45;
+      const cy = fTop  + fH * 0.42;
+      txt.textContent = congText;
+      txt.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;
+        transform:translate(-50%,-50%) scale(0);
+        font-size:28px;font-weight:900;
+        color:#fff;text-shadow:0 2px 12px rgba(0,0,0,0.5),0 0 24px #FFD700;
+        pointer-events:none;z-index:9995;white-space:nowrap;
+        font-family:sans-serif;letter-spacing:1px;`;
+      document.body.appendChild(txt);
+      txt.animate([
+        { transform:'translate(-50%,-50%) scale(0)',   opacity:0 },
+        { transform:'translate(-50%,-50%) scale(1.15)',opacity:1, offset:0.3 },
+        { transform:'translate(-50%,-50%) scale(1)',   opacity:1, offset:0.6 },
+        { transform:'translate(-50%,-50%) scale(0.9)', opacity:0 },
+      ], { duration: 1400, easing:'ease-out' }).onfinish = () => txt.remove();
+
+      // Big emoji burst from screen center
       for (let e = 0; e < emojis.length; e++) {
         setTimeout(() => {
           const angle = (e / emojis.length) * Math.PI * 2;
@@ -853,6 +878,9 @@
           ], { duration: 900, easing:'ease-out' }).onfinish = () => em.remove();
         }, e * 60);
       }
+      // onDone fires after all phase2 effects finish (last emoji: emojis.length*60 + 900ms)
+      const phase2Total = emojis.length * 60 + 900 + 100;
+      setTimeout(() => { onDone && onDone(); }, phase2Total);
     }, phase2Delay);
   }
 
