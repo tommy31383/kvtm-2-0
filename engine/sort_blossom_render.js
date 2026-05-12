@@ -591,51 +591,66 @@
     const bloomFile = COLORS[color].bloom;
     if (!bloomFile) { onDone && onDone(); return; }
 
-    // Preload bloom sheet; if not available, gracefully skip
-    const probe = new Image();
-    probe.onerror = () => { onDone && onDone(); };
-    probe.onload = () => {
-      const sheetW = probe.naturalWidth;
-      const sheetH = probe.naturalHeight;
-      const frameW = sheetW / BLOOM_COLS;
-      const frameH = sheetH / BLOOM_ROWS;
+    _probeBloom(color, assetPath, (ok) => {
+      if (!ok) { onDone && onDone(); return; }
 
-      // Swap img → CSS sprite container of same display size
-      const displayW = imgEl.getBoundingClientRect().width || 80;
-      const displayH = imgEl.getBoundingClientRect().height || (displayW * frameH / frameW);
+      const parent = imgEl.parentElement;
+      if (!parent) { onDone && onDone(); return; }
 
-      // Wrap: replace img src with empty + style as sprite
-      const origSrc = imgEl.src;
-      imgEl.src = '';
-      imgEl.style.width = displayW + 'px';
-      imgEl.style.height = displayH + 'px';
-      imgEl.style.backgroundImage = `url('${assetPath}${bloomFile}')`;
-      imgEl.style.backgroundSize = `${displayW * BLOOM_COLS}px ${displayH * BLOOM_ROWS}px`;
-      imgEl.style.backgroundRepeat = 'no-repeat';
-      imgEl.style.backgroundPosition = '0 0';
+      // Read computed layout from imgEl — use same left/bottom/width/transform
+      // so the overlay sits EXACTLY on top of the flower, including rotation.
+      const cs = window.getComputedStyle(imgEl);
+      // Rendered width (natural width scaled to CSS width property)
+      let dw = imgEl.getBoundingClientRect().width;
+      if (!dw) dw = parseFloat(cs.width) || 80;
+      // height: auto — derive from sheet frame aspect ratio (512/307.2 ≈ 1.667)
+      const frameAspect = (1024 / BLOOM_ROWS) / (1536 / BLOOM_COLS); // frameH/frameW
+      let dh = dw * frameAspect;
+
+      // Mirror the img's CSS position (left, bottom) and transform exactly
+      // parent (.sb-active-flowers) is position:absolute — children are relative to it
+      const left      = cs.left;      // e.g. "calc(50% + 4px - 3px)"
+      const bottom    = cs.bottom;    // e.g. "0px"
+      const transform = cs.transform; // matrix(...) or "none"
+
+      const ov = document.createElement('div');
+      ov.style.cssText = [
+        'position:absolute',
+        `left:${left}`,
+        `bottom:${bottom}`,
+        `width:${dw}px`,
+        `height:${dh}px`,
+        `background-image:url('${assetPath}${bloomFile}')`,
+        `background-size:${dw * BLOOM_COLS}px ${dh * BLOOM_ROWS}px`,
+        'background-repeat:no-repeat',
+        'background-position:0 0',
+        'pointer-events:none',
+        'z-index:60',
+        'transform-origin:50% 95%',
+        `transform:${transform !== 'none' ? transform : ''}`,
+      ].join(';');
+
+      // Hide the original flower img while bloom plays
+      imgEl.style.visibility = 'hidden';
+      parent.appendChild(ov);
 
       const frameMs = BLOOM_DURATION_MS / BLOOM_FRAMES;
       let frame = 0;
       function tick() {
         const col = frame % BLOOM_COLS;
         const row = Math.floor(frame / BLOOM_COLS);
-        imgEl.style.backgroundPosition = `-${Math.round(col * displayW)}px -${Math.round(row * displayH)}px`;
+        ov.style.backgroundPosition = `-${Math.round(col * dw)}px -${Math.round(row * dh)}px`;
         frame++;
         if (frame < BLOOM_FRAMES) {
           setTimeout(tick, frameMs);
         } else {
-          // Restore original static img
-          imgEl.src = origSrc;
-          imgEl.style.backgroundImage = '';
-          imgEl.style.backgroundSize = '';
-          imgEl.style.backgroundPosition = '';
-          imgEl.style.backgroundRepeat = '';
+          ov.remove();
+          imgEl.style.visibility = '';
           onDone && onDone();
         }
       }
       tick();
-    };
-    probe.src = assetPath + bloomFile;
+    });
   }
 
   /**
