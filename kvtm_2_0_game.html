@@ -6707,6 +6707,23 @@ Scenes._levelBlossomV2 = function(cfg) {
     });
   }
 
+  function checkEndGame() {
+    if (gameOver) return;
+    if (Engine.isWon(state)) {
+      gameOver = true;
+      Sfx.play('win'); Haptic.success();
+      setTimeout(() => triggerWin(), 300);
+    } else if (moves >= cfg.moveLimit) {
+      gameOver = true;
+      Sfx.play('lose'); Haptic.fail();
+      setTimeout(() => triggerLose('moves'), 300);
+    } else if (Engine.isDeadlock(state)) {
+      gameOver = true;
+      Sfx.play('lose'); Haptic.fail();
+      setTimeout(() => triggerLose('deadlock'), 300);
+    }
+  }
+
   function repaint() {
     cells.forEach((cell, i) => Render.paintAll(cell, state[i], ASSETS, 6));
     Render.setSelected(cells, selected);
@@ -6818,28 +6835,15 @@ Scenes._levelBlossomV2 = function(cfg) {
               const settled = Engine.settle(state);
               repaint();
               if (settled.vanished.length > 0) { Sfx.play('lock'); Haptic.success(); }
+              // Check win/lose AFTER settle — state mới đúng
+              checkEndGame();
             });
           }, 220);
         }
       },
       onDone: () => {
-        // Defer win/lose check until after potential vanish animation (~500ms buffer)
-        const checkDelay = Engine.isWon(state) || moves >= cfg.moveLimit ? 500 : 0;
-        setTimeout(() => {
-          if (Engine.isWon(state)) {
-            gameOver = true;
-            Sfx.play('win'); Haptic.success();
-            setTimeout(() => triggerWin(), 250);
-          } else if (moves >= cfg.moveLimit) {
-            gameOver = true;
-            Sfx.play('lose'); Haptic.fail();
-            setTimeout(() => triggerLose('moves'), 250);
-          } else if (Engine.isDeadlock(state)) {
-            gameOver = true;
-            Sfx.play('lose'); Haptic.fail();
-            setTimeout(() => triggerLose('deadlock'), 250);
-          }
-        }, checkDelay);
+        // Chỉ check ngay nếu KHÔNG có vanish (willVanish đã xử lý trong callback trên)
+        if (!Engine.hasPendingVanish(state)) checkEndGame();
       }
     });
   }

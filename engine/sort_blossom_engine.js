@@ -283,12 +283,17 @@
   }
 
   // ─── EXPORT ─────────────────────────────────────────
+  /** Check if any pot currently has 3 matching active flowers (pending vanish). */
+  function hasPendingVanish(state) {
+    return state.some(p => isTriple(p.active));
+  }
+
   const api = {
     POS, POS_NAMES, COLORS,
     emptyPot, clonePot, clone, encode,
     pickPosFromX,
     canMove, applyMove, applyMovePlace, settle, promote, initState,
-    isWon, isDeadlock,
+    isWon, isDeadlock, hasPendingVanish,
     starsFor,
     validate, countColors,
     bfsSolve, findHint, difficultyScore,

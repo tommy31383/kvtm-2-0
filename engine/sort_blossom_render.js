@@ -106,7 +106,9 @@
     sheet.onload  = () => { sheetLoaded = true; tryDone(); };
     sheet.onerror = () => { _bloomCache[color] = false; cb(false); };
     sheet.src = assetPath + c.bloom;
-    fetch(assetPath + c.rectsFile)
+    // Resolve to absolute URL so fetch works regardless of page URL trailing slash
+    const rectsUrl = new URL(assetPath + c.rectsFile, location.href).href;
+    fetch(rectsUrl)
       .then(r => r.ok ? r.json() : null)
       .then(j => { rects = j && j.rects ? j.rects : null; rectsLoaded = true; tryDone(); })
       .catch(() => { rects = null; rectsLoaded = true; tryDone(); });
