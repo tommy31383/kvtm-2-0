@@ -11,15 +11,21 @@
   'use strict';
 
   const COLORS = {
-    R: { name: 'Red',      img: 'flower_red.png'      },
-    P: { name: 'Pink',     img: 'flower_pink.png'     },
-    Y: { name: 'Yellow',   img: 'flower_yellow.png'   },
-    V: { name: 'Purple',   img: 'flower_purple.png'   },
-    W: { name: 'White',    img: 'flower_white.png'    },
-    O: { name: 'Orange',   img: 'flower_orange.png'   },
-    B: { name: 'Blue',     img: 'flower_blue.png'     },
-    C: { name: 'Camellia', img: 'flower_camellia.png' },
+    R: { name: 'Red',      img: 'flower_red.png',      bloom: 'flower_red_bloom.png'      },
+    P: { name: 'Pink',     img: 'flower_pink.png',     bloom: 'flower_pink_bloom.png'     },
+    Y: { name: 'Yellow',   img: 'flower_yellow.png',   bloom: 'flower_yellow_bloom.png'   },
+    V: { name: 'Purple',   img: 'flower_purple.png',   bloom: 'flower_purple_bloom.png'   },
+    W: { name: 'White',    img: 'flower_white.png',    bloom: 'flower_white_bloom.png'    },
+    O: { name: 'Orange',   img: 'flower_orange.png',   bloom: 'flower_orange_bloom.png'   },
+    B: { name: 'Blue',     img: 'flower_blue.png',     bloom: 'flower_blue_bloom.png'     },
+    C: { name: 'Camellia', img: 'flower_camellia.png', bloom: 'flower_camellia_bloom.png' },
   };
+
+  // Bloom sprite sheet config — 5 cols × 2 rows = 10 frames
+  const BLOOM_COLS = 5;
+  const BLOOM_ROWS = 2;
+  const BLOOM_FRAMES = 10;
+  const BLOOM_DURATION_MS = 700;
 
   const POS_LABEL = ['L', 'C', 'R'];
 
@@ -79,8 +85,37 @@
       if (pot.active[p] !== null) return '';
       const f = pot.queue[p];
       if (!f) return '';
-      return `<img src="${assetPath}${COLORS[f].img}" data-pos="${p}" draggable="false">`;
+      const c = COLORS[f];
+      return `<img class="sb-queue-bud" data-pos="${p}" data-color="${f}" draggable="false" src="${assetPath}${c.img}">`;
     }).join('');
+  }
+
+  // Cache: does this color have a bloom sprite sheet?
+  const _bloomCache = {};
+  function _probeBloom(color, assetPath, cb) {
+    if (color in _bloomCache) return cb(_bloomCache[color]);
+    const probe = new Image();
+    probe.onload  = () => { _bloomCache[color] = true;  cb(true); };
+    probe.onerror = () => { _bloomCache[color] = false; cb(false); };
+    probe.src = assetPath + COLORS[color].bloom;
+  }
+  /** Show bloom-sheet frame 1 (bud) on queue preview imgs, if sheet exists. */
+  function upgradeQueueBuds(cell, assetPath) {
+    cell.querySelectorAll('.sb-queue-bud').forEach(img => {
+      const color = img.dataset.color;
+      if (!color || !COLORS[color]) return;
+      _probeBloom(color, assetPath, (ok) => {
+        if (!ok) return;
+        const rect = img.getBoundingClientRect();
+        const w = rect.width, h = rect.height;
+        if (!w || !h) return;
+        img.style.backgroundImage    = `url('${assetPath}${COLORS[color].bloom}')`;
+        img.style.backgroundSize     = `${w * BLOOM_COLS}px ${h * BLOOM_ROWS}px`;
+        img.style.backgroundPosition = '0 0';
+        img.style.backgroundRepeat   = 'no-repeat';
+        img.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+      });
+    });
   }
 
   function renderQueueStrip(queue, queueMax, assetPath) {
@@ -116,7 +151,11 @@
       });
     }
     const previewEl = cell.querySelector('.sb-queue-preview');
-    if (previewEl) previewEl.innerHTML = renderQueuePreview(pot, assetPath);
+    if (previewEl) {
+      previewEl.innerHTML = renderQueuePreview(pot, assetPath);
+      // Upgrade to bloom-sheet frame 1 (bud) on next frame (after layout)
+      requestAnimationFrame(() => upgradeQueueBuds(cell, assetPath));
+    }
   }
 
   function paintQueue(cell, pot, assetPath, queueMax = 6) {
@@ -538,12 +577,89 @@
     return best ? { pot: best.pot, pos: best.pos } : null;
   }
 
+  /**
+   * Play bloom animation on a freshly-promoted flower in active row.
+   * The img element should already exist with the static sprite. We swap to bloom sheet
+   * and step through 10 frames using background-position.
+   * @param {HTMLImageElement} imgEl   target flower img element
+   * @param {string} color             color key
+   * @param {string} assetPath         e.g. 'assets/sort_blossom/'
+   * @param {Function} onDone
+   */
+  function playBloom(imgEl, color, assetPath, onDone) {
+    if (!imgEl || !COLORS[color]) { onDone && onDone(); return; }
+    const bloomFile = COLORS[color].bloom;
+    if (!bloomFile) { onDone && onDone(); return; }
+
+    // Preload bloom sheet; if not available, gracefully skip
+    const probe = new Image();
+    probe.onerror = () => { onDone && onDone(); };
+    probe.onload = () => {
+      const sheetW = probe.naturalWidth;
+      const sheetH = probe.naturalHeight;
+      const frameW = sheetW / BLOOM_COLS;
+      const frameH = sheetH / BLOOM_ROWS;
+
+      // Swap img → CSS sprite container of same display size
+      const displayW = imgEl.getBoundingClientRect().width || 80;
+      const displayH = imgEl.getBoundingClientRect().height || (displayW * frameH / frameW);
+
+      // Wrap: replace img src with empty + style as sprite
+      const origSrc = imgEl.src;
+      imgEl.src = '';
+      imgEl.style.width = displayW + 'px';
+      imgEl.style.height = displayH + 'px';
+      imgEl.style.backgroundImage = `url('${assetPath}${bloomFile}')`;
+      imgEl.style.backgroundSize = `${displayW * BLOOM_COLS}px ${displayH * BLOOM_ROWS}px`;
+      imgEl.style.backgroundRepeat = 'no-repeat';
+      imgEl.style.backgroundPosition = '0 0';
+
+      const frameMs = BLOOM_DURATION_MS / BLOOM_FRAMES;
+      let frame = 0;
+      function tick() {
+        const col = frame % BLOOM_COLS;
+        const row = Math.floor(frame / BLOOM_COLS);
+        imgEl.style.backgroundPosition = `-${Math.round(col * displayW)}px -${Math.round(row * displayH)}px`;
+        frame++;
+        if (frame < BLOOM_FRAMES) {
+          setTimeout(tick, frameMs);
+        } else {
+          // Restore original static img
+          imgEl.src = origSrc;
+          imgEl.style.backgroundImage = '';
+          imgEl.style.backgroundSize = '';
+          imgEl.style.backgroundPosition = '';
+          imgEl.style.backgroundRepeat = '';
+          onDone && onDone();
+        }
+      }
+      tick();
+    };
+    probe.src = assetPath + bloomFile;
+  }
+
+  /**
+   * Render queue preview using bud (frame 1 of bloom sheet) if available,
+   * fallback to static flower img.
+   * Returns HTML string for queue preview <img> in a given slot position.
+   */
+  function buildQueueBud(color, assetPath, pos) {
+    if (!COLORS[color]) return '';
+    const bloomFile = COLORS[color].bloom;
+    // We can't synchronously know if bloom sheet exists. Use background-image with fallback.
+    // The element gets bloom-sheet bg-pos 0,0 (=bud frame 1). If sheet missing, src attribute
+    // shows static flower so visual still renders.
+    const staticFile = COLORS[color].img;
+    return `<img class="sb-queue-bud" data-pos="${pos}" data-color="${color}" src="${assetPath}${staticFile}" style="background-image:url('${assetPath}${bloomFile}');background-position:0 0;background-repeat:no-repeat;"/>`;
+  }
+
   // ─── EXPORT ─────────────────────────────────────────
   const api = {
     COLORS,
+    BLOOM_COLS, BLOOM_ROWS, BLOOM_FRAMES, BLOOM_DURATION_MS,
     buildPotCell,
     paintActive, paintQueue, paintAll,
-    setSelected, playVanish, animateFlight,
+    setSelected, playVanish, animateFlight, playBloom, buildQueueBud, upgradeQueueBuds,
     renderQueueStrip,
     eventToPos, eventToNearestFlowerPos, eventToFlowerHitPos,
     nearestOccupiedPos, nearestEmptyPos, nearestBoardFlower,

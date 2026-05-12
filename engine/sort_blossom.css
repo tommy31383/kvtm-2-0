@@ -121,6 +121,14 @@
   opacity: .42;
   filter: brightness(.75) saturate(.8);
   transform-origin: 50% 95%;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+}
+/* Bud preview: when bloom sheet bg-image is set, hide static img src + show only frame 1 */
+.sb-queue-preview img.sb-queue-bud[style*="background-image"] {
+  /* When bg-image succeeded, the user agent will paint it. We want to show ONLY frame 1.
+     Set background-size to 5x the rendered width so 1/5 = 1 frame.
+     Hide the static src by setting src-display: none via parent or transparent. */
 }
 .sb-queue-preview img[data-pos="0"] {
   left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread));

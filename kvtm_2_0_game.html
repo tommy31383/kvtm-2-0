@@ -6797,9 +6797,20 @@ Scenes._levelBlossomV2 = function(cfg) {
         history.push(Engine.clone(state));
         const r = Engine.applyMovePlace(state, srcSel.pot, srcSel.pos, potIdx, placePos);
         moves++;
+        // Capture pre-promote state to detect newly-promoted slots
+        const wasNullBefore = state.map(p => p.active.map(x => x === null));
         // Promote any pot whose active row went empty (source pot, typically)
         state.forEach(p => Engine.promote(p));
         repaint();   // Player thấy bông cắm chậu + queue auto-shift lên nếu source rỗng
+        // Play bloom animation on newly-promoted slots
+        state.forEach((pot, pi) => {
+          pot.active.forEach((color, posi) => {
+            if (color && wasNullBefore[pi][posi]) {
+              const imgEl = cells[pi]?.querySelector(`.sb-active-flowers img[data-pos="${posi}"]`);
+              if (imgEl) Render.playBloom(imgEl, color, ASSETS);
+            }
+          });
+        });
         // Step 2: nếu có match → đợi 220ms cho mắt thấy bông, RỒI mới vanish
         if (r.willVanish) {
           setTimeout(() => {

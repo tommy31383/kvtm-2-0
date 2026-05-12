@@ -703,9 +703,20 @@ function onPlayTap(potIdx, pos) {
       playState.history.push(SortBlossomEngine.clone(playState.pots));
       const r = SortBlossomEngine.applyMovePlace(playState.pots, srcSel.pot, srcSel.pos, potIdx, placePos);
       playState.moves++;
-      // Promote any pot whose active row went empty (source pot typically)
+      // Capture pre-promote state to detect newly-promoted slots
+      const wasNullBefore = playState.pots.map(p => p.active.map(x => x === null));
       playState.pots.forEach(p => SortBlossomEngine.promote(p));
       renderPlay();   // user thấy bông cắm + queue auto-shift nếu source rỗng
+      // Play bloom animation on newly-promoted slots
+      const playPotCells = [...document.querySelectorAll('#play-pots .sb-pot-cell')];
+      playState.pots.forEach((pot, pi) => {
+        pot.active.forEach((color, posi) => {
+          if (color && wasNullBefore[pi][posi]) {
+            const imgEl = playPotCells[pi]?.querySelector(`.sb-active-flowers img[data-pos="${posi}"]`);
+            if (imgEl) SortBlossomRender.playBloom(imgEl, color, ASSETS);
+          }
+        });
+      });
       // Step 2: nếu match → đợi 220ms cho mắt thấy, RỒI vanish
       if (r.willVanish) {
         const destCellEl = document.querySelectorAll('#play-pots .sb-pot-cell')[potIdx];
