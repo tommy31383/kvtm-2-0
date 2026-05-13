@@ -116,32 +116,26 @@
 .sb-queue-preview img {
   position: absolute;
   bottom: 0;
-  width: calc(var(--sb-flower-w-side) * .52);
-  height: auto;
-  opacity: .42;
-  filter: brightness(.75) saturate(.8);
+  /* width/height = bud render size — smaller than active flowers */
+  width: calc(var(--sb-flower-w-side) * .42);
+  height: calc(var(--sb-flower-w-side) * .42);
+  opacity: .55;
+  filter: brightness(.80) saturate(.85);
   transform-origin: 50% 95%;
-  background-repeat: no-repeat;
-  background-position: 0 0;
-}
-/* Bud preview: when bloom sheet bg-image is set, hide static img src + show only frame 1 */
-.sb-queue-preview img.sb-queue-bud[style*="background-image"] {
-  /* When bg-image succeeded, the user agent will paint it. We want to show ONLY frame 1.
-     Set background-size to 5x the rendered width so 1/5 = 1 frame.
-     Hide the static src by setting src-display: none via parent or transparent. */
 }
 .sb-queue-preview img[data-pos="0"] {
   left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread));
-  transform: translateX(-50%) translateY(10px) rotate(calc(-1 * var(--sb-flower-angle))) scale(.82);
+  transform: translateX(-50%) translateY(8px) rotate(calc(-1 * var(--sb-flower-angle)));
 }
 .sb-queue-preview img[data-pos="1"] {
   left: calc(50% + var(--sb-stem-x));
-  width: calc(var(--sb-flower-w-mid) * .52);
-  transform: translateX(-50%) translateY(10px) scale(.82);
+  width: calc(var(--sb-flower-w-mid) * .42);
+  height: calc(var(--sb-flower-w-mid) * .42);
+  transform: translateX(-50%) translateY(8px);
 }
 .sb-queue-preview img[data-pos="2"] {
   left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread));
-  transform: translateX(-50%) translateY(10px) rotate(var(--sb-flower-angle)) scale(.82);
+  transform: translateX(-50%) translateY(8px) rotate(var(--sb-flower-angle));
 }
 /* Selected flower: scale +15%, lift up, z-index above siblings, glow */
 .sb-active-flowers img.sb-lifted {

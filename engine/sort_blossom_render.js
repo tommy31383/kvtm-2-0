@@ -80,13 +80,26 @@
     return cell;
   }
 
+  // 1px transparent GIF — used as placeholder src when background-image carries the visual
+  const _TRANSPARENT_SRC = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
   function renderQueuePreview(pot, assetPath) {
     return [0,1,2].map(p => {
       if (pot.active[p] !== null) return '';
       const f = pot.queue[p];
       if (!f) return '';
       const c = COLORS[f];
-      return `<img class="sb-queue-bud" data-pos="${p}" data-color="${f}" draggable="false" src="${assetPath}${c.img}">`;
+      // Show frame 0 of bloom sheet (bud stage) via background-image.
+      // background-size 500% 200% = 5 cols × 2 rows → 1 frame = 100% element size.
+      // background-position 0% 0% = top-left = frame 0 (bud).
+      // Falls back to static img if sheet fails to load (onerror keeps src).
+      const bloomSrc = assetPath + c.bloom;
+      const staticSrc = assetPath + c.img;
+      return `<img class="sb-queue-bud" data-pos="${p}" data-color="${f}" draggable="false"
+        src="${_TRANSPARENT_SRC}"
+        data-static="${staticSrc}"
+        style="background-image:url('${bloomSrc}');background-size:500% 200%;background-position:0% 0%;background-repeat:no-repeat;"
+        onerror="this.onerror=null;this.src=this.dataset.static;this.style.backgroundImage='';">`;
     }).join('');
   }
 
@@ -119,32 +132,63 @@
     probe.onerror = () => { _bloomCache[color] = false; cb(false); };
     probe.src = assetPath + COLORS[color].bloom;
   }
-  /** Show bloom bud (frame 0) on queue preview imgs using canvas. */
-  function upgradeQueueBuds(cell, assetPath) {
-    cell.querySelectorAll('.sb-queue-bud').forEach(imgEl => {
-      const color = imgEl.dataset.color;
-      if (!color || !COLORS[color]) return;
-      _probeBloom(color, assetPath, (cached) => {
-        if (!cached) return;
-        const { sheet, rects } = cached;
-        const rect = imgEl.getBoundingClientRect();
-        const dw = rect.width || 26, dh = rect.height || 26;
-        if (!dw || !dh) return;
+  /**
+   * Play bloom sprite sheet animation on an active-flower img.
+   * Draws frames 0→9 from the bloom sheet using a canvas overlay.
+   * Works on file:// and localhost (only writes to canvas, never reads back).
+   * Falls back to _bloomA if sheet unavailable.
+   */
+  function _bloomSheet(imgEl, color, assetPath, onDone) {
+    if (!imgEl || !imgEl.isConnected) { onDone && onDone(); return; }
+    _probeBloom(color, assetPath, (cached) => {
+      if (!cached || !cached.rects || cached.rects.length < BLOOM_FRAMES) {
+        _bloomA(imgEl, onDone); return;
+      }
+      const { sheet, rects } = cached;
+      const rect = imgEl.getBoundingClientRect();
+      if (!rect.width || !rect.height) { _bloomA(imgEl, onDone); return; }
 
-        // Draw bud (frame 0) onto a canvas and use as data-url for the img
-        const oc = document.createElement('canvas');
-        oc.width = Math.round(dw); oc.height = Math.round(dh);
-        const ctx = oc.getContext('2d');
-        if (rects && rects[0]) {
-          const [sx, sy, sw, sh] = rects[0];
-          ctx.drawImage(sheet, sx, sy, sw, sh, 0, 0, oc.width, oc.height);
+      // Create canvas overlay positioned over imgEl (fixed coords)
+      const cv = document.createElement('canvas');
+      cv.width  = Math.round(rect.width);
+      cv.height = Math.round(rect.height);
+      cv.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;`
+        + `width:${rect.width}px;height:${rect.height}px;`
+        + `pointer-events:none;z-index:9999;transform-origin:50% 95%;`;
+      document.body.appendChild(cv);
+      const ctx = cv.getContext('2d');
+
+      // Hide source img while canvas plays
+      const origOpacity = imgEl.style.opacity;
+      imgEl.style.opacity = '0';
+
+      const FRAME_DUR = 90; // ~900ms for 10 frames
+      let startTs = null;
+      let lastFrame = -1;
+
+      function drawFrame(f) {
+        ctx.clearRect(0, 0, cv.width, cv.height);
+        const [sx, sy, sw, sh] = rects[f];
+        ctx.drawImage(sheet, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+      }
+
+      function tick(ts) {
+        if (!startTs) startTs = ts;
+        const elapsed = ts - startTs;
+        const fi = Math.min(BLOOM_FRAMES - 1, Math.floor(elapsed / FRAME_DUR));
+        if (fi !== lastFrame) { lastFrame = fi; drawFrame(fi); }
+
+        if (elapsed < FRAME_DUR * BLOOM_FRAMES) {
+          requestAnimationFrame(tick);
         } else {
-          const fw = sheet.naturalWidth / BLOOM_COLS;
-          const fh = sheet.naturalHeight / BLOOM_ROWS;
-          ctx.drawImage(sheet, 0, 0, fw, fh, 0, 0, oc.width, oc.height);
+          cv.remove();
+          imgEl.style.opacity = origOpacity;
+          onDone && onDone();
         }
-        try { imgEl.src = oc.toDataURL(); } catch(e) { /* tainted canvas on file:// — keep static img */ }
-      });
+      }
+
+      drawFrame(0); // show frame 0 immediately (no blank flash)
+      requestAnimationFrame(tick);
     });
   }
 
@@ -182,9 +226,8 @@
     }
     const previewEl = cell.querySelector('.sb-queue-preview');
     if (previewEl) {
+      // renderQueuePreview now embeds frame 0 via background-image inline style — no upgradeQueueBuds needed
       previewEl.innerHTML = renderQueuePreview(pot, assetPath);
-      // Upgrade to bloom-sheet frame 1 (bud) on next frame (after layout)
-      requestAnimationFrame(() => upgradeQueueBuds(cell, assetPath));
     }
   }
 
@@ -618,15 +661,16 @@
     setTimeout(onDone, 960);
   }
 
-  // ── playBloom: random pick A/B/C/D ───────────────────────────
+  // ── playBloom: sprite sheet grow (bud → full) + optional particle overlay ──
   function playBloom(imgEl, color, assetPath, onDone) {
     if (!imgEl || !imgEl.isConnected) { onDone && onDone(); return; }
-    const done = () => { onDone && onDone(); };
-    const pick = Math.floor(Math.random() * 4);
-    if (pick === 0) _bloomA(imgEl, done);
-    else if (pick === 1) _bloomB(imgEl, color, done);
-    else if (pick === 2) _bloomC(imgEl, color, done);
-    else _bloomD(imgEl, color, done);
+    // Primary: sprite sheet animation (frame 0 bud → frame 9 full bloom).
+    // Secondary: random particle overlay on top (B=petal burst, C=ring pulse, none).
+    //   These run concurrently — they don't block onDone.
+    const pick = Math.floor(Math.random() * 3); // 0=none, 1=petals, 2=ring
+    if (pick === 1) _bloomB(imgEl, color, null);   // fire-and-forget overlay
+    else if (pick === 2) _bloomC(imgEl, color, null);
+    _bloomSheet(imgEl, color, assetPath, () => { onDone && onDone(); });
   }
 
   /**
@@ -782,7 +826,7 @@
     BLOOM_COLS, BLOOM_ROWS, BLOOM_FRAMES, BLOOM_DURATION_MS,
     buildPotCell,
     paintActive, paintQueue, paintAll,
-    setSelected, playVanish, animateFlight, playBloom, playWinCelebration, buildQueueBud, upgradeQueueBuds,
+    setSelected, playVanish, animateFlight, playBloom, playWinCelebration, buildQueueBud,
     renderQueueStrip,
     eventToPos, eventToNearestFlowerPos, eventToFlowerHitPos,
     nearestOccupiedPos, nearestEmptyPos, nearestBoardFlower,
