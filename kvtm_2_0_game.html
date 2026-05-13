@@ -6876,7 +6876,7 @@ Scenes._levelBlossomV2 = function(cfg) {
             const isNewDest = (pi === potIdx && posi === placePos);
             if (color && wasNull && !isNewDest) {
               const imgEl = cells[pi]?.querySelector(`.sb-active-flowers img[data-pos="${posi}"]`);
-              if (imgEl) bloomTasks.push(() => wrap(done => Render.playBloom(imgEl, color, ASSETS, done)));
+              if (imgEl) bloomTasks.push(() => wrap(done => Render.playBloomQueue(imgEl, color, ASSETS, done)));
             }
           });
         });

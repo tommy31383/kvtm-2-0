@@ -661,15 +661,22 @@
     setTimeout(onDone, 960);
   }
 
-  // ── playBloom: sprite sheet grow (bud → full) + optional particle overlay ──
+  // ── playBloom: move destination (A/B/C/D pop effects, unchanged) ──────────
   function playBloom(imgEl, color, assetPath, onDone) {
     if (!imgEl || !imgEl.isConnected) { onDone && onDone(); return; }
-    // Primary: sprite sheet animation (frame 0 bud → frame 9 full bloom).
-    // Secondary: random particle overlay on top (B=petal burst, C=ring pulse, none).
-    //   These run concurrently — they don't block onDone.
-    const pick = Math.floor(Math.random() * 3); // 0=none, 1=petals, 2=ring
-    if (pick === 1) _bloomB(imgEl, color, null);   // fire-and-forget overlay
-    else if (pick === 2) _bloomC(imgEl, color, null);
+    const done = () => { onDone && onDone(); };
+    const pick = Math.floor(Math.random() * 4);
+    if (pick === 0) _bloomA(imgEl, done);
+    else if (pick === 1) _bloomB(imgEl, color, done);
+    else if (pick === 2) _bloomC(imgEl, color, done);
+    else _bloomD(imgEl, color, done);
+  }
+
+  // ── playBloomQueue: queue promote — grow from bud (frame 0→9 sprite) ──────
+  // Called when a flower is promoted from queue into an active slot.
+  // Uses _bloomSheet so the flower visually "grows up" from the bud state.
+  function playBloomQueue(imgEl, color, assetPath, onDone) {
+    if (!imgEl || !imgEl.isConnected) { onDone && onDone(); return; }
     _bloomSheet(imgEl, color, assetPath, () => { onDone && onDone(); });
   }
 
@@ -826,7 +833,7 @@
     BLOOM_COLS, BLOOM_ROWS, BLOOM_FRAMES, BLOOM_DURATION_MS,
     buildPotCell,
     paintActive, paintQueue, paintAll,
-    setSelected, playVanish, animateFlight, playBloom, playWinCelebration, buildQueueBud,
+    setSelected, playVanish, animateFlight, playBloom, playBloomQueue, playWinCelebration, buildQueueBud,
     renderQueueStrip,
     eventToPos, eventToNearestFlowerPos, eventToFlowerHitPos,
     nearestOccupiedPos, nearestEmptyPos, nearestBoardFlower,
