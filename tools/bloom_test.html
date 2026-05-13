@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Bloom Anim Editor</title>
+<link rel="stylesheet" href="../engine/sort_blossom.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -133,8 +134,7 @@ select{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
 .tf canvas{display:block;width:100%;height:48px;border-radius:4px 4px 0 0;background:#060708;}
 .tbot{display:flex;align-items:center;justify-content:space-between;padding:2px 4px;}
 .tidx{font-size:9px;color:var(--muted);}
-.tdur{font-size:9px;border:none;background:transparent;width:34px;
-  text-align:right;cursor:text;padding:0;color:var(--gold);outline:none;}
+.tdur{display:none;}
 .tdel{position:absolute;top:1px;right:1px;width:13px;height:13px;
   background:rgba(200,40,40,.9);border-radius:2px;display:none;
   align-items:center;justify-content:center;font-size:7px;cursor:pointer;color:#fff;}
@@ -185,6 +185,8 @@ select{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
     style="width:48px;background:var(--bg3);color:var(--text);border:1px solid var(--border2);
     padding:2px 4px;border-radius:4px;font-size:11px;height:26px;" onchange="onZoomChange()">
   <span style="font-size:10px;color:var(--muted);">%</span>
+  <div class="sep"></div>
+  <button class="btn" id="rootBtn" onclick="pickRootDir()" title="Chọn thư mục gốc KVTM 2.0 (dùng khi mở file://)">📂 Root</button>
   <div class="sep"></div>
   <button class="btn active" id="tabAnim" onclick="switchTab('anim')">🌸 Anim</button>
   <button class="btn" id="tabLayout" onclick="switchTab('layout')">🪴 Layout</button>
@@ -238,14 +240,13 @@ select{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
       <input type="range" id="gameSpeedIn" min="10" max="400" value="100"
         oninput="document.getElementById('gameSpeedV').textContent=this.value+'%'">
       <span id="gameSpeedV" style="color:var(--gold);">100%</span>
+      <button class="btn" id="playPotBloomBtn" onclick="playPotBloom()"
+        style="margin-left:6px;" title="Play bloom anim trong pot preview với Game speed">▶ Bloom</button>
     </div>
 
     <!-- inline frame props -->
     <div id="frameProps">
-      <div class="sep"></div>
-      <label>dur</label>
-      <input type="number" id="fdurIn" min="10" max="5000" step="10"
-        title="Frame duration ms" oninput="applyDur()">
+      <input type="number" id="fdurIn" min="10" max="5000" step="10" style="display:none">
 
       <div class="nudge-group">
         <label>dX</label>
@@ -363,6 +364,37 @@ let pingDir = 1;
 let loopMode = 'fwd';
 let onion = false;
 let drag = null;
+let _slotDrag = null;  // {pos, startX, startY, startOx, startOy}
+let _rootDir  = null;  // FileSystemDirectoryHandle (File System Access API)
+
+const IS_LOCAL = location.protocol !== 'file:';  // true = localhost server available
+
+// ── FILE SYSTEM ACCESS (file:// mode) ────────────────────────
+async function pickRootDir() {
+  try {
+    _rootDir = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'documents' });
+    st(`✅ Root: ${_rootDir.name}`,'ok');
+  } catch(e) { st('❌ '+e.message,'err'); }
+}
+async function _fsRead(relPath) {
+  if (!_rootDir) throw new Error('Chọn Root Folder trước');
+  const parts = relPath.split('/');
+  let dir = _rootDir;
+  for (let i = 0; i < parts.length-1; i++)
+    dir = await dir.getDirectoryHandle(parts[i]);
+  const fh = await dir.getFileHandle(parts[parts.length-1]);
+  return await (await fh.getFile()).text();
+}
+async function _fsWrite(relPath, content) {
+  if (!_rootDir) throw new Error('Chọn Root Folder trước');
+  const parts = relPath.split('/');
+  let dir = _rootDir;
+  for (let i = 0; i < parts.length-1; i++)
+    dir = await dir.getDirectoryHandle(parts[i], {create:true});
+  const fh = await dir.getFileHandle(parts[parts.length-1], {create:true});
+  const w  = await fh.createWritable();
+  await w.write(content); await w.close();
+}
 
 const sheetCv  = document.getElementById('sheetCanvas');
 const sheetCtx = sheetCv.getContext('2d');
@@ -376,7 +408,7 @@ function loadSheet() {
   const tmp = new Image();
   tmp.onerror = ()=> st('❌ Không load sheet (cần localhost)','err');
   tmp.onload  = ()=> afterSheetLoad(tmp);
-  tmp.src = BASE + color + '_bloom.webp?v='+Date.now();
+  tmp.src = BASE + color + '_bloom.webp';
 }
 function loadSheetFile() { document.getElementById('sheetFileIn').click(); }
 function onSheetFile(inp) {
@@ -394,8 +426,9 @@ function onSheetFile(inp) {
 function afterSheetLoad(tmp) {
   img = tmp;
   st(`✅ Sheet ${img.naturalWidth}×${img.naturalHeight}`,'ok');
-  if (!frames.length) initDefaultFrames();
-  else { renderSheet(); buildTL(); drawPrev(selIdx); }
+  // DO NOT auto-create default frames — only via explicit "↺ 5×2" button.
+  // (Avoid race with loadFromServer which sets real frames.)
+  if (frames.length) { renderSheet(); buildTL(); drawPrev(selIdx); }
   renderPotPreview();
 }
 
@@ -431,15 +464,45 @@ function onJSONFile(inp) {
 async function loadFromServer() {
   st('⏳ Loading...','warn');
   try {
-    const text = await fetch('/api/bloom-rects').then(r=>r.text());
-    let data; try{data=JSON.parse(text);}catch(e){throw new Error('Server: '+text.slice(0,80));}
-    if(!data.ok) throw new Error(data.error);
     const key = COLOR_KEY[document.getElementById('colorPicker').value];
-    const rects = data.rects[key];
-    if(!rects||!rects.length) throw new Error('No rects for '+key);
-    frames = rects.map(r=>({x:r[0],y:r[1],w:r[2],h:r[3],dur:90,dx:r[4]||0,dy:r[5]||0}));
-    selIdx=0; syncProps(); buildTL(); renderSheet(); drawPrev(0);
-    st(`✅ ${frames.length} frames [${key}]`,'ok');
+    let rects, durs = null;
+
+    // Always read render.js directly to get both rects and durations
+    let src;
+    if (IS_LOCAL) {
+      src = await fetch('../engine/sort_blossom_render.js').then(r => {
+        if (!r.ok) throw new Error('fetch render.js: ' + r.status);
+        return r.text();
+      });
+    } else {
+      if (!_rootDir) { await pickRootDir(); if (!_rootDir) return; }
+      src = await _fsRead('engine/sort_blossom_render.js');
+    }
+
+    // Extract _BLOOM_RECTS
+    const matchR = src.match(/_BLOOM_RECTS\s*=\s*\{([\s\S]*?)\};/);
+    if (!matchR) throw new Error('_BLOOM_RECTS not found in render.js');
+    rects = Function('return ({' + matchR[1] + '})')()[key];
+
+    // Extract _BLOOM_DURS
+    const matchD = src.match(/_BLOOM_DURS\s*=\s*\{([\s\S]*?)\};/);
+    if (matchD) {
+      try { durs = Function('return ({' + matchD[1] + '})')()[key]; } catch(e) {}
+    }
+
+    if (!rects || !rects.length) throw new Error('No rects for ' + key);
+
+    // Restore gameSpeed from stored single number
+    let restoredSpeed = 100;
+    if (typeof durs === 'number' && durs > 0) {
+      restoredSpeed = Math.round(90 * 100 / durs);
+      document.getElementById('gameSpeedIn').value = restoredSpeed;
+      document.getElementById('gameSpeedV').textContent = restoredSpeed + '%';
+    }
+
+    frames = rects.map(r => ({ x: r[0], y: r[1], w: r[2], h: r[3], dur: 90, dx: r[4] || 0, dy: r[5] || 0 }));
+    selIdx = 0; syncProps(); buildTL(); renderSheet(); drawPrev(0);
+    st(`✅ ${frames.length} frames [${key}] · ${restoredSpeed}% speed`,'ok');
   } catch(e){ st('❌ '+e.message,'err'); }
 }
 
@@ -899,15 +962,50 @@ window.addEventListener('keydown',e=>{
 async function saveToServer(){
   const key=COLOR_KEY[document.getElementById('colorPicker').value];
   const rects=frames.map(f=>{const r=[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)];if(f.dx||f.dy)r.push(Math.round(f.dx||0),Math.round(f.dy||0));return r;});
+  const gameSpeed=parseInt(document.getElementById('gameSpeedIn').value)||100;
+  // Store single uniform frame duration (ms) — not per-frame array
+  const frameDur = Math.round(90 * 100 / gameSpeed);
+  const durVal = (gameSpeed === 100) ? 'null' : String(frameDur);
   st('⏳ Saving...','warn');
   try{
-    const gameSpeed=parseInt(document.getElementById('gameSpeedIn').value)||100;
-    const durations=frames.map(f=>Math.round((f.dur||90)*100/gameSpeed));
-    const text=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({color:key,rects,durations})}).then(r=>r.text());
-    let data;try{data=JSON.parse(text);}catch(e){throw new Error(text.slice(0,80));}
-    if(!data.ok)throw new Error(data.error);
-    st('✅ '+data.message,'ok');
+    if (IS_LOCAL) {
+      // localhost: POST to server API (send frameDur as single number)
+      const text=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({color:key,rects,durations:frameDur})}).then(r=>r.text());
+      let data;try{data=JSON.parse(text);}catch(e){throw new Error(text.slice(0,80));}
+      if(!data.ok)throw new Error(data.error);
+      st('✅ '+data.message,'ok');
+    } else {
+      // file:// mode: read + patch render.js directly via File System Access API
+      if (!_rootDir) { await pickRootDir(); if (!_rootDir) return; }
+      let src = await _fsRead('engine/sort_blossom_render.js');
+      src = _patchColorLine(src, '_BLOOM_RECTS', key, JSON.stringify(rects));
+      src = _patchColorLine(src, '_BLOOM_DURS', key, durVal);
+      await _fsWrite('engine/sort_blossom_render.js', src);
+      st(`✅ Saved ${key}: ${rects.length} frames · ${gameSpeed}% speed`,'ok');
+    }
   }catch(e){st('❌ '+e.message,'err');}
+}
+
+function _patchColorLine(src, blockName, colorKey, newVal) {
+  const blockStart = src.indexOf(blockName);
+  if (blockStart === -1) return src;
+  const blockEnd = src.indexOf('};', blockStart);
+  const before = src.slice(0, blockStart);
+  let block = src.slice(blockStart, blockEnd + 2);
+  const after = src.slice(blockEnd + 2);
+  let matched = false;
+  const lines = block.split('\n').map(line => {
+    const m = line.match(new RegExp(`^(\\s+${colorKey}:\\s*)(.+?)(,?)$`));
+    if (m) { matched = true; return `${m[1]}${newVal}${m[3]}`; }
+    return line;
+  });
+  if (!matched) {
+    // Key not present — insert before closing '};'
+    const closeIdx = lines.findLastIndex(l => l.trim() === '};');
+    const indent = '    ';
+    lines.splice(closeIdx, 0, `${indent}${colorKey}: ${newVal},`);
+  }
+  return before + lines.join('\n') + after;
 }
 function downloadJSON(){
   const color=document.getElementById('colorPicker').value;
@@ -925,13 +1023,47 @@ function downloadJSON(){
 // ── UTIL ─────────────────────────────────────────────────────
 function st(msg,type){const e=document.getElementById('tbStatus');e.textContent=msg;e.className=type||'';}
 function onZoomChange(){zoom=(parseInt(document.getElementById('zoomIn').value)||50)/100;renderSheet();}
-function onColorChange(){frames=[];selIdx=-1;pctx.clearRect(0,0,PW,PH);document.getElementById('fcOverlay').textContent='—';loadSheet();}
+async function onColorChange(){
+  // Wipe state
+  frames = [];
+  selIdx = -1;
+  pctx.clearRect(0, 0, PW, PH);
+  document.getElementById('fcOverlay').textContent = '—';
+  // Sequential: rects FIRST, then sheet (so afterSheetLoad sees real frames).
+  await loadFromServer().catch(() => {});
+  loadSheet();
+}
 
-// ── INIT ─────────────────────────────────────────────────────
-loadSheet();
-buildLayoutPanel();
+// ── LAYOUT / POT PREVIEW ──────────────────────────────────────
+// Defaults match real .sb-compact CSS values — loadCSSVars overwrites with server state.
+const POT_VARS = [
+  { id:'lv_stem_x',      label:'Stem X',        css:'--sb-stem-x',        val:4,   min:-30, max:30,  step:1,  unit:'px' },
+  { id:'lv_stem_spread', label:'Stem spread',   css:'--sb-stem-spread',   val:10,  min:0,   max:30,  step:1,  unit:'px' },
+  { id:'lv_fl_bottom',   label:'Flower bottom', css:'--sb-flower-bottom', val:40,  min:0,   max:100, step:1,  unit:'px' },
+  { id:'lv_fl_w_side',   label:'Side W',        css:'--sb-flower-w-side', val:85,  min:20,  max:200, step:1,  unit:'px' },
+  { id:'lv_fl_w_mid',    label:'Mid W',         css:'--sb-flower-w-mid',  val:74,  min:20,  max:200, step:1,  unit:'px' },
+  { id:'lv_fl_angle',    label:'Angle L/R',     css:'--sb-flower-angle',  val:43,  min:0,   max:60,  step:1,  unit:'deg'},
+  { id:'lv_active_h',    label:'Active H',      css:'--sb-active-h',      val:110, min:40,  max:250, step:1,  unit:'px' },
+  { id:'lv_pot_w',       label:'Pot W',         css:'--sb-pot-w',         val:114, min:40,  max:200, step:1,  unit:'px' },
+  { id:'lv_pot_h',       label:'Pot H',         css:'--sb-pot-h',         val:123, min:80,  max:300, step:1,  unit:'px' },
+  { id:'lv_pot_img_w',   label:'Pot img W',     css:'--sb-pot-img-w',     val:82,  min:40,  max:180, step:1,  unit:'px' },
+];
+// Per-slot flower offset controls — L / C / R independent fine-tuning
+const SLOT_VARS = [
+  { slot:0, label:'L', ox:8,  oy:-5, sc:0.85, animOx:0, animOy:0 },
+  { slot:1, label:'C', ox:2,  oy:17, sc:1,    animOx:0, animOy:0 },
+  { slot:2, label:'R', ox:-9, oy:0,  sc:0.85, animOx:0, animOy:0 },
+];
 
-// ── TAB SWITCH ────────────────────────────────────────────────
+// ── INIT (sequential — no race conditions) ───────────────────
+(async function init() {
+  buildLayoutPanel();                       // 1. build DOM (sliders show hardcoded defaults)
+  await loadCSSVars().catch(() => {});  // 2. real CSS vars → sliders (per-slot L/C/R)
+  await loadFromServer().catch(() => {});   // 4. real frames from render.js
+  loadSheet();                              // 5. load image — afterSheetLoad sees real frames
+})();
+
+// ── TAB SWITCH (no auto-reload — load only happens once at init) ─
 function switchTab(tab) {
   const isAnim = tab === 'anim';
   document.getElementById('main').style.display = isAnim ? 'flex' : 'none';
@@ -939,29 +1071,7 @@ function switchTab(tab) {
   document.getElementById('layoutPanel').style.display = isAnim ? 'none' : 'flex';
   document.getElementById('tabAnim').classList.toggle('active', isAnim);
   document.getElementById('tabLayout').classList.toggle('active', !isAnim);
-  if (!isAnim) renderPotPreview();
 }
-
-// ── LAYOUT / POT PREVIEW ──────────────────────────────────────
-const POT_VARS = [
-  { id:'lv_stem_x',      label:'Stem X',        css:'--sb-stem-x',        val:4,   min:-30, max:30,  step:1,  unit:'px' },
-  { id:'lv_stem_spread', label:'Stem spread',   css:'--sb-stem-spread',   val:3,   min:0,   max:30,  step:1,  unit:'px' },
-  { id:'lv_fl_bottom',   label:'Flower bottom', css:'--sb-flower-bottom', val:40,  min:0,   max:100, step:1,  unit:'px' },
-  { id:'lv_fl_w_side',   label:'Side W',        css:'--sb-flower-w-side', val:76,  min:20,  max:200, step:1,  unit:'px' },
-  { id:'lv_fl_w_mid',    label:'Mid W',         css:'--sb-flower-w-mid',  val:82,  min:20,  max:200, step:1,  unit:'px' },
-  { id:'lv_fl_angle',    label:'Angle L/R',     css:'--sb-flower-angle',  val:18,  min:0,   max:45,  step:1,  unit:'deg'},
-  { id:'lv_active_h',    label:'Active H',      css:'--sb-active-h',      val:110, min:40,  max:250, step:1,  unit:'px' },
-  { id:'lv_pot_w',       label:'Pot W',         css:'--sb-pot-w',         val:88,  min:40,  max:200, step:1,  unit:'px' },
-  { id:'lv_pot_h',       label:'Pot H',         css:'--sb-pot-h',         val:150, min:80,  max:300, step:1,  unit:'px' },
-  { id:'lv_pot_img_w',   label:'Pot img W',     css:'--sb-pot-img-w',     val:82,  min:40,  max:180, step:1,  unit:'px' },
-];
-// Per-slot offsets (L=0, C=1, R=2)
-const SLOT_VARS = [
-  { slot:0, label:'L',  ox:0, oy:0, sc:1 },
-  { slot:1, label:'C',  ox:0, oy:0, sc:1 },
-  { slot:2, label:'R',  ox:0, oy:0, sc:1 },
-];
-const BUD_VAR = { ox:0, oy:0, sc:0.45 };
 
 function buildLayoutPanel() {
   const p = document.getElementById('layoutPanel');
@@ -988,237 +1098,498 @@ function buildLayoutPanel() {
     left.appendChild(row);
   });
 
-  // Per-slot offsets
-  const h2 = document.createElement('div');
-  h2.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.9px;color:#6b7280;margin:12px 0 8px;';
-  h2.textContent='Slot offset (L / C / R)'; left.appendChild(h2);
+  // Per-slot offsets — L / C / R independent
+  const SLOT_CFG = [
+    {k:'ox',     label:'dX', color:'#60a5fa', min:-60, max:60,  step:1   },
+    {k:'oy',     label:'dY', color:'#60a5fa', min:-60, max:60,  step:1   },
+    {k:'sc',     label:'Sc', color:'#60a5fa', min:0.1, max:2,   step:0.05},
+    {k:'animOx', label:'aX', color:'#f59e0b', min:-80, max:80,  step:1   },
+    {k:'animOy', label:'aY', color:'#f59e0b', min:-80, max:80,  step:1   },
+  ];
+  const SLOT_LABELS = ['L','C','R'];
+  SLOT_VARS.forEach((sv, si) => {
+    const hSlot = document.createElement('div');
+    hSlot.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.9px;color:#6b7280;margin:10px 0 4px;';
+    hSlot.textContent=`Flower ${SLOT_LABELS[si]} offset`; left.appendChild(hSlot);
 
-  SLOT_VARS.forEach((sv,i) => {
-    ['ox','oy','sc'].forEach(k => {
+    SLOT_CFG.forEach(({k, label, color, min, max, step}) => {
       const row = document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:4px;';
-      const label = `${sv.label} ${k==='ox'?'dX':k==='oy'?'dY':'Scale'}`;
-      const min = k==='sc'?0.1:-60, max = k==='sc'?2:60, step = k==='sc'?0.05:1;
-      const val = sv[k];
+      row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:3px;';
+      const val = sv[k] !== undefined ? sv[k] : 0;
       row.innerHTML = `
-        <label style="font-size:10px;color:#8090b0;width:90px;flex-shrink:0;">${label}</label>
-        <input type="range" id="sv_${i}_${k}" min="${min}" max="${max}" step="${step}" value="${val}"
-          style="flex:1;accent-color:#60a5fa;" oninput="onSlotVar(${i},'${k}',this.value)">
-        <span id="sv_${i}_${k}_v" style="font-size:10px;color:#60a5fa;width:36px;text-align:right;">${val}</span>
+        <label style="font-size:10px;color:${color};width:42px;flex-shrink:0;">${label}</label>
+        <input type="range" id="sv_${si}_${k}" min="${min}" max="${max}" step="${step}" value="${val}"
+          style="flex:1;accent-color:${color};" oninput="onSlotVar(${si},'${k}',this.value)">
+        <span id="sv_${si}_${k}_v" style="font-size:10px;color:${color};width:36px;text-align:right;">${val}</span>
       `;
       left.appendChild(row);
     });
   });
 
-  // Bud offset
-  const h3 = document.createElement('div');
-  h3.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.9px;color:#6b7280;margin:12px 0 8px;';
-  h3.textContent='Bud (nụ) offset'; left.appendChild(h3);
-  ['ox','oy','sc'].forEach(k => {
-    const row = document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:4px;';
-    const label = k==='ox'?'dX':k==='oy'?'dY':'Scale';
-    const min = k==='sc'?0.05:-60, max = k==='sc'?1.5:60, step = k==='sc'?0.05:1;
-    const val = BUD_VAR[k];
-    row.innerHTML = `
-      <label style="font-size:10px;color:#8090b0;width:90px;flex-shrink:0;">Bud ${label}</label>
-      <input type="range" id="bv_${k}" min="${min}" max="${max}" step="${step}" value="${val}"
-        style="flex:1;accent-color:#4ade80;" oninput="onBudVar('${k}',this.value)">
-      <span id="bv_${k}_v" style="font-size:10px;color:#4ade80;width:36px;text-align:right;">${val}</span>
-    `;
-    left.appendChild(row);
-  });
+  // Buttons
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:12px;';
 
-  // Copy CSS button
+  const loadBtn = document.createElement('button');
+  loadBtn.className='btn blue'; loadBtn.style.cssText='height:28px;';
+  loadBtn.textContent='↺ Load từ server'; loadBtn.onclick = loadCSSVars;
+  btnRow.appendChild(loadBtn);
+
   const saveBtn = document.createElement('button');
-  saveBtn.className='btn gold'; saveBtn.style.cssText='width:100%;margin-top:12px;height:28px;';
-  saveBtn.textContent='💾 Save CSS vars'; saveBtn.onclick = saveCSSVars;
-  left.appendChild(saveBtn);
+  saveBtn.className='btn gold'; saveBtn.style.cssText='height:28px;';
+  saveBtn.textContent='💾 Save'; saveBtn.onclick = saveCSSVars;
+  btnRow.appendChild(saveBtn);
+
   const copyBtn = document.createElement('button');
-  copyBtn.className='btn'; copyBtn.style.cssText='width:100%;margin-top:4px;height:26px;font-size:10px;';
-  copyBtn.textContent='📋 Copy to clipboard'; copyBtn.onclick = copyCSSVars;
-  left.appendChild(copyBtn);
+  copyBtn.className='btn'; copyBtn.style.cssText='height:26px;font-size:10px;grid-column:1/-1;';
+  copyBtn.textContent='📋 Copy CSS to clipboard'; copyBtn.onclick = copyCSSVars;
+  btnRow.appendChild(copyBtn);
+
+  left.appendChild(btnRow);
 
   p.appendChild(left);
 
-  // Right: pot preview
+  // Right: pot preview (draggable canvas area)
   const right = document.createElement('div');
-  right.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080a10;overflow:auto;gap:20px;';
+  right.id='layoutRight';
+  right.style.cssText='flex:1;position:relative;background:#080a10;overflow:hidden;cursor:grab;';
 
   const hint = document.createElement('div');
-  hint.style.cssText='font-size:10px;color:#6b7280;text-align:center;';
+  hint.id='layoutHint';
+  hint.style.cssText='position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:10px;color:#6b7280;white-space:nowrap;z-index:10;pointer-events:none;';
   hint.textContent='Bông = frame 9 · Nụ = frame 0 · Chỉnh sliders để canh vị trí';
   right.appendChild(hint);
 
+  // Draggable inner canvas
+  const canvas = document.createElement('div');
+  canvas.id='layoutCanvas';
+  canvas.style.cssText='position:absolute;display:flex;gap:24px;align-items:flex-end;flex-wrap:nowrap;';
+
+  // sb-compact wrapper so game CSS vars apply exactly as in game
+  const compactWrap = document.createElement('div');
+  compactWrap.className = 'sb-compact';
+  compactWrap.style.cssText = 'display:contents;';
+
   const potWrap = document.createElement('div');
   potWrap.id='potPreviewWrap';
-  potWrap.style.cssText='display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;justify-content:center;';
-  right.appendChild(potWrap);
+  potWrap.style.cssText='display:flex;gap:40px;align-items:flex-end;flex-wrap:nowrap;padding:20px;';
+  compactWrap.appendChild(potWrap);
+  canvas.appendChild(compactWrap);
+  right.appendChild(canvas);
+
+  // Drag-to-pan logic
+  let _pan={x:0,y:0}, _dragging=false, _startX=0, _startY=0, _startPanX=0, _startPanY=0;
+  function updateCanvasPos(){canvas.style.left=_pan.x+'px';canvas.style.top=_pan.y+'px';}
+  right.addEventListener('mousedown', e=>{
+    _dragging=true; _startX=e.clientX; _startY=e.clientY;
+    _startPanX=_pan.x; _startPanY=_pan.y;
+    right.style.cursor='grabbing'; e.preventDefault();
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!_dragging)return;
+    _pan.x=_startPanX+(e.clientX-_startX);
+    _pan.y=_startPanY+(e.clientY-_startY);
+    updateCanvasPos();
+  });
+  window.addEventListener('mouseup', ()=>{
+    if(_dragging){_dragging=false; right.style.cursor='grab';}
+  });
+  // Center only on very first pot render — subsequent rebuilds keep current pan
+  let _panInitDone = false;
+  right.addEventListener('_centerPots', ()=>{
+    if (_panInitDone) return;
+    _panInitDone = true;
+    const rr=right.getBoundingClientRect(), cw=canvas.scrollWidth, ch=canvas.scrollHeight;
+    _pan.x=Math.max(20,(rr.width-cw)/2); _pan.y=Math.max(20,(rr.height-ch)/2);
+    updateCanvasPos();
+  });
 
   p.appendChild(right);
 }
 
 function onPotVar(id, css, val, unit) {
   document.getElementById(id+'_v').textContent = val+unit;
-  document.getElementById('potPreviewWrap')?.style.setProperty(css, val+unit);
-  renderPotPreview();
+  applyPotPreviewVars();
 }
 function onSlotVar(i, k, val) {
   SLOT_VARS[i][k] = parseFloat(val);
   document.getElementById(`sv_${i}_${k}_v`).textContent = val;
-  renderPotPreview();
+  applyPotPreviewVars();
 }
-function onBudVar(k, val) {
-  BUD_VAR[k] = parseFloat(val);
-  document.getElementById(`bv_${k}_v`).textContent = val;
-  renderPotPreview();
+/** Update ONLY CSS custom-props — NO DOM rebuild. */
+function applyPotPreviewVars() {
+  const compact = document.getElementById('potPreviewWrap')?.closest('.sb-compact')
+               || document.querySelector('#layoutCanvas .sb-compact');
+  if (!compact) return;
+  POT_VARS.forEach(v => {
+    const el = document.getElementById(v.id);
+    if (el) compact.style.setProperty(v.css, el.value + v.unit);
+  });
+  // Per-slot: each L/C/R flower has independent offsets
+  SLOT_VARS.forEach((sv, i) => {
+    compact.style.setProperty(`--sb-s${i}-ox`, sv.ox + 'px');
+    compact.style.setProperty(`--sb-s${i}-oy`, sv.oy + 'px');
+    compact.style.setProperty(`--sb-s${i}-sc`, sv.sc != null ? sv.sc : 1);
+    compact.style.setProperty(`--sb-s${i}-anim-ox`, (sv.animOx || 0) + 'px');
+    compact.style.setProperty(`--sb-s${i}-anim-oy`, (sv.animOy || 0) + 'px');
+  });
+}
+
+// ── Play bloom animation in pot preview (uses Game speed slider) ────────
+// Animates all 3 bud canvases in queue-preview through frames 0→9 simultaneously.
+// Duration per frame = (saved dur || 90ms) × 100 / gameSpeed.
+let _potBloomRaf = null;
+function playPotBloom() {
+  if (!img.naturalWidth || !frames.length) {
+    st('⚠️ Load sheet trước khi play bloom', 'err');
+    return;
+  }
+  if (_potBloomRaf) { cancelAnimationFrame(_potBloomRaf); _potBloomRaf = null; }
+
+  const wrap = document.getElementById('potPreviewWrap');
+  if (!wrap) return;
+  const buds = Array.from(wrap.querySelectorAll('.sb-queue-bud'));
+  if (!buds.length) return;
+
+  const gameSpeed = parseInt(document.getElementById('gameSpeedIn').value) || 100;
+  const speedMul = 100 / gameSpeed;
+
+  // Build per-frame durations (use saved frame dur if available, else 90ms)
+  const frameTimes = [];
+  let t = 0;
+  for (let i = 0; i < frames.length; i++) {
+    frameTimes.push(t);
+    t += (frames[i]?.dur || 90) * speedMul;
+  }
+  const totalDur = t;
+
+  // Pre-compute STABLE canvas dimensions: max height across all frames
+  // (avoids per-frame layout jumps; frames are drawn bottom-aligned within fixed canvas).
+  const fLast = frames[Math.min(9, frames.length - 1)];
+  const budCtx = buds.map(cv => {
+    const w = cv.offsetWidth || 76;
+    let maxH = Math.round(w * fLast.h / fLast.w);
+    frames.forEach(fr => {
+      const h = Math.round(w * fr.h / fr.w);
+      if (h > maxH) maxH = h;
+    });
+    cv.width = w; cv.height = maxH;
+    return { cv, w, maxH, ctx: cv.getContext('2d') };
+  });
+
+  const startTs = performance.now();
+  let lastFrame = -1;
+
+  function tick(now) {
+    const elapsed = now - startTs;
+    let fi = frames.length - 1;
+    for (let i = 0; i < frameTimes.length - 1; i++) {
+      if (elapsed < frameTimes[i+1]) { fi = i; break; }
+    }
+    if (fi !== lastFrame) {
+      lastFrame = fi;
+      const fr = frames[fi];
+      budCtx.forEach(({ cv, w, maxH, ctx }) => {
+        const dh = Math.round(w * fr.h / fr.w);
+        const yOff = maxH - dh;  // bottom-align in stable canvas
+        ctx.clearRect(0, 0, w, maxH);
+        ctx.drawImage(img, fr.x, fr.y, fr.w, fr.h, 0, yOff, w, dh);
+      });
+    }
+    if (elapsed < totalDur) {
+      _potBloomRaf = requestAnimationFrame(tick);
+    } else {
+      _potBloomRaf = null;
+      st(`✓ Bloom played at ${gameSpeed}% game speed (${Math.round(totalDur)}ms total)`, 'ok');
+    }
+  }
+  st(`▶ Playing bloom at ${gameSpeed}% (${Math.round(totalDur)}ms)`, 'info');
+  _potBloomRaf = requestAnimationFrame(tick);
 }
 
 function renderPotPreview() {
   const wrap = document.getElementById('potPreviewWrap');
-  if (!wrap || !img.naturalWidth) return;
+  if (!wrap) return;
   wrap.innerHTML = '';
 
-  // Apply current CSS vars to wrap
-  POT_VARS.forEach(v => {
-    const el = document.getElementById(v.id);
-    if (el) wrap.style.setProperty(v.css, el.value + v.unit);
-  });
+  // Get frame 0 and frame 9 rects (use null placeholders if not loaded)
+  const f0 = (img.naturalWidth && frames[0]) || null;
+  const f9 = (img.naturalWidth && frames[Math.min(9, frames.length-1)]) || null;
 
-  // Get frame 0 and frame 9 rects
-  const f0 = frames[0], f9 = frames[Math.min(9, frames.length-1)];
-  if (!f0 || !f9) { wrap.textContent='Load frames trước'; return; }
+  // Update hint
+  const hint = document.getElementById('layoutHint');
+  if (hint) hint.textContent = !img.naturalWidth
+    ? '⚠️ Load Sheet trước để xem hoa thật'
+    : 'Hoa = frame 9 · Nụ = frame 0 · Drag để chỉnh vị trí';
 
-  // Build 3 pot cells (empty, 1 active, full)
-  const configs = [
-    { label:'Queue only', active:[null,null,null], queue:[0,1,2] },
-    { label:'Mixed',      active:[null,0,null],    queue:[1,2,null] },
-    { label:'Full bloom', active:[0,1,2],          queue:[] },
-  ];
+  // Single pot: full bloom + buds visible — all slots for complete calibration
+  const potCell = buildPotPreviewCell([0,1,2], [0,1,2], f0, f9);
+  wrap.appendChild(potCell);
 
-  configs.forEach(cfg => {
-    const cell = document.createElement('div');
-    cell.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;';
+  // Apply CSS vars AFTER DOM is built (so .sb-compact exists and closest() works)
+  applyPotPreviewVars();
 
-    const lbl = document.createElement('div');
-    lbl.style.cssText='font-size:9px;color:#6b7280;'; lbl.textContent=cfg.label;
-    cell.appendChild(lbl);
-
-    const potCell = buildPotPreviewCell(cfg.active, cfg.queue, f0, f9);
-    cell.appendChild(potCell);
-    wrap.appendChild(cell);
+  // Center pots in view after first render
+  requestAnimationFrame(() => {
+    const right = document.getElementById('layoutRight');
+    const canvas = document.getElementById('layoutCanvas');
+    if (right && canvas) {
+      right.dispatchEvent(new Event('_centerPots'));
+    }
   });
 }
 
+// Build pot preview using EXACT game CSS classes — guaranteed to match game visually
 function buildPotPreviewCell(activeSlots, queueSlots, f0, f9) {
-  const potW   = parseFloat(document.getElementById('lv_pot_w')?.value || 88);
-  const potH   = parseFloat(document.getElementById('lv_pot_h')?.value || 150);
-  const potImgW= parseFloat(document.getElementById('lv_pot_img_w')?.value || 82);
-  const activeH= parseFloat(document.getElementById('lv_active_h')?.value || 110);
-  const flBot  = parseFloat(document.getElementById('lv_fl_bottom')?.value || 40);
-  const stemX  = parseFloat(document.getElementById('lv_stem_x')?.value || 4);
-  const stemSp = parseFloat(document.getElementById('lv_stem_spread')?.value || 3);
-  const wSide  = parseFloat(document.getElementById('lv_fl_w_side')?.value || 76);
-  const wMid   = parseFloat(document.getElementById('lv_fl_w_mid')?.value || 82);
-  const angle  = parseFloat(document.getElementById('lv_fl_angle')?.value || 18);
+  const color = document.getElementById('colorPicker').value;
+  const FLOWER_IMGS = {
+    red:'flower_red.webp', pink:'flower_pink.webp', yellow:'flower_yellow.webp',
+    purple:'flower_purple.webp', white:'flower_white.webp', orange:'flower_orange.webp',
+    blue:'flower_blue.webp', camellia:'flower_camellia.webp'
+  };
+  const AP = '../assets/sort_blossom/';
+  const flowerImg = AP + (FLOWER_IMGS[color] || 'flower_red.webp');
 
+  // Use game HTML structure + CSS classes exactly
   const cell = document.createElement('div');
-  cell.style.cssText = `position:relative;width:${potW}px;display:flex;flex-direction:column;align-items:center;`;
+  cell.className = 'sb-pot-cell';  // game class
 
   const visual = document.createElement('div');
-  visual.style.cssText = `position:relative;width:${potW}px;height:${potH}px;display:flex;align-items:flex-end;justify-content:center;`;
+  visual.className = 'sb-pot-visual';  // game class
 
   // Pot back
   const potBack = document.createElement('img');
-  potBack.src = '../assets/sort_blossom/pot_empty.webp';
-  potBack.style.cssText = `position:absolute;width:${potImgW}px;bottom:0;left:50%;transform:translateX(-50%);z-index:1;`;
+  potBack.className = 'sb-pot-back';
+  potBack.src = AP + 'pot_empty.webp';
   visual.appendChild(potBack);
 
-  // Queue buds preview layer
-  const budLayer = document.createElement('div');
-  budLayer.style.cssText = `position:absolute;left:0;right:0;bottom:${flBot-8}px;height:${activeH}px;z-index:5;pointer-events:none;`;
-
+  // Queue bud preview layer (game: .sb-queue-preview with canvas.sb-queue-bud)
+  const queuePrev = document.createElement('div');
+  queuePrev.className = 'sb-queue-preview';
+  queuePrev.style.pointerEvents = 'none'; // children override individually
   queueSlots.forEach(pos => {
     if (pos === null || pos === undefined) return;
-    const cv = document.createElement('canvas');
     const sv = SLOT_VARS[pos];
-    const bscale = BUD_VAR.sc;
-    const bw = wSide * bscale, bh = wSide * bscale;
-    cv.width = Math.round(bw); cv.height = Math.round(bh);
-    const [posX, rotDeg] = getSlotTransform(pos, potW, stemX, stemSp, wSide, wMid, angle);
-    cv.style.cssText = `position:absolute;bottom:30%;opacity:.6;filter:brightness(.82) saturate(.85);`
-      + `left:${posX}px;transform:translateX(-50%) rotate(${rotDeg}deg);`
-      + `width:${bw}px;height:${bh}px;`;
-    // Draw frame 0
-    const ctx = cv.getContext('2d');
-    ctx.drawImage(img, f0.x, f0.y, f0.w, f0.h, 0, 0, cv.width, cv.height);
-    budLayer.appendChild(cv);
+    const cv = document.createElement('canvas');
+    cv.className = 'sb-queue-bud';
+    cv.dataset.pos = pos;
+    cv.style.cssText = 'cursor:move;pointer-events:auto;';
+    cv.title = `Nụ ${['L','C','R'][pos]} · drag để chỉnh`;
+    queuePrev.appendChild(cv);
+    // Draw after layout — canvas sized from f9 (same as flower) so transform-origin 95% aligns
+    requestAnimationFrame(() => {
+      const cssW = cv.offsetWidth || 76;
+      if (f0 && f9 && img.naturalWidth) {
+        // Canvas height = max(f9, bud) so bud head is never clipped (matches engine fix).
+        const hLast = Math.round(cssW * f9.h / f9.w);
+        const dh0 = Math.round(cssW * f0.h / f0.w);
+        const cssH = Math.max(hLast, dh0);
+        const yOff0 = cssH - dh0;  // ≥ 0 — bud head always visible
+        cv.width = cssW; cv.height = cssH;
+        cv.getContext('2d').drawImage(img, f0.x, f0.y, f0.w, f0.h, 0, yOff0, cssW, dh0);
+      } else if (f0 && img.naturalWidth) {
+        const cssH = Math.round(cssW * f0.h / f0.w);
+        cv.width = cssW; cv.height = cssH;
+        cv.getContext('2d').drawImage(img, f0.x, f0.y, f0.w, f0.h, 0, 0, cssW, cssH);
+      } else {
+        cv.width = cssW; cv.height = cssW;
+        const ctx = cv.getContext('2d');
+        ctx.fillStyle='rgba(100,160,255,0.5)'; ctx.beginPath();
+        ctx.arc(cssW/2,cssW/2,cssW/2-1,0,Math.PI*2); ctx.fill();
+      }
+    });
+    // buds: same ox/scale/rotation as flower slot, but NO oy (bud stays at natural stem base)
   });
-  visual.appendChild(budLayer);
+  visual.appendChild(queuePrev);
 
-  // Active flowers layer
+  // Active flowers layer — dùng canvas + frame 9 giống hệt game
   const flowerLayer = document.createElement('div');
-  flowerLayer.style.cssText = `position:absolute;left:0;right:0;bottom:${flBot}px;height:${activeH}px;z-index:20;pointer-events:none;`;
-
+  flowerLayer.className = 'sb-active-flowers';
+  flowerLayer.style.pointerEvents = 'none';
   activeSlots.forEach((active, pos) => {
     if (active === null || active === undefined) return;
-    const cv = document.createElement('canvas');
-    const sv = SLOT_VARS[pos];
-    const fw = pos===1 ? wMid : wSide;
-    cv.width = Math.round(fw * sv.sc); cv.height = Math.round(fw * sv.sc);
-    const [posX, rotDeg] = getSlotTransform(pos, potW, stemX, stemSp, wSide, wMid, angle);
-    cv.style.cssText = `position:absolute;bottom:0;height:auto;`
-      + `left:${posX + sv.ox}px;transform:translateX(-50%) rotate(${rotDeg}deg) translateY(${sv.oy}px);`
-      + `width:${fw * sv.sc}px;height:${fw * sv.sc}px;`
-      + `filter:drop-shadow(0 4px 6px rgba(0,0,0,.45));z-index:${pos===1?3:pos===0?1:2};`;
-    const ctx = cv.getContext('2d');
-    ctx.drawImage(img, f9.x, f9.y, f9.w, f9.h, 0, 0, cv.width, cv.height);
-    flowerLayer.appendChild(cv);
+    const el = document.createElement('canvas');
+    el.className = 'sb-active-flower';
+    el.dataset.pos = pos;
+    el.dataset.color = COLOR_KEY[color] || 'R';
+    el.style.cssText = 'cursor:move;pointer-events:auto;';
+    el.title = `Slot ${['L','C','R'][pos]} · drag để chỉnh`;
+    flowerLayer.appendChild(el);
+    // Draw frame 9 sau khi layout
+    requestAnimationFrame(() => {
+      const f9t = frames[Math.min(9, frames.length-1)];
+      if (f9t && img.naturalWidth) {
+        const w = el.offsetWidth || 76;
+        const h = Math.round(w * f9t.h / f9t.w);
+        el.width = w; el.height = h;
+        el.getContext('2d').drawImage(img, f9t.x, f9t.y, f9t.w, f9t.h, 0, 0, w, h);
+      }
+    });
+    const _pos = pos;
+    el.addEventListener('mousedown', e => {
+      e.stopPropagation(); e.preventDefault();
+      // sv is SLOT_VARS[pos] — read current values at drag start
+      _slotDrag = {slot:_pos, startX:e.clientX, startY:e.clientY, startOx:SLOT_VARS[_pos].ox, startOy:SLOT_VARS[_pos].oy};
+    });
   });
   visual.appendChild(flowerLayer);
 
+  // Active row hit zones (needed for correct z-index stacking)
+  const activeRow = document.createElement('div');
+  activeRow.className = 'sb-active-row';
+  visual.appendChild(activeRow);
+
   // Pot front
   const potFront = document.createElement('img');
-  potFront.src = '../assets/sort_blossom/pot_front.webp';
-  potFront.style.cssText = `position:absolute;width:${potImgW}px;bottom:0;left:50%;transform:translateX(-50%);z-index:30;`;
+  potFront.className = 'sb-pot-front';
+  potFront.src = AP + 'pot_front.webp';
   visual.appendChild(potFront);
 
   cell.appendChild(visual);
   return cell;
 }
 
-function getSlotTransform(pos, potW, stemX, stemSp, wSide, wMid, angle) {
-  const cx = potW / 2 + stemX;
-  if (pos === 0) return [cx - stemSp, -angle];
-  if (pos === 1) return [cx, 0];
-  return [cx + stemSp, angle];
+async function loadCSSVars() {
+  st('⏳ Loading CSS...','warn');
+  try {
+    let src;
+    if (IS_LOCAL) {
+      src = await fetch('/engine/sort_blossom.css').then(r=>r.text());
+    } else {
+      if (!_rootDir) { await pickRootDir(); if (!_rootDir) return; }
+      src = await _fsRead('engine/sort_blossom.css');
+    }
+    // Parse .sb-compact block
+    const blockStart = src.indexOf('.sb-compact');
+    const blockEnd   = src.indexOf('}', blockStart);
+    if (blockStart === -1) throw new Error('.sb-compact not found');
+    const block = src.slice(blockStart, blockEnd+1);
+
+    function parseVar(name) {
+      const m = block.match(new RegExp(name.replace(/[-]/g,'\\-')+'\\s*:\\s*([^;]+);'));
+      return m ? m[1].trim() : null;
+    }
+
+    // Sync POT_VARS sliders
+    POT_VARS.forEach(v => {
+      const raw = parseVar(v.css); if (!raw) return;
+      const num = parseFloat(raw);
+      const el = document.getElementById(v.id);
+      const vl = document.getElementById(v.id+'_v');
+      if (el) el.value = num;
+      if (vl) vl.textContent = raw;
+    });
+
+    // Sync each SLOT_VARS entry from its own CSS vars (per-slot L/C/R)
+    SLOT_VARS.forEach((sv, si) => {
+      [
+        {k:'ox',     css:`--sb-s${si}-ox`},
+        {k:'oy',     css:`--sb-s${si}-oy`},
+        {k:'sc',     css:`--sb-s${si}-sc`},
+        {k:'animOx', css:`--sb-s${si}-anim-ox`},
+        {k:'animOy', css:`--sb-s${si}-anim-oy`},
+      ].forEach(({k, css}) => {
+        const raw = parseVar(css); if (!raw) return;
+        const num = parseFloat(raw);
+        sv[k] = num;
+        const el = document.getElementById(`sv_${si}_${k}`);
+        const vl = document.getElementById(`sv_${si}_${k}_v`);
+        if (el) el.value = num;
+        if (vl) vl.textContent = num;
+      });
+    });
+    applyPotPreviewVars();   // chỉ update CSS vars — KHÔNG rebuild pot DOM
+    st('✅ Loaded CSS vars','ok');
+  } catch(e) { st('❌ '+e.message,'err'); }
 }
 
-async function saveCSSVars() {
+async function saveCSSVars(silent = false) {
   const vars = {};
   POT_VARS.forEach(v => {
     const el = document.getElementById(v.id);
     if (el) vars[v.css] = el.value + v.unit;
   });
-  st('⏳ Saving CSS...','warn');
+  // Per-slot L/C/R — each flower has its own offset calibration
+  SLOT_VARS.forEach((sv, i) => {
+    vars[`--sb-s${i}-ox`] = sv.ox + 'px';
+    vars[`--sb-s${i}-oy`] = sv.oy + 'px';
+    vars[`--sb-s${i}-sc`] = sv.sc != null ? String(sv.sc) : '1';
+    vars[`--sb-s${i}-anim-ox`] = (sv.animOx || 0) + 'px';
+    vars[`--sb-s${i}-anim-oy`] = (sv.animOy || 0) + 'px';
+  });
+  if (!silent) st('⏳ Saving CSS...','warn');
   try {
-    const text = await fetch('/api/save-css-vars', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ vars })
-    }).then(r=>r.text());
-    let data; try{data=JSON.parse(text);}catch(e){throw new Error(text.slice(0,80));}
-    if (!data.ok) throw new Error(data.error);
-    st('✅ '+data.message,'ok');
-  } catch(e) { st('❌ '+e.message,'err'); }
+    if (IS_LOCAL) {
+      const text = await fetch('/api/save-css-vars', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ vars })
+      }).then(r=>r.text());
+      let data; try{data=JSON.parse(text);}catch(e){throw new Error(text.slice(0,80));}
+      if (!data.ok) throw new Error(data.error);
+      st('✅ '+data.message+' (game synced)','ok');
+    } else {
+      // file:// mode — skip auto-save if no root dir (don't prompt during init)
+      if (!_rootDir) {
+        if (!silent) { await pickRootDir(); if (!_rootDir) return; }
+        else throw new Error('no root dir');
+      }
+      let src = await _fsRead('engine/sort_blossom.css');
+      // Patch .sb-compact block — use last '}' approach to handle multi-line block
+      const blockStart = src.indexOf('.sb-compact');
+      if (blockStart === -1) throw new Error('.sb-compact not found');
+      // Find matching closing brace (not just first '}')
+      let depth = 0, blockEnd = -1;
+      for (let i = src.indexOf('{', blockStart); i < src.length; i++) {
+        if (src[i] === '{') depth++;
+        else if (src[i] === '}') { depth--; if (depth === 0) { blockEnd = i; break; } }
+      }
+      if (blockEnd === -1) throw new Error('.sb-compact block not closed');
+      let block = src.slice(blockStart, blockEnd + 1);
+      Object.entries(vars).forEach(([prop, val]) => {
+        const re = new RegExp('(' + prop.replace(/[-]/g,'\\-') + '\\s*:\\s*)[^;]+(;)', 'g');
+        block = block.replace(re, `$1${val}$2`);
+      });
+      src = src.slice(0, blockStart) + block + src.slice(blockEnd + 1);
+      await _fsWrite('engine/sort_blossom.css', src);
+      st(`✅ Saved CSS (${Object.keys(vars).length} vars) — game synced`, 'ok');
+    }
+  } catch(e) {
+    if (!silent) st('❌ '+e.message,'err');
+    else throw e;  // re-throw so init catch() can handle
+  }
 }
 function copyCSSVars() {
   const lines = POT_VARS.map(v => {
     const el = document.getElementById(v.id);
     return `  ${v.css}: ${el ? el.value+v.unit : v.val+v.unit};`;
   });
+  // Also include unified slot vars (same value for all 3 slots)
+  SLOT_VARS.forEach((sv, i) => {
+    lines.push(`  --sb-s${i}-ox: ${sv.ox}px; --sb-s${i}-oy: ${sv.oy}px; --sb-s${i}-sc: ${sv.sc ?? 1}; --sb-s${i}-anim-ox: ${sv.animOx||0}px; --sb-s${i}-anim-oy: ${sv.animOy||0}px;`);
+  });
   const txt = '.sb-compact {\n' + lines.join('\n') + '\n}';
-  navigator.clipboard.writeText(txt).then(() => st('✅ Copied CSS vars','ok'));
+  navigator.clipboard.writeText(txt).then(() => st('✅ Copied CSS vars (incl. slot offsets)','ok'));
 }
+
+// ── SLOT / BUD DRAG (global) ────────────────────────────────────
+let _layoutRaf = null;
+function _syncSliderVal(id, valId, val) {
+  const el = document.getElementById(id); if (el) el.value = val;
+  const vl = document.getElementById(valId); if (vl) vl.textContent = val;
+}
+window.addEventListener('mousemove', e => {
+  if (_slotDrag) {
+    const dx = e.clientX - _slotDrag.startX;
+    const dy = e.clientY - _slotDrag.startY;
+    const si = _slotDrag.slot;  // which slot is being dragged (0/1/2)
+    SLOT_VARS[si].ox = Math.round((_slotDrag.startOx + dx) * 10) / 10;
+    SLOT_VARS[si].oy = Math.round((_slotDrag.startOy + dy) * 10) / 10;
+    _syncSliderVal(`sv_${si}_ox`, `sv_${si}_ox_v`, SLOT_VARS[si].ox);
+    _syncSliderVal(`sv_${si}_oy`, `sv_${si}_oy_v`, SLOT_VARS[si].oy);
+    if (!_layoutRaf) _layoutRaf = requestAnimationFrame(() => { _layoutRaf=null; applyPotPreviewVars(); });
+  }
+});
+window.addEventListener('mouseup', () => { _slotDrag = null; });
 </script>
 </body>
 </html>

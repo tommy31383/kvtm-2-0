@@ -26,15 +26,20 @@
 /* Scaled variant for game (compact mobile) — apply class "sb-compact" on parent */
 .sb-compact {
   --sb-stem-x:        4px;
-  --sb-stem-spread:   3px;
+  --sb-stem-spread:   10px;
   --sb-flower-bottom: 40px;
-  --sb-flower-w-side: 76px;
-  --sb-flower-w-mid:  82px;
-  --sb-flower-angle:  18deg;
-  --sb-pot-w:         88px;
-  --sb-pot-h:         150px;
+  --sb-flower-w-side: 85px;
+  --sb-flower-w-mid:  74px;
+  --sb-flower-angle:  43deg;
+  --sb-pot-w:         114px;
+  --sb-pot-h:         160px;  /* was 123 — needs ≥ flower-bottom(40)+active-h(110)+max-oy(7) = 157 */
   --sb-pot-img-w:     82px;
   --sb-active-h:      110px;
+  /* per-slot flower offsets (chỉnh bằng Layout tool) */
+  --sb-s0-ox: 3px;  --sb-s0-oy: -7px; --sb-s0-sc: 0.85; --sb-s0-anim-ox: 0px; --sb-s0-anim-oy: 0px;
+  --sb-s1-ox: -2px;  --sb-s1-oy: -3px; --sb-s1-sc: 1;    --sb-s1-anim-ox: 0px; --sb-s1-anim-oy: 0px;
+  --sb-s2-ox: -5px; --sb-s2-oy: -5px;  --sb-s2-sc: 0.85; --sb-s2-anim-ox: 0px; --sb-s2-anim-oy: 0px;
+  /* bud uses same positioning as flower slots — no separate offsets needed */
 }
 
 /* ─── POT CELL ────────────────────────────────────────────── */
@@ -77,7 +82,7 @@
   z-index: 20;
   pointer-events: none;
 }
-.sb-active-flowers img {
+.sb-active-flowers :is(img, canvas) {
   position: absolute;
   bottom: 0;
   height: auto;
@@ -86,70 +91,71 @@
   filter: drop-shadow(0 4px 6px rgba(0,0,0,0.45));
   transition: transform .18s cubic-bezier(.34,1.56,.64,1);
 }
-.sb-active-flowers img[data-pos="0"] {
-  left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread));
+.sb-active-flowers :is(img, canvas)[data-pos="0"] {
+  left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread) + var(--sb-s0-ox, 0px));
   width: var(--sb-flower-w-side);
-  transform: translateX(-50%) rotate(calc(-1 * var(--sb-flower-angle)));
+  transform: translateX(-50%) translateY(var(--sb-s0-oy, 0px)) rotate(calc(-1 * var(--sb-flower-angle))) scale(var(--sb-s0-sc, 1));
   z-index: 1;
 }
-.sb-active-flowers img[data-pos="1"] {
-  left: calc(50% + var(--sb-stem-x));
+.sb-active-flowers :is(img, canvas)[data-pos="1"] {
+  left: calc(50% + var(--sb-stem-x) + var(--sb-s1-ox, 0px));
   width: var(--sb-flower-w-mid);
-  transform: translateX(-50%) rotate(0deg);
+  transform: translateX(-50%) translateY(var(--sb-s1-oy, 0px)) rotate(0deg) scale(var(--sb-s1-sc, 1));
   z-index: 3;
 }
-.sb-active-flowers img[data-pos="2"] {
-  left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread));
+.sb-active-flowers :is(img, canvas)[data-pos="2"] {
+  left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread) + var(--sb-s2-ox, 0px));
   width: var(--sb-flower-w-side);
-  transform: translateX(-50%) rotate(var(--sb-flower-angle));
+  transform: translateX(-50%) translateY(var(--sb-s2-oy, 0px)) rotate(var(--sb-flower-angle)) scale(var(--sb-s2-sc, 1));
   z-index: 2;
 }
 
 .sb-queue-preview {
   position: absolute;
   left: 0; right: 0;
-  bottom: calc(var(--sb-flower-bottom) - 8px);
+  bottom: var(--sb-flower-bottom);
   height: var(--sb-active-h);
-  z-index: 35;        /* above pot-front (30) so buds are never covered */
+  z-index: 19;        /* just below active-flowers (20) — buds show behind flowers */
   pointer-events: none;
 }
+/* Buds: same x/rotation/scale as flower slot, but NO oy offset.
+   Bud stays at natural stem-aligned position so it peeks out from
+   BELOW the active flowers, not at the same height as their heads. */
 .sb-queue-preview canvas.sb-queue-bud {
   position: absolute;
-  bottom: 30%;        /* lift up from bottom so buds sit above pot rim */
-  width: calc(var(--sb-flower-w-side) * .45);
-  height: calc(var(--sb-flower-w-side) * .45);
-  opacity: .60;
-  filter: brightness(.82) saturate(.85);
+  bottom: 0;
+  height: auto;
   transform-origin: 50% 95%;
 }
 .sb-queue-preview canvas[data-pos="0"] {
-  left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread));
-  transform: translateX(-50%) rotate(calc(-1 * var(--sb-flower-angle)));
+  left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread) + var(--sb-s0-ox, 0px));
+  width: var(--sb-flower-w-side);
+  transform: translateX(-50%) rotate(calc(-1 * var(--sb-flower-angle))) scale(var(--sb-s0-sc, 1));
 }
 .sb-queue-preview canvas[data-pos="1"] {
-  left: calc(50% + var(--sb-stem-x));
-  width: calc(var(--sb-flower-w-mid) * .45);
-  height: calc(var(--sb-flower-w-mid) * .45);
-  transform: translateX(-50%);
+  left: calc(50% + var(--sb-stem-x) + var(--sb-s1-ox, 0px));
+  width: var(--sb-flower-w-mid);
+  transform: translateX(-50%) rotate(0deg) scale(var(--sb-s1-sc, 1));
 }
 .sb-queue-preview canvas[data-pos="2"] {
-  left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread));
-  transform: translateX(-50%) rotate(var(--sb-flower-angle));
+  left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread) + var(--sb-s2-ox, 0px));
+  width: var(--sb-flower-w-side);
+  transform: translateX(-50%) rotate(var(--sb-flower-angle)) scale(var(--sb-s2-sc, 1));
 }
 /* Selected flower: scale +15%, lift up, z-index above siblings, glow */
-.sb-active-flowers img.sb-lifted {
+.sb-active-flowers :is(img, canvas).sb-lifted {
   z-index: 50;
   filter: drop-shadow(0 4px 8px rgba(0,0,0,.35)) drop-shadow(0 0 10px rgba(255,215,0,.45));
   transition: transform .12s ease-out;
 }
-.sb-active-flowers img.sb-lifted[data-pos="0"] {
-  transform: translateX(-50%) translateY(-12px) rotate(calc(-1 * var(--sb-flower-angle))) scale(1.15);
+.sb-active-flowers :is(img, canvas).sb-lifted[data-pos="0"] {
+  transform: translateX(-50%) translateY(-12px) rotate(calc(-1 * var(--sb-flower-angle))) scale(calc(var(--sb-s0-sc, 1) * 1.15));
 }
-.sb-active-flowers img.sb-lifted[data-pos="1"] {
-  transform: translateX(-50%) translateY(-12px) rotate(0deg) scale(1.15);
+.sb-active-flowers :is(img, canvas).sb-lifted[data-pos="1"] {
+  transform: translateX(-50%) translateY(-12px) rotate(0deg) scale(calc(var(--sb-s1-sc, 1) * 1.15));
 }
-.sb-active-flowers img.sb-lifted[data-pos="2"] {
-  transform: translateX(-50%) translateY(-12px) rotate(var(--sb-flower-angle)) scale(1.15);
+.sb-active-flowers :is(img, canvas).sb-lifted[data-pos="2"] {
+  transform: translateX(-50%) translateY(-12px) rotate(var(--sb-flower-angle)) scale(calc(var(--sb-s2-sc, 1) * 1.15));
 }
 
 /* ─── FLIGHT clone is positioned/animated by JS (rAF) ───── */

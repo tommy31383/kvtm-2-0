@@ -54,8 +54,7 @@
     const flowersHTML = [0,1,2].map(p => {
       const f = pot.active[p];
       if (!f) return '';
-      const src = assetPath + COLORS[f].img;
-      return `<img src="${src}" data-pos="${p}" draggable="false">`;
+      return `<canvas class="sb-active-flower" data-pos="${p}" data-color="${f}"></canvas>`;
     }).join('');
     const slotsHTML = [0,1,2].map(p => `
       <div class="sb-active-slot" data-pos="${p}">
@@ -77,6 +76,11 @@
       </div>
       ${queueHTML}
     `;
+    // Double-rAF: first frame attaches cell to DOM, second frame has layout computed
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      upgradeActiveFlowers(cell, assetPath);
+      upgradeQueueBuds(cell, assetPath);
+    }));
     return cell;
   }
 
@@ -94,18 +98,25 @@
   // Embedded bloom rects — no fetch needed, works on file:// and localhost
   const _BLOOM_RECTS = {
     R: [[44,59,75,114,6,1],[139,58,82,115,5,1],[240,48,88,125,9,1],[340,53,98,119,12,0],[470,54,93,119,10,1],[28,249,92,120,8,2],[128,246,100,122,8,1],[230,246,106,123,12,1],[340,243,101,125,11,0],[480,243,97,126,14,1]],
-    P: [[44,62,75,107,5,1],[141,61,77,108,5,1],[241,57,79,112,5,1],[343,49,95,121,12,1],[471,56,102,114,16,2],[36,248,84,119,6,1],[134,245,92,120,8,0],[234,243,98,126,9,4],[340,235,112,132,11,1],[469,238,110,129,13,0]],
-    Y: [[122,147,176,265],[364,150,189,260],[622,140,186,271],[880,137,228,278],[1201,135,242,279],[81,621,217,323],[327,621,240,328],[582,619,266,332],[868,614,253,332],[1195,608,269,338]],
-    V: [[122,148,161,291],[360,148,180,298],[624,129,182,314],[876,128,212,312],[1207,135,213,307],[113,617,169,312],[360,608,181,321],[614,611,198,320],[862,611,222,322],[1215,614,215,315]],
-    W: [[115,167,193,251],[341,163,202,253],[602,149,204,270],[869,140,241,279],[1195,140,259,279],[71,623,225,284],[345,619,204,289],[608,616,208,292],[860,619,226,289],[1191,616,243,290]],
-    O: [[117,152,187,268],[343,148,203,276],[614,138,192,281],[864,138,250,282],[1204,140,256,282],[85,618,213,296],[340,618,207,297],[592,616,226,299],[858,616,232,297],[1201,610,243,303]],
-    B: [[116,168,181,251],[345,156,204,261],[595,136,223,282],[862,140,254,280],[1191,141,267,282],[84,630,206,276],[329,621,226,286],[587,619,231,291],[850,615,240,294],[1199,619,252,290]],
-    C: [[110,151,183,271],[340,149,213,274],[596,144,206,284],[838,140,308,285],[1195,139,270,295],[76,615,214,293],[327,609,216,299],[576,615,248,293],[840,616,256,288],[1191,616,260,291]],
+    P: [[44,62,75,107,0,1],[141,61,77,108],[241,57,79,112,-1,-2],[36,248,84,119,2,2],[134,245,92,120,8,0],[234,243,98,126,9,4],[343,49,95,121,0,-9],[471,56,102,114,5,-7],[340,235,112,132,11,-6],[469,238,110,129,11,-4]],
+    Y: [[45,37,74,127,5,1],[140,56,78,107,6,1],[241,51,77,112,4,1],[29,241,91,130,-1,0],[339,51,96,113,12,1],[466,50,100,114,16,0],[125,242,95,130],[232,240,96,132,7,0],[336,239,104,133,7,0],[461,234,113,138,9,0]],
+    V: [[45,55,68,119,1,0],[138,55,82,118,5,-1],[241,49,74,125,2,0],[42,238,70,128,5,0],[138,237,75,129,4,0],[339,50,88,124,13,0],[469,53,88,122,10,0],[226,239,96,129,2,2],[338,237,86,129,9,0],[474,237,87,129,9,0]],
+    W: [[42,62,77,104,4,1],[130,61,86,105,-3,1],[236,54,82,111,4,1],[462,215,101,142,2,0],[132,224,86,135,1,2],[25,241,93,116,-2,1],[232,238,92,119,5,1],[334,238,92,120,6,2],[337,52,101,114,12,1],[456,54,114,112,5,1]],
+    O: [[43,57,77,110,4,2],[131,55,93,112,5,1],[240,51,82,122,8,6],[334,51,101,116,11,1],[468,52,104,116,11,1],[30,239,89,121,0,1],[130,239,96,121,5,1],[234,238,88,122,5,1],[332,238,96,122,7,1],[466,236,100,124,5,1]],
+    B: [[42,63,77,103,1,0],[132,58,84,107,3,1],[230,48,90,118,2,0],[30,243,85,114,-1,1],[126,240,96,117],[228,239,98,120,7,2],[332,238,96,120,6,1],[332,52,106,115,8,1],[458,239,111,118,2,0],[462,52,110,115,7,1]],
+    C: [[40,58,77,110,0,2],[134,56,84,112,3,1],[29,240,90,122,1,6],[237,47,82,123],[123,235,92,125,-3,4],[225,231,98,129,3,5],[459,35,120,142,10,10],[331,45,110,127,12,5],[331,235,98,121,7,1],[460,238,107,118,4,0]],
   };
 
-  // Per-frame durations (ms) — null = use 90ms default
+  // Per-frame durations (ms) — null = use 90ms default | number = uniform ms per frame
   const _BLOOM_DURS = {
-    R: null, P: null, Y: null, V: null, W: null, O: null, B: null, C: null,
+    R: null,
+    P: 474,
+    Y: null,
+    V: null,
+    W: 474,
+    O: 237,
+    B: 474,
+    C: null,
   };
 
   // Cache: sheet Image per color
@@ -118,13 +129,6 @@
     sheet.onerror = () => { _bloomCache[color] = false; cb(false); };
     sheet.src = assetPath + c.bloom;
   }
-  function _probeBloomLegacy(color, assetPath, cb) {
-    if (color in _bloomCache) return cb(_bloomCache[color]);
-    const probe = new Image();
-    probe.onload  = () => { _bloomCache[color] = true;  cb(true); };
-    probe.onerror = () => { _bloomCache[color] = false; cb(false); };
-    probe.src = assetPath + COLORS[color].bloom;
-  }
   /**
    * Draw frame 0 of bloom sheet onto each .sb-queue-bud canvas in cell.
    * Uses drawImage (write-only) — works on file:// and localhost.
@@ -134,30 +138,109 @@
     cell.querySelectorAll('canvas.sb-queue-bud').forEach(cv => {
       const color = cv.dataset.color;
       if (!color || !COLORS[color]) return;
-      const w = cv.offsetWidth || 34, h = cv.offsetHeight || 34;
-      cv.width = w; cv.height = h;
 
-      function drawStatic() {
-        // Fallback: draw static flower img (works even when bloom sheet unavailable)
+      // Read CSS display width same way as upgradeActiveFlowers
+      function _getBudWidth() {
+        if (cv.offsetWidth > 0) return cv.offsetWidth;
+        const compact = cv.closest('.sb-compact') || document.body;
+        const pos = cv.dataset.pos;
+        const varName = pos === '1' ? '--sb-flower-w-mid' : '--sb-flower-w-side';
+        const raw = getComputedStyle(compact).getPropertyValue(varName).trim();
+        const px = parseFloat(raw);
+        return px > 0 ? px : 76;
+      }
+
+      function drawStatic(w, h) {
+        const fb = new Image();
+        fb.onload = () => { cv.getContext('2d').drawImage(fb, 0, 0, w, h); };
+        fb.src = assetPath + COLORS[color].img;
+      }
+
+      _probeBloom(color, assetPath, (cached) => {
+        const w = _getBudWidth();
+        if (!cached || !cached.rects || !cached.rects[0]) {
+          cv.width = w; cv.height = w; drawStatic(w, w); return;
+        }
+        const { sheet, rects } = cached;
+        // Canvas height = max(frame9_h, bud_h) so the bud head is never clipped.
+        // yOff = canvas_h - bud_h ≥ 0 → bud drawn at bottom of canvas, head fully visible.
+        // Stem alignment: 5% at canvas bottom ≈ same absolute position for frame9 and bud
+        // (difference < 2px), so pivot at transform-origin:50% 95% stays near stem base.
+        const fLast = rects[rects.length - 1];
+        const [, , swL, shL] = fLast;
+        const hLast = Math.round(w * shL / swL);   // frame-9 height
+        const [sx, sy, sw, sh] = rects[0];
+        const dh0 = Math.round(w * sh / sw);        // bud (frame-0) height
+        const h = Math.max(hLast, dh0);             // canvas tall enough for full bud
+        const yOff = h - dh0;                       // ≥ 0 — bud head always visible
+        cv.width = w; cv.height = h;
+        try {
+          cv.getContext('2d').drawImage(sheet, sx, sy, sw, sh, 0, yOff, w, dh0);
+        } catch (e) {
+          drawStatic(w, h);
+        }
+      });
+    });
+  }
+
+  /**
+   * Draw frame 9 (fully bloomed) from bloom sheet onto each .sb-active-flower canvas in cell.
+   * Falls back to static flower img if sheet unavailable.
+   */
+  function upgradeActiveFlowers(cell, assetPath) {
+    cell.querySelectorAll('canvas.sb-active-flower').forEach(cv => {
+      const color = cv.dataset.color;
+      if (!color || !COLORS[color]) return;
+      const isBud = cv.dataset.bud === '1';  // promoted slot waiting for bloom anim
+
+      function _getWidth() {
+        // 1st: actual layout width (reliable after 2nd rAF)
+        if (cv.offsetWidth > 0) return cv.offsetWidth;
+        // 2nd: read CSS var from nearest .sb-compact ancestor
+        const compact = cv.closest('.sb-compact') || document.body;
+        const pos = cv.dataset.pos;
+        const varName = pos === '1' ? '--sb-flower-w-mid' : '--sb-flower-w-side';
+        const raw = getComputedStyle(compact).getPropertyValue(varName).trim();
+        const px = parseFloat(raw);
+        if (px > 0) return px;
+        return 76; // hard fallback
+      }
+
+      function drawStaticFallback() {
         const fb = new Image();
         fb.onload = () => {
-          const ctx = cv.getContext('2d');
-          ctx.clearRect(0, 0, w, h);
-          ctx.drawImage(fb, 0, 0, w, h);
+          const w = _getWidth();
+          cv.width  = w;
+          cv.height = Math.round(w * fb.naturalHeight / (fb.naturalWidth || 1));
+          cv.getContext('2d').drawImage(fb, 0, 0, cv.width, cv.height);
         };
         fb.src = assetPath + COLORS[color].img;
       }
 
       _probeBloom(color, assetPath, (cached) => {
-        if (!cached || !cached.rects || !cached.rects[0]) { drawStatic(); return; }
+        if (!cached || !cached.rects) { drawStaticFallback(); return; }
         const { sheet, rects } = cached;
-        const [sx, sy, sw, sh] = rects[0];
-        const ctx = cv.getContext('2d');
-        ctx.clearRect(0, 0, w, h);
-        try {
-          ctx.drawImage(sheet, sx, sy, sw, sh, 0, 0, w, h);
-        } catch (e) {
-          drawStatic(); // CORS tainted canvas on file:// — use static img
+        const w = _getWidth();
+        if (isBud) {
+          // Draw frame 0 (bud) — same sizing as upgradeQueueBuds so bud head fully visible.
+          const fLast = rects[rects.length - 1];
+          const hLast = Math.round(w * fLast[3] / fLast[2]);
+          const [sx, sy, sw, sh] = rects[0];
+          const dh0 = Math.round(w * sh / sw);
+          const h = Math.max(hLast, dh0);
+          const yOff = h - dh0;
+          cv.width = w; cv.height = h;
+          try { cv.getContext('2d').drawImage(sheet, sx, sy, sw, sh, 0, yOff, w, dh0); }
+          catch(e) { drawStaticFallback(); }
+        } else {
+          // Draw frame 9 (full bloom).
+          const f9 = rects[Math.min(9, rects.length - 1)];
+          if (!f9) { drawStaticFallback(); return; }
+          const [sx, sy, sw, sh] = f9;
+          const h = Math.round(w * sh / sw);
+          cv.width = w; cv.height = h;
+          try { cv.getContext('2d').drawImage(sheet, sx, sy, sw, sh, 0, 0, w, h); }
+          catch(e) { drawStaticFallback(); }
         }
       });
     });
@@ -176,51 +259,109 @@
         _bloomA(imgEl, onDone); return;
       }
       const { sheet, rects } = cached;
-      const rect = imgEl.getBoundingClientRect();
-      if (!rect.width || !rect.height) { _bloomA(imgEl, onDone); return; }
 
-      // Create canvas with extra padding so grow animation isn't clipped
-      const PAD = Math.round(Math.max(rect.width, rect.height) * 0.6);
-      const cvW  = Math.round(rect.width)  + PAD * 2;
-      const cvH  = Math.round(rect.height) + PAD * 2;
+      // ── Read CSS vars ──────────────────────────────────────────
+      const pos    = imgEl.dataset ? (imgEl.dataset.pos || '1') : '1';
+      const posNum = parseInt(pos, 10);
+      const compact = imgEl.closest('.sb-compact') || document.documentElement;
+      const cs = getComputedStyle(compact);
+
+      const potW         = parseFloat(cs.getPropertyValue('--sb-pot-w'))         || 114;
+      const potH         = parseFloat(cs.getPropertyValue('--sb-pot-h'))         || 123;
+      const flowerBottom = parseFloat(cs.getPropertyValue('--sb-flower-bottom')) || 40;
+      const stemX        = parseFloat(cs.getPropertyValue('--sb-stem-x'))        || 0;
+      const stemSpread   = parseFloat(cs.getPropertyValue('--sb-stem-spread'))   || 0;
+      const spreadOff    = posNum === 0 ? -stemSpread : posNum === 2 ? stemSpread : 0;
+      const angle        = parseFloat(cs.getPropertyValue('--sb-flower-angle'))  || 22;
+      const rot          = posNum === 0 ? -angle : posNum === 2 ? angle : 0;
+      const ox_css       = parseFloat(cs.getPropertyValue(`--sb-s${pos}-ox`)      || '0') || 0;
+      const oy_css       = parseFloat(cs.getPropertyValue(`--sb-s${pos}-oy`)      || '0') || 0;
+      const sc_css       = parseFloat(cs.getPropertyValue(`--sb-s${pos}-sc`)      || '1') || 1;
+      const animOx       = parseFloat(cs.getPropertyValue(`--sb-s${pos}-anim-ox`) || '0') || 0;
+      const animOy       = parseFloat(cs.getPropertyValue(`--sb-s${pos}-anim-oy`) || '0') || 0;
+      const varName      = posNum === 1 ? '--sb-flower-w-mid' : '--sb-flower-w-side';
+      const cssW         = parseFloat(cs.getPropertyValue(varName)) || 76;
+
+      // ── Canvas size: use LAST frame (full bloom) — same as upgradeActiveFlowers ──
+      const fLast = rects[rects.length - 1];
+      const [, , swL, shL] = fLast;
+      const cssH = Math.round(cssW * shL / swL);
+      const PAD  = Math.round(Math.max(cssW, cssH) * 0.65);
+      const cvW  = Math.round(cssW) + PAD * 2;
+      const cvH  = Math.round(cssH) + PAD * 2;
+
+      // ── Stem-base position in sb-pot-visual coords (no BCR needed) ──
+      // Flower: bottom=0 in .sb-active-flowers whose bottom = flowerBottom from pot-visual bottom.
+      // transform-origin 50% 95% → pivot = (center-x, top + cssH*0.95).
+      // After translateY(oy_css): pivotY = (potH - flowerBottom) + oy_css - cssH * 0.05
+      const stemBaseX = potW / 2 + stemX + spreadOff + ox_css;
+      const stemBaseY = (potH - flowerBottom) + oy_css - cssH * 0.05;
+
+      // ── Overlay canvas pivot (rotation point inside canvas coords) ─
+      const pivotX = cvW / 2;
+      const pivotY = PAD + cssH * 0.95;
+
+      // ── Container: sb-pot-visual ───────────────────────────────
+      const visual = imgEl.closest('.sb-pot-visual');
+      if (!visual) { _bloomA(imgEl, onDone); return; }
+
+      // Position canvas so its internal pivot aligns with stemBase
+      const cvLeft = stemBaseX - pivotX + animOx;
+      const cvTop  = stemBaseY - pivotY + animOy;
+
       const cv = document.createElement('canvas');
       cv.width  = cvW;
       cv.height = cvH;
-      cv.style.cssText = `position:fixed;left:${rect.left - PAD}px;top:${rect.top - PAD}px;`
+      cv.style.cssText = `position:absolute;`
+        + `left:${cvLeft}px;`
+        + `top:${cvTop}px;`
         + `width:${cvW}px;height:${cvH}px;`
-        + `pointer-events:none;z-index:9999;transform-origin:50% 95%;`;
-      document.body.appendChild(cv);
+        + `pointer-events:none;z-index:28;`;
+      visual.appendChild(cv);
       const ctx = cv.getContext('2d');
 
-      // Hide source img while canvas plays
+      // Hide source canvas while overlay plays
       const origOpacity = imgEl.style.opacity;
       imgEl.style.opacity = '0';
 
-      const durations = cached.durations || [];
-      const FRAME_DUR = 90; // fallback per-frame ms
+      // durations: null → 90ms default | number → uniform ms | array → per-frame ms
+      // Global speed multiplier (persisted in localStorage):
+      //   localStorage.kvtm_bloom_speed = "1.0" (default) | "2.0" (2× slower) | "0.5" (2× faster)
+      //   Set at runtime: window._setBloomSpeed(0.5)
+      let _bloomMul = 1;
+      try {
+        const stored = (typeof localStorage !== 'undefined') && localStorage.getItem('kvtm_bloom_speed');
+        if (stored) _bloomMul = parseFloat(stored) || 1;
+      } catch(e) {}
+      const FRAME_DUR = ((typeof cached.durations === 'number') ? cached.durations : 90) * _bloomMul;
+      const durations = (Array.isArray(cached.durations) ? cached.durations : []).map(d => d * _bloomMul);
       let startTs = null;
       let lastFrame = -1;
 
-      const N = rects.length;
-
-      // Draw frame centered in padded canvas + CSS scale grow
+      // Draw frame: rotate canvas content around stem-base pivot (no CSS transform)
+      // Layout rules (match upgradeActiveFlowers + CSS transform-origin: 50% 95%):
+      //   x: center frame within cssW (same as scale around x=50%)
+      //   y: bottom-align frame at PAD+cssH (stem base ≈ PAD+cssH*0.95 for all frames)
+      //   fdx/fdy in rects are for the frame-preview panel only — not used here
+      const rotRad = rot * Math.PI / 180;
       function drawFrame(f) {
         ctx.clearRect(0, 0, cvW, cvH);
-        const fr = rects[f];
-        const [sx, sy, sw, sh] = fr;
-        const dx = (fr[4] || 0), dy = (fr[5] || 0);
-        // Draw at natural rect size, centered in padded canvas
-        const dw = Math.round(rect.width), dh = Math.round(rect.height);
-        ctx.drawImage(sheet, sx, sy, sw, sh, PAD + dx, PAD + dy, dw, dh);
-
-        // CSS scale: 5% → 50%, ease-out, anchored at stem base
-        const t = f / Math.max(1, N - 1);
-        const ease = t * (2 - t);
-        const scale = 0.05 + 0.45 * ease;
-        cv.style.transform = `scale(${scale.toFixed(3)})`;
+        const [sx, sy, sw, sh] = rects[f];
+        const dw = Math.round(cssW * sc_css);
+        const dh = Math.round(cssW * sc_css * sh / sw);
+        const ox      = PAD + Math.round((cssW - dw) / 2);
+        const oy_draw = PAD + cssH - dh;
+        ctx.save();
+        if (rotRad !== 0) {
+          ctx.translate(pivotX, pivotY);
+          ctx.rotate(rotRad);
+          ctx.translate(-pivotX, -pivotY);
+        }
+        ctx.drawImage(sheet, sx, sy, sw, sh, ox, oy_draw, dw, dh);
+        ctx.restore();
       }
 
-      // Build cumulative time table from per-frame durations
+      // Build cumulative time table
       const frameTimes = [];
       let t = 0;
       for (let i = 0; i < rects.length; i++) { frameTimes.push(t); t += (durations[i] || FRAME_DUR); }
@@ -229,7 +370,6 @@
       function tick(ts) {
         if (!startTs) startTs = ts;
         const elapsed = ts - startTs;
-        // Find current frame by cumulative time
         let fi = rects.length - 1;
         for (let i = 0; i < frameTimes.length - 1; i++) { if (elapsed < frameTimes[i+1]) { fi = i; break; } }
         if (fi !== lastFrame) { lastFrame = fi; drawFrame(fi); }
@@ -237,13 +377,24 @@
         if (elapsed < totalDur) {
           requestAnimationFrame(tick);
         } else {
+          // Animation done: transition imgEl from bud (frame 0) to flower (frame 9).
+          // Resize imgEl canvas to frame-9 dimensions and draw it, then clear bud flag.
+          try {
+            const fLast = rects[rects.length - 1];
+            const [fsx, fsy, fsw, fsh] = fLast;
+            const fw = imgEl.offsetWidth || cssW;
+            const fh = Math.round(fw * fsh / fsw);
+            imgEl.width = fw; imgEl.height = fh;
+            imgEl.getContext('2d').drawImage(sheet, fsx, fsy, fsw, fsh, 0, 0, fw, fh);
+          } catch(e) {}
+          delete imgEl.dataset.bud;
           cv.remove();
           imgEl.style.opacity = origOpacity;
           onDone && onDone();
         }
       }
 
-      drawFrame(0); // show frame 0 immediately (no blank flash)
+      drawFrame(0);
       requestAnimationFrame(tick);
     });
   }
@@ -265,7 +416,7 @@
    * Update existing pot cell's flowers (active + queue) without rebuilding.
    * Call after state changes.
    */
-  function paintActive(cell, pot, assetPath) {
+  function paintActive(cell, pot, assetPath, bloomBuds) {
     if (!cell) return;
     const flowersEl = cell.querySelector('.sb-active-flowers');
     if (flowersEl) {
@@ -273,12 +424,19 @@
       [0,1,2].forEach(p => {
         const f = pot.active[p];
         if (!f) return;
-        const img = document.createElement('img');
-        img.src = assetPath + COLORS[f].img;
-        img.draggable = false;
-        img.dataset.pos = String(p);
-        flowersEl.appendChild(img);
+        const cv = document.createElement('canvas');
+        cv.className = 'sb-active-flower';
+        cv.dataset.pos = String(p);
+        cv.dataset.color = f;
+        // Mark as bud — upgradeActiveFlowers will draw frame 0 (bud) not frame 9.
+        // _bloomSheet redraws frame 9 at end of animation, transitioning bud→flower.
+        if (bloomBuds && bloomBuds.has(p)) cv.dataset.bud = '1';
+        flowersEl.appendChild(cv);
       });
+      // Call immediately — if sheet is cached (normal during play) draw is synchronous.
+      // Double-rAF fallback for first call when cache may not be ready yet.
+      upgradeActiveFlowers(cell, assetPath);
+      requestAnimationFrame(() => requestAnimationFrame(() => upgradeActiveFlowers(cell, assetPath)));
     }
     const previewEl = cell.querySelector('.sb-queue-preview');
     if (previewEl) {
@@ -307,7 +465,7 @@
   function setSelected(cells, selected) {
     cells.forEach((cell, i) => {
       cell.classList.toggle('sb-selected', selected && selected.pot === i);
-      const flowers = cell.querySelectorAll('.sb-active-flowers img');
+      const flowers = cell.querySelectorAll('.sb-active-flowers [data-pos]');
       flowers.forEach(img => {
         const p = parseInt(img.dataset.pos, 10);
         img.classList.toggle('sb-lifted',
@@ -319,7 +477,7 @@
   /** Play vanish animation on cell's active flowers. */
   function playVanish(cell, onDone) {
     if (!cell) { onDone && onDone(); return; }
-    const flowers = cell.querySelectorAll('.sb-active-flowers img');
+    const flowers = cell.querySelectorAll('.sb-active-flowers [data-pos]');
     flowers.forEach(img => img.classList.add('sb-vanish'));
     setTimeout(() => { onDone && onDone(); }, 420);
   }
@@ -443,7 +601,7 @@
       fly.remove();
       // After onLand repaint, destImg is the freshly-painted element — query AFTER onLand
       requestAnimationFrame(() => {
-        const destImg = destCell.querySelector(`.sb-active-flowers img[data-pos="${destPos}"]`);
+        const destImg = destCell.querySelector(`.sb-active-flowers [data-pos="${destPos}"]`);
         if (destImg) {
           destImg.animate([
             { transform: 'translateX(-50%) scale(0.4)', opacity: 0 },
@@ -467,7 +625,7 @@
   // ─── shared helpers ────────────────────────────────────
   function _prepFlight(srcCell, destCell, srcPos, destPos, color, assetPath) {
     if (!srcCell || !destCell) return null;
-    const srcImg = srcCell.querySelector(`.sb-active-flowers img[data-pos="${srcPos}"]`);
+    const srcImg = srcCell.querySelector(`.sb-active-flowers [data-pos="${srcPos}"]`);
     const destFlowers = destCell.querySelector('.sb-active-flowers');
     if (!srcImg || !destFlowers) return null;
     const srcRect = srcImg.getBoundingClientRect();
@@ -534,7 +692,7 @@
   }
 
   function eventToNearestFlowerPos(ev, cell, pot) {
-    const flowers = [...cell.querySelectorAll('.sb-active-flowers img')];
+    const flowers = [...cell.querySelectorAll('.sb-active-flowers [data-pos]')];
     const clientX = ev.clientX || (ev.touches && ev.touches[0].clientX) || 0;
     if (!flowers.length) return eventToPos(ev, cell);
     let best = null;
@@ -550,7 +708,7 @@
   function eventToFlowerHitPos(ev, cell) {
     const clientX = ev.clientX || (ev.touches && ev.touches[0].clientX) || 0;
     const clientY = ev.clientY || (ev.touches && ev.touches[0].clientY) || 0;
-    const flowers = [...cell.querySelectorAll('.sb-active-flowers img')];
+    const flowers = [...cell.querySelectorAll('.sb-active-flowers [data-pos]')];
     for (let i = flowers.length - 1; i >= 0; i--) {
       const img = flowers[i];
       const rect = img.getBoundingClientRect();
@@ -585,7 +743,7 @@
     const clientY = ev.clientY || (ev.touches && ev.touches[0].clientY) || 0;
     let best = null;
     cells.forEach((cell, pot) => {
-      cell.querySelectorAll('.sb-active-flowers img').forEach(img => {
+      cell.querySelectorAll('.sb-active-flowers [data-pos]').forEach(img => {
         const rect = img.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
@@ -614,14 +772,26 @@
     W:'#e5e7eb', O:'#fb923c', B:'#60a5fa', C:'#fb7185',
   };
 
+  // Helper: build base transform string for a slot element (preserves rotation/offset)
+  function _slotBaseTransform(imgEl) {
+    const pos = parseInt(imgEl.dataset?.pos ?? '1', 10);
+    const compact = imgEl.closest('.sb-compact') || document.documentElement;
+    const cs = getComputedStyle(compact);
+    const angle = parseFloat(cs.getPropertyValue('--sb-flower-angle') || '22') || 22;
+    const oy = parseFloat(cs.getPropertyValue(`--sb-s${pos}-oy`) || '0') || 0;
+    const sc = parseFloat(cs.getPropertyValue(`--sb-s${pos}-sc`) || '1') || 1;
+    const rot = pos === 0 ? -angle : pos === 2 ? angle : 0;
+    return { base: `translateX(-50%) translateY(${oy}px) rotate(${rot}deg)`, sc };
+  }
+
   // ── A: Spring Scale Pop ───────────────────────────────────────
   function _bloomA(imgEl, onDone) {
+    const { base } = _slotBaseTransform(imgEl);
     imgEl.animate([
-      { transform: 'translateX(-50%) scale(0)',    opacity: 0 },
-      { transform: 'translateX(-50%) scale(1.5)',  opacity: 1, offset: 0.5 },
-      { transform: 'translateX(-50%) scale(0.92)', opacity: 1, offset: 0.75 },
-      { transform: 'translateX(-50%) scale(1)',    opacity: 1 },
-    ], { duration: 820, easing: 'ease-out', fill: 'none' })
+      { transform: base, opacity: 0 },
+      { transform: base, opacity: 1, offset: 0.15 },
+      { transform: base, opacity: 1 },
+    ], { duration: 420, easing: 'ease-out', fill: 'none' })
       .onfinish = onDone;
   }
 
@@ -649,12 +819,13 @@
         .onfinish = () => d.remove();
       frags.push(d);
     }
-    // Also spring-pop the flower itself
+    // Also spring-pop the flower itself (preserve slot rotation)
+    const { base: baseB, sc: scB } = _slotBaseTransform(imgEl);
     imgEl.animate([
-      { transform: 'translateX(-50%) scale(0.4)', opacity: 0 },
-      { transform: 'translateX(-50%) scale(1.45)', opacity: 1, offset: 0.45 },
-      { transform: 'translateX(-50%) scale(0.95)', opacity: 1, offset: 0.75 },
-      { transform: 'translateX(-50%) scale(1)',    opacity: 1 },
+      { transform: `${baseB} scale(0.4)`,      opacity: 0 },
+      { transform: `${baseB} scale(${scB*1.45})`, opacity: 1, offset: 0.45 },
+      { transform: `${baseB} scale(${scB*0.95})`, opacity: 1, offset: 0.75 },
+      { transform: `${baseB} scale(${scB})`,   opacity: 1 },
     ], { duration: 780, easing: 'ease-out' });
     setTimeout(onDone, 920);
   }
@@ -676,11 +847,12 @@
       { transform: 'translate(-50%,-50%) scale(3.5)', opacity: 0 },
     ], { duration: 800, easing: 'ease-out', fill: 'forwards' })
       .onfinish = () => ring.remove();
+    const { base: baseC, sc: scC } = _slotBaseTransform(imgEl);
     imgEl.animate([
-      { transform: 'translateX(-50%) scale(0.3)', opacity: 0 },
-      { transform: 'translateX(-50%) scale(1.4)', opacity: 1, offset: 0.5 },
-      { transform: 'translateX(-50%) scale(0.95)',opacity: 1, offset: 0.78 },
-      { transform: 'translateX(-50%) scale(1)',   opacity: 1 },
+      { transform: `${baseC} scale(0.3)`,      opacity: 0 },
+      { transform: `${baseC} scale(${scC*1.4})`, opacity: 1, offset: 0.5 },
+      { transform: `${baseC} scale(${scC*0.95})`,opacity: 1, offset: 0.78 },
+      { transform: `${baseC} scale(${scC})`,   opacity: 1 },
     ], { duration: 750, easing: 'ease-out' });
     setTimeout(onDone, 820);
   }
@@ -708,12 +880,13 @@
       ], { duration: 950, easing: 'ease-out', fill: 'forwards' })
         .onfinish = () => d.remove();
     }
-    // Big spring pop on flower
+    // Big spring pop on flower (preserve slot rotation)
+    const { base: baseD, sc: scD } = _slotBaseTransform(imgEl);
     imgEl.animate([
-      { transform: 'translateX(-50%) scale(0)',    opacity: 0 },
-      { transform: 'translateX(-50%) scale(1.55)', opacity: 1, offset: 0.45 },
-      { transform: 'translateX(-50%) scale(0.88)', opacity: 1, offset: 0.72 },
-      { transform: 'translateX(-50%) scale(1)',    opacity: 1 },
+      { transform: `${baseD} scale(0)`,         opacity: 0 },
+      { transform: `${baseD} scale(${scD*1.55})`,opacity: 1, offset: 0.45 },
+      { transform: `${baseD} scale(${scD*0.88})`,opacity: 1, offset: 0.72 },
+      { transform: `${baseD} scale(${scD})`,    opacity: 1 },
     ], { duration: 850, easing: 'ease-out' });
     setTimeout(onDone, 960);
   }
@@ -721,6 +894,8 @@
   // ── playBloom: move destination (A/B/C/D pop effects, unchanged) ──────────
   function playBloom(imgEl, color, assetPath, onDone) {
     if (!imgEl || !imgEl.isConnected) { onDone && onDone(); return; }
+    // Placed flower already shows frame 9 (it flew in fully bloomed).
+    // _bloomA/B/C/D are celebration effects (particles, scale pop) starting at opacity:0.
     const done = () => { onDone && onDone(); };
     const pick = Math.floor(Math.random() * 4);
     if (pick === 0) _bloomA(imgEl, done);
@@ -890,6 +1065,7 @@
     BLOOM_COLS, BLOOM_ROWS, BLOOM_FRAMES, BLOOM_DURATION_MS,
     buildPotCell,
     paintActive, paintQueue, paintAll,
+    upgradeActiveFlowers, upgradeQueueBuds,
     setSelected, playVanish, animateFlight, playBloom, playBloomQueue, playWinCelebration, buildQueueBud,
     renderQueueStrip,
     eventToPos, eventToNearestFlowerPos, eventToFlowerHitPos,
@@ -900,5 +1076,22 @@
     module.exports = api;
   } else {
     global.SortBlossomRender = api;
+  }
+
+  // Global bloom-speed knob (persisted) — readable in console:
+  //   _setBloomSpeed(1)    → default
+  //   _setBloomSpeed(2)    → 2× slower (good for debugging)
+  //   _setBloomSpeed(0.5)  → 2× faster
+  //   _getBloomSpeed()     → current value
+  if (typeof window !== 'undefined') {
+    window._setBloomSpeed = function(v) {
+      const n = parseFloat(v);
+      if (!isFinite(n) || n <= 0) { console.warn('bloom speed must be > 0'); return; }
+      try { localStorage.setItem('kvtm_bloom_speed', String(n)); } catch(e) {}
+      console.log(`[bloom] speed multiplier = ${n}× (persisted). Reload not needed — applies on next bloom.`);
+    };
+    window._getBloomSpeed = function() {
+      try { return parseFloat(localStorage.getItem('kvtm_bloom_speed')) || 1; } catch(e) { return 1; }
+    };
   }
 })(typeof window !== 'undefined' ? window : globalThis);

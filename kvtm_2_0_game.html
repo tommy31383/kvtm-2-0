@@ -7,9 +7,9 @@
 <script src="https://cdn.tailwindcss.com"></script>
 
 <!-- ═══ Sort Blossom shared engine (single source of truth with tools/level_editor.html) ═══ -->
-<link rel="stylesheet" href="engine/sort_blossom.css">
+<link rel="stylesheet" href="engine/sort_blossom.css?v=10">
 <script src="engine/sort_blossom_engine.js"></script>
-<script src="engine/sort_blossom_render.js?v=20"></script>
+<script src="engine/sort_blossom_render.js?v=35"></script>
 <script src="engine/sort_blossom_data.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2370,6 +2370,7 @@ const Sfx = (() => {
     const ctx = getCtx();
     if (!ctx) return;
     if (!Save.get().settings.sound) return;
+    if (ctx.state === 'suspended') { ctx.resume(); return; } // will play next call after resume
     try {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -2432,10 +2433,13 @@ const Game = (() => {
         return;
       }
 
-      Sfx.play('tap');
-      Haptic.tap();
-
       const old = stage().querySelector('.scene');
+      // Skip tap sound/haptic on initial boot (no previous scene) — avoids
+      // Chrome autoplay-policy warnings before user has interacted with page.
+      if (old) {
+        Sfx.play('tap');
+        Haptic.tap();
+      }
       if (old) {
         _transitioning = true;
         // Spawn sparkle wipe overlay
@@ -4957,6 +4961,15 @@ if (document.readyState === 'loading') {
 } else {
   _kvtmBoot();
 }
+// Resume all AudioContexts on first user gesture (browser autoplay policy)
+(function() {
+  function _resumeAudio() {
+    [window._sfxCtx, window._svCtx].forEach(ctx => { if (ctx && ctx.state === 'suspended') ctx.resume(); });
+    // also resume Sfx internal ctx if exposed
+  }
+  document.addEventListener('pointerdown', _resumeAudio, { once: true, capture: true });
+  document.addEventListener('keydown',     _resumeAudio, { once: true, capture: true });
+})();
 (function legacyInit() {
   if (false) { // disabled — replaced by _kvtmBoot above
 
@@ -6643,7 +6656,7 @@ Scenes._levelBlossomV2 = function(cfg) {
       <span>Lượt: <span id="blv2-moves">0</span>/${cfg.moveLimit}</span>
       <span id="blv2-stars">★★★</span>
     </div>
-    <div class="blv2-pots sb-compact" id="blv2-pots" style="flex:1;overflow-y:auto;padding:10px 8px 8px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:flex-end;"></div>
+    <div class="blv2-pots sb-compact" id="blv2-pots" style="flex:1;overflow-y:auto;padding:50px 8px 8px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:flex-end;"></div>
     <div style="background:rgba(122,146,168,0.92);padding:8px 14px;display:flex;gap:8px;border-top:2px solid #3a2a1a;">
       <button id="blv2-undo" style="flex:1;background:#fff;color:#3a2a1a;border:2px solid #3a2a1a;padding:6px;border-radius:6px;cursor:pointer;font-size:12px;">↶ Undo</button>
       <button id="blv2-hint" style="flex:1;background:#fff;color:#3a2a1a;border:2px solid #3a2a1a;padding:6px;border-radius:6px;cursor:pointer;font-size:12px;">💡 Hint</button>
@@ -6669,7 +6682,7 @@ Scenes._levelBlossomV2 = function(cfg) {
     const hasLayout = Array.isArray(cfg.potLayout) && cfg.potLayout.length === cfg.pots.length;
 
     if (hasLayout) {
-      cont.style.cssText = 'flex:1;position:relative;overflow:hidden;';
+      cont.style.cssText = 'flex:1;position:relative;overflow:hidden;padding-top:50px;';
     } else {
       cont.style.cssText = 'flex:1;overflow-y:auto;padding:10px 8px 8px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:flex-end;';
     }
@@ -6851,55 +6864,106 @@ Scenes._levelBlossomV2 = function(cfg) {
       color: flyColor,
       assetPath: ASSETS,
       onLand: () => {
-        // Step 1: PLACE only — show flower seated in slot, NO vanish yet
         history.push(Engine.clone(state));
         const r = Engine.applyMovePlace(state, srcSel.pot, srcSel.pos, potIdx, placePos);
         moveResult = r;
         moves++;
-        // Capture pre-promote state to detect newly-promoted slots
-        const wasNullBefore = state.map(p => p.active.map(x => x === null));
-        // Promote any pot whose active row went empty (source pot, typically)
-        state.forEach(p => Engine.promote(p));
-        repaint();   // Player thấy bông cắm chậu + queue auto-shift lên nếu source rỗng
-        // ── Animation queue: bloom(dest) → bloom(promoted×N) → vanish ──
-        // Promise chain đảm bảo từng anim xong mới trigger cái tiếp theo.
-        const wrap = fn => new Promise(resolve => fn(resolve));
 
-        // Collect bloom tasks: dest first, then promoted slots
+        // Capture which slots are null after place, before promote
+        const wasNullBefore = state.map(p => p.active.map(x => x === null));
+        state.forEach(p => Engine.promote(p));
+
+        // Paint only affected cells (dest + any pot with newly-promoted flowers)
+        const affectedPots = new Set([potIdx]);
+        state.forEach((pot, pi) => {
+          pot.active.forEach((color, posi) => {
+            if (color && wasNullBefore[pi][posi]) affectedPots.add(pi);
+          });
+        });
+
+        // Bud slots = promoted slots (will play _bloomSheet 0→9 animation).
+        // These display as BUD (frame 0) until their bloom animation runs.
+        // Placed flower (destPot, placePos) is NOT a bud — it flew in fully bloomed.
+        const bloomBudsMap = new Map();
+        state.forEach((pot, pi) => {
+          pot.active.forEach((color, posi) => {
+            if (color && wasNullBefore[pi][posi] && !(pi === potIdx && posi === placePos)) {
+              if (!bloomBudsMap.has(pi)) bloomBudsMap.set(pi, new Set());
+              bloomBudsMap.get(pi).add(posi);
+            }
+          });
+        });
+
+        affectedPots.forEach(pi =>
+          Render.paintActive(cells[pi], state[pi], ASSETS, bloomBudsMap.get(pi) || null));
+
+        // ── bloom(dest) → bloom(promoted×N) ──
+        const wrap = fn => new Promise(resolve => fn(resolve));
         const bloomTasks = [];
-        const destImg = cells[potIdx]?.querySelector(`.sb-active-flowers img[data-pos="${placePos}"]`);
+
+        const destImg = cells[potIdx]?.querySelector(`.sb-active-flowers [data-pos="${placePos}"]`);
         if (destImg) bloomTasks.push(() => wrap(done => Render.playBloom(destImg, flyColor, ASSETS, done)));
 
         state.forEach((pot, pi) => {
           pot.active.forEach((color, posi) => {
-            const wasNull = wasNullBefore[pi][posi];
-            const isNewDest = (pi === potIdx && posi === placePos);
-            if (color && wasNull && !isNewDest) {
-              const imgEl = cells[pi]?.querySelector(`.sb-active-flowers img[data-pos="${posi}"]`);
+            if (color && wasNullBefore[pi][posi] && !(pi === potIdx && posi === placePos)) {
+              const imgEl = cells[pi]?.querySelector(`.sb-active-flowers [data-pos="${posi}"]`);
               if (imgEl) bloomTasks.push(() => wrap(done => Render.playBloomQueue(imgEl, color, ASSETS, done)));
             }
           });
         });
 
-        // Chain: dest bloom → promoted blooms → vanish (if any)
         let chain = bloomTasks.reduce((p, task) => p.then(task), Promise.resolve());
 
-        if (r.willVanish) {
-          chain = chain.then(() => wrap(done => {
-            Render.playVanish(cells[potIdx], done);
-          })).then(() => {
+        chain = chain.then(() => {
+          repaint();   // full repaint after all blooms done
+          if (r.willVanish) return wrap(done => Render.playVanish(cells[potIdx], done));
+        }).then(() => {
+          if (r.willVanish) {
             const settled = Engine.settle(state);
-            repaint();
+
+            // ── Rule Promote Animation Flow ──
+            // Slots vừa promote từ queue (sau vanish cascade) phải hiện NỤ trước,
+            // rồi mới play _bloomSheet để chuyển nụ → bông.
+            const postBudsMap = new Map();
+            new Set(settled.promoted).forEach(pi => {
+              const buds = new Set();
+              state[pi].active.forEach((color, posi) => { if (color) buds.add(posi); });
+              if (buds.size > 0) postBudsMap.set(pi, buds);
+            });
+
+            // Repaint with bud marks for newly-promoted slots
+            readyColors = getReadyColors(state);
+            cells.forEach((cell, i) => {
+              Render.paintActive(cell, state[i], ASSETS, postBudsMap.get(i) || null);
+              Render.paintQueue(cell, state[i], ASSETS, 6);
+            });
+            Render.setSelected(cells, selected);
+            div.querySelector('#blv2-moves').textContent = moves;
+            const stars = Engine.starsFor(moves, cfg.starThresholds);
+            div.querySelector('#blv2-stars').textContent = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+
             if (settled.vanished.length > 0) { Sfx.play('lock'); Haptic.success(); }
-            checkEndGame();
-          });
-        }
+
+            // Chain _bloomSheet for each promoted bud slot
+            const wrap2 = fn => new Promise(resolve => fn(resolve));
+            const postBloomTasks = [];
+            postBudsMap.forEach((slots, pi) => {
+              slots.forEach(posi => {
+                const color = state[pi].active[posi];
+                const imgEl = cells[pi]?.querySelector(`.sb-active-flowers [data-pos="${posi}"]`);
+                if (imgEl && color) {
+                  postBloomTasks.push(() => wrap2(done => Render.playBloomQueue(imgEl, color, ASSETS, done)));
+                }
+              });
+            });
+
+            return postBloomTasks.reduce((p, task) => p.then(task), Promise.resolve())
+              .then(() => checkEndGame());
+          }
+        });
       },
       onDone: () => {
-        // willVanish case: checkEndGame đã được gọi trong promise chain sau vanish
-        // Non-vanish case: check ngay khi flight xong
-        // Guard: moveResult null chỉ xảy ra nếu onLand chưa fire (không bình thường)
-        // → treat như non-vanish để game không bị stuck
         if (!moveResult || !moveResult.willVanish) checkEndGame();
       }
     });
