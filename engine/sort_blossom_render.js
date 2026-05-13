@@ -212,7 +212,7 @@
         // ease-out quad: fast start, slow finish feels like spring
         const t = f / Math.max(1, N - 1);
         const ease = t * (2 - t);
-        const scale = 0.05 + 0.95 * ease; // start tiny (5%), end full
+        const scale = 0.05 + 0.45 * ease; // start tiny (5%), end 50%
         cv.style.transformOrigin = '50% 95%';
         cv.style.transform = `scale(${scale.toFixed(3)})`;
       }
