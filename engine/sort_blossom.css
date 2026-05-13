@@ -110,31 +110,31 @@
   left: 0; right: 0;
   bottom: calc(var(--sb-flower-bottom) - 8px);
   height: var(--sb-active-h);
-  z-index: 12;
+  z-index: 35;        /* above pot-front (30) so buds are never covered */
   pointer-events: none;
 }
 .sb-queue-preview canvas.sb-queue-bud {
   position: absolute;
-  bottom: 0;
+  bottom: 30%;        /* lift up from bottom so buds sit above pot rim */
   width: calc(var(--sb-flower-w-side) * .45);
   height: calc(var(--sb-flower-w-side) * .45);
-  opacity: .55;
-  filter: brightness(.80) saturate(.85);
+  opacity: .60;
+  filter: brightness(.82) saturate(.85);
   transform-origin: 50% 95%;
 }
 .sb-queue-preview canvas[data-pos="0"] {
   left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread));
-  transform: translateX(-50%) translateY(8px) rotate(calc(-1 * var(--sb-flower-angle)));
+  transform: translateX(-50%) rotate(calc(-1 * var(--sb-flower-angle)));
 }
 .sb-queue-preview canvas[data-pos="1"] {
   left: calc(50% + var(--sb-stem-x));
   width: calc(var(--sb-flower-w-mid) * .45);
   height: calc(var(--sb-flower-w-mid) * .45);
-  transform: translateX(-50%) translateY(8px);
+  transform: translateX(-50%);
 }
 .sb-queue-preview canvas[data-pos="2"] {
   left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread));
-  transform: translateX(-50%) translateY(8px) rotate(var(--sb-flower-angle));
+  transform: translateX(-50%) rotate(var(--sb-flower-angle));
 }
 /* Selected flower: scale +15%, lift up, z-index above siblings, glow */
 .sb-active-flowers img.sb-lifted {
