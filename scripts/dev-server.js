@@ -116,28 +116,37 @@ const server = http.createServer((req, res) => {
     req.on('data', c => body += c);
     req.on('end', () => {
       try {
-        const { color, rects } = JSON.parse(body);
+        const { color, rects, durations } = JSON.parse(body);
         if (!color || !Array.isArray(rects)) throw new Error('color + rects required');
         const renderFile = path.join(ROOT, 'engine', 'sort_blossom_render.js');
         let src = fs.readFileSync(renderFile, 'utf8');
-        // Replace the specific color line: e.g.  R: [[...],...],
-        const rectsStr = JSON.stringify(rects);
-        const lineRe = new RegExp(`(\\s+${color}:\\s*)\\[.*?\\](,?)`, '');
-        // Find the color line inside _BLOOM_RECTS block
-        const blockStart = src.indexOf('_BLOOM_RECTS');
-        const blockEnd   = src.indexOf('};', blockStart);
-        const before = src.slice(0, blockStart);
-        let block = src.slice(blockStart, blockEnd + 2);
-        const after  = src.slice(blockEnd + 2);
-        const colorRe = new RegExp(`([ \\t]+${color}:[ \\t*)\\[([\\s\\S]*?)\\](,?\\n)`);
-        // Simpler: line-by-line replacement
-        const lines = block.split('\n');
-        const updated = lines.map(line => {
-          const m = line.match(new RegExp(`^(\\s+${color}:\\s*)\\[.*\\](,?)$`));
-          if (m) return `${m[1]}${rectsStr}${m[2]}`;
-          return line;
-        });
-        src = before + updated.join('\n') + after;
+
+        // Helper: replace one color key in a named const block
+        function replaceColorLine(source, blockName, colorKey, newVal) {
+          const blockStart = source.indexOf(blockName);
+          if (blockStart === -1) return source;
+          const blockEnd = source.indexOf('};', blockStart);
+          const before = source.slice(0, blockStart);
+          let block = source.slice(blockStart, blockEnd + 2);
+          const after = source.slice(blockEnd + 2);
+          const lines = block.split('\n').map(line => {
+            const m = line.match(new RegExp(`^(\\s+${colorKey}:\\s*)(.+?)(,?)$`));
+            if (m) return `${m[1]}${newVal}${m[3]}`;
+            return line;
+          });
+          return before + lines.join('\n') + after;
+        }
+
+        // Update _BLOOM_RECTS
+        src = replaceColorLine(src, '_BLOOM_RECTS', color, JSON.stringify(rects));
+
+        // Update _BLOOM_DURS if durations provided
+        if (Array.isArray(durations) && durations.length) {
+          const allDefault = durations.every(d => d === 90);
+          const durVal = allDefault ? 'null' : JSON.stringify(durations);
+          src = replaceColorLine(src, '_BLOOM_DURS', color, durVal);
+        }
+
         fs.writeFileSync(renderFile, src, 'utf8');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, message: `Saved ${color}: ${rects.length} frames` }));

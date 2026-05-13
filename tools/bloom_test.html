@@ -888,7 +888,8 @@ async function saveToServer(){
   const rects=frames.map(f=>{const r=[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)];if(f.dx||f.dy)r.push(Math.round(f.dx||0),Math.round(f.dy||0));return r;});
   st('⏳ Saving...','warn');
   try{
-    const text=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({color:key,rects})}).then(r=>r.text());
+    const durations=frames.map(f=>f.dur||90);
+    const text=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({color:key,rects,durations})}).then(r=>r.text());
     let data;try{data=JSON.parse(text);}catch(e){throw new Error(text.slice(0,80));}
     if(!data.ok)throw new Error(data.error);
     st('✅ '+data.message,'ok');
