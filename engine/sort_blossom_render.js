@@ -94,7 +94,7 @@
   // Embedded bloom rects — no fetch needed, works on file:// and localhost
   const _BLOOM_RECTS = {
     R: [[44,59,75,114,6,1],[139,58,82,115,5,1],[240,48,88,125,9,1],[340,53,98,119,12,0],[470,54,93,119,10,1],[28,249,92,120,8,2],[128,246,100,122,8,1],[230,246,106,123,12,1],[340,243,101,125,11,0],[480,243,97,126,14,1]],
-    P: [[44,62,75,107,4,2],[141,61,77,108,5,1],[241,57,81,116,5,6],[344,55,95,114,13,1],[471,56,102,114,16,2],[36,248,84,119,6,1],[134,245,90,120,7,0],[232,243,102,126,9,3],[340,235,108,132,9,0],[469,238,110,129,14,1]],
+    P: [[44,62,75,107,5,1],[141,61,77,108,5,1],[241,57,79,112,5,1],[343,49,95,121,12,1],[471,56,102,114,16,2],[36,248,84,119,6,1],[134,245,92,120,8,0],[234,243,98,126,9,4],[340,235,112,132,11,1],[469,238,110,129,13,0]],
     Y: [[122,147,176,265],[364,150,189,260],[622,140,186,271],[880,137,228,278],[1201,135,242,279],[81,621,217,323],[327,621,240,328],[582,619,266,332],[868,614,253,332],[1195,608,269,338]],
     V: [[122,148,161,291],[360,148,180,298],[624,129,182,314],[876,128,212,312],[1207,135,213,307],[113,617,169,312],[360,608,181,321],[614,611,198,320],[862,611,222,322],[1215,614,215,315]],
     W: [[115,167,193,251],[341,163,202,253],[602,149,204,270],[869,140,241,279],[1195,140,259,279],[71,623,225,284],[345,619,204,289],[608,616,208,292],[860,619,226,289],[1191,616,243,290]],
@@ -198,12 +198,28 @@
       let startTs = null;
       let lastFrame = -1;
 
+      // Bud size matches CSS: calc(var(--sb-flower-w-side) * .45)
+      // Frame 0 starts at BUD_SCALE, grows to 1.0 at last frame
+      const BUD_SCALE = 0.45;
+      const N = rects.length;
+
       function drawFrame(f) {
         ctx.clearRect(0, 0, cv.width, cv.height);
         const fr = rects[f];
         const [sx, sy, sw, sh] = fr;
-        const dx = (fr[4] || 0), dy = (fr[5] || 0); // per-frame display offset px
-        ctx.drawImage(sheet, sx, sy, sw, sh, dx, dy, cv.width, cv.height);
+        const dx = (fr[4] || 0), dy = (fr[5] || 0);
+
+        // Ease-out grow: eased so early frames stay small longer
+        const t = f / Math.max(1, N - 1);
+        const ease = t * (2 - t); // ease-out quad
+        const scale = BUD_SCALE + (1 - BUD_SCALE) * ease;
+
+        const dw = cv.width  * scale;
+        const dh = cv.height * scale;
+        // Anchor bottom-center (stem base) — hoa mọc từ dưới lên
+        const ddx = (cv.width  - dw) / 2 + dx * scale;
+        const ddy =  cv.height - dh      + dy * scale;
+        ctx.drawImage(sheet, sx, sy, sw, sh, ddx, ddy, dw, dh);
       }
 
       // Build cumulative time table from per-frame durations
