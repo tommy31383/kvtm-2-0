@@ -7,46 +7,68 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #0f0f1a; color: #ddd; font-family: monospace; display: flex; height: 100vh; overflow: hidden; }
 
-/* LEFT: controls */
+/* ── SIDEBAR ── */
 #sidebar {
-  width: 220px; flex-shrink: 0;
+  width: 240px; flex-shrink: 0;
   background: #16162a;
   border-right: 1px solid #2a2a40;
   display: flex; flex-direction: column;
-  padding: 12px; gap: 10px; overflow-y: auto;
+  padding: 12px; gap: 8px; overflow-y: auto;
 }
-#sidebar h1 { font-size: 13px; color: #FFD700; }
+#sidebar h1 { font-size: 13px; color: #FFD700; margin-bottom: 2px; }
 .sg { border: 1px solid #2a2a40; border-radius: 6px; padding: 10px; }
 .sg h3 { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-.row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-.row label { font-size: 11px; color: #888; width: 60px; flex-shrink: 0; }
+.row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.row label { font-size: 11px; color: #888; width: 54px; flex-shrink: 0; }
 .row input[type=number] { flex:1; background:#111; color:#fff; border:1px solid #333; padding:3px 5px; border-radius:4px; font-family:monospace; }
 .row select { flex:1; background:#111; color:#fff; border:1px solid #333; padding:3px 5px; border-radius:4px; font-family:monospace; }
-button { width:100%; background:#222; color:#eee; border:1px solid #444; padding:6px; border-radius:5px; cursor:pointer; font-family:monospace; font-size:11px; margin-bottom:4px; }
+button { width:100%; background:#222; color:#eee; border:1px solid #444; padding:5px; border-radius:5px; cursor:pointer; font-family:monospace; font-size:11px; margin-bottom:3px; }
 button:hover { background:#333; }
-button.gold { background:#3a3010; border-color:#FFD700; color:#FFD700; }
-button.gold:hover { background:#4a4020; }
+button.gold  { background:#3a3010; border-color:#FFD700; color:#FFD700; }
+button.gold:hover  { background:#4a4020; }
 button.green { background:#103a10; border-color:#5a8a5a; color:#afa; }
+button.green:hover { background:#1a4a1a; }
+button.red   { background:#3a1010; border-color:#a05050; color:#f99; }
+button.red:hover   { background:#4a1a1a; }
+button.blue  { background:#101838; border-color:#4060a0; color:#9af; }
+button.blue:hover  { background:#18234a; }
+.status { font-size:10px; min-height:14px; margin-top:3px; word-break:break-all; }
+.status.ok  { color:#5fa; }
+.status.err { color:#f77; }
+.status.info { color:#fa0; }
 
-/* frame strip */
-#frameStrip { display:flex; flex-wrap:wrap; gap:3px; }
-.fthumb { border:2px solid #333; cursor:pointer; }
+/* ── FRAME STRIP ── */
+#frameStrip { display:flex; flex-wrap:wrap; gap:3px; max-height:200px; overflow-y:auto; }
+.fthumb { border:2px solid #333; cursor:pointer; position:relative; flex-shrink:0; }
 .fthumb.sel { border-color:#FFD700; }
-
+.fthumb .fdel {
+  display:none; position:absolute; top:0; right:0;
+  background:rgba(180,30,30,.85); color:#fff; font-size:9px;
+  width:14px; height:14px; line-height:14px; text-align:center; cursor:pointer;
+  border-radius:0 0 0 4px;
+}
+.fthumb:hover .fdel { display:block; }
 #selectedInfo { font-size:10px; color:#888; line-height:1.6; }
-#copyOut { display:none; background:#0a0a16; border:1px solid #333; padding:8px; border-radius:5px; font-size:10px; color:#7f7; white-space:pre-wrap; word-break:break-all; }
 
-/* RIGHT: canvas area */
+/* ── MAIN ── */
 #main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-#toolbar { background:#12122a; border-bottom:1px solid #2a2a40; padding:8px 12px; display:flex; gap:12px; align-items:center; font-size:11px; color:#888; }
+#toolbar { background:#12122a; border-bottom:1px solid #2a2a40; padding:6px 12px; display:flex; gap:12px; align-items:center; font-size:11px; color:#888; flex-wrap:wrap; }
 #toolbar span { color:#FFD700; }
 #canvasWrap { flex:1; overflow:auto; position:relative; background:#0a0a16; }
 #sheetCanvas { display:block; cursor:crosshair; }
-#animWrap { position:fixed; bottom:16px; right:16px; background:#16162a; border:1px solid #333; border-radius:8px; padding:10px; z-index:100; }
-#animCanvas { border:1px solid #444; display:block; margin-bottom:4px; }
-#animCtrl { display:flex; gap:4px; }
-#animCtrl button { width:auto; padding:3px 8px; margin:0; }
-#animFps { font-size:10px; color:#888; margin-top:4px; text-align:center; }
+
+/* ── ANIM PREVIEW ── */
+#animWrap {
+  position:fixed; bottom:12px; right:12px;
+  background:#16162a; border:1px solid #444; border-radius:8px;
+  padding:10px; z-index:100; min-width:120px;
+}
+#animCanvas { border:1px solid #444; display:block; margin-bottom:6px; }
+#animCtrl { display:flex; gap:4px; margin-bottom:4px; }
+#animCtrl button { width:auto; padding:3px 8px; margin:0; font-size:12px; }
+#animFpsRow { display:flex; align-items:center; gap:6px; font-size:10px; color:#888; }
+#animFpsRow input { flex:1; }
+#animFrameLabel { font-size:10px; color:#FFD700; text-align:center; margin-top:4px; }
 </style>
 </head>
 <body>
@@ -54,28 +76,30 @@ button.green { background:#103a10; border-color:#5a8a5a; color:#afa; }
 <div id="sidebar">
   <h1>🌸 Bloom Frame Editor</h1>
 
+  <!-- SHEET LOADER -->
   <div class="sg">
     <h3>Sheet</h3>
     <div class="row"><label>Màu</label>
       <select id="colorPicker">
-        <option value="red">Red</option>
-        <option value="pink">Pink</option>
-        <option value="yellow">Yellow</option>
-        <option value="purple">Purple</option>
-        <option value="white">White</option>
-        <option value="orange">Orange</option>
-        <option value="blue">Blue</option>
-        <option value="camellia">Camellia</option>
+        <option value="red">Red (R)</option>
+        <option value="pink">Pink (P)</option>
+        <option value="yellow">Yellow (Y)</option>
+        <option value="purple">Purple (V)</option>
+        <option value="white">White (W)</option>
+        <option value="orange">Orange (O)</option>
+        <option value="blue">Blue (B)</option>
+        <option value="camellia">Camellia (C)</option>
       </select>
     </div>
-    <div class="row"><label>Cols</label><input type="number" id="colsIn" value="5" min="1" max="12"></div>
-    <div class="row"><label>Rows</label><input type="number" id="rowsIn" value="2" min="1" max="12"></div>
     <div class="row"><label>Zoom</label><input type="number" id="zoomIn" value="50" min="10" max="200" step="5"><span style="font-size:10px;color:#666">%</span></div>
-    <button onclick="reload()">↺ Load Sheet</button>
+    <button onclick="loadSheet()">↺ Load Sheet</button>
+    <button class="blue" onclick="loadFromServer()">📥 Load rects từ server</button>
+    <div id="statusLoad" class="status"></div>
   </div>
 
+  <!-- SELECTED FRAME -->
   <div class="sg">
-    <h3>Selected Frame</h3>
+    <h3>Frame đang chọn</h3>
     <div id="selectedInfo">Click frame để chọn</div>
     <div style="margin-top:8px;">
       <div class="row"><label>X</label><input type="number" id="fxIn" oninput="applyInput('x')"></div>
@@ -85,103 +109,145 @@ button.green { background:#103a10; border-color:#5a8a5a; color:#afa; }
     </div>
     <div class="row"><label>Alpha</label>
       <input type="range" id="alphaIn" min="1" max="128" value="8" oninput="document.getElementById('alphaVal').textContent=this.value">
-      <span class="val" id="alphaVal">8</span>
+      <span id="alphaVal" style="font-size:10px;color:#aaa">8</span>
     </div>
-    <div class="row"><label>Padding</label>
+    <div class="row"><label>Pad</label>
       <input type="range" id="padIn" min="0" max="40" value="4" oninput="document.getElementById('padVal').textContent=this.value">
-      <span class="val" id="padVal">4</span>
+      <span id="padVal" style="font-size:10px;color:#aaa">4</span>
     </div>
     <button class="green" onclick="bestFit()">✨ Best Fit frame này</button>
-    <button onclick="bestFitAll()">✨ Best Fit ALL frames</button>
+    <button onclick="bestFitAll()">✨ Best Fit ALL</button>
     <button onclick="bestFitAllUniform()">✨ Best Fit ALL + đồng đều W×H</button>
-    <div id="bfDebug" style="font-size:10px;color:#fa0;margin-top:4px;word-break:break-all;min-height:14px;"></div>
-    <button onclick="applyToAll()">↕ Apply W×H to all frames</button>
-    <button onclick="resetSelected()">↺ Reset frame về default</button>
+    <div id="bfDebug" class="status info"></div>
+    <button onclick="applyToAll()">↕ Apply W×H to all</button>
+    <button onclick="resetSelected()">↺ Reset frame này</button>
     <button onclick="resetAll()">↺ Reset ALL frames</button>
   </div>
 
+  <!-- FRAME LIST -->
   <div class="sg">
-    <h3>All Frames</h3>
+    <h3>Frames <span id="frameCount" style="color:#FFD700;font-size:10px;font-weight:normal;"></span></h3>
     <div id="frameStrip"></div>
+    <div style="display:flex;gap:4px;margin-top:6px;">
+      <button onclick="addFrame()" style="flex:1;background:#103a10;border-color:#5a8;color:#afa;">+ Add</button>
+      <button onclick="duplicateFrame()" style="flex:1;" title="Duplicate selected frame">⧉ Dup</button>
+      <button onclick="deleteFrame()" class="red" style="flex:1;">✕ Del</button>
+    </div>
+    <div style="display:flex;gap:4px;margin-top:3px;">
+      <button onclick="moveFrame(-1)" style="flex:1;">◀ Move</button>
+      <button onclick="moveFrame(1)"  style="flex:1;">Move ▶</button>
+    </div>
   </div>
 
+  <!-- SAVE -->
   <div class="sg">
-    <button onclick="pickSaveDir()" style="margin-bottom:4px;">📁 Chọn thư mục save</button>
-    <div id="saveDirLabel" style="font-size:10px;color:#888;margin-bottom:6px;">Chưa chọn — sẽ hỏi mỗi lần</div>
-    <button class="gold" onclick="saveConfig()" id="saveBtn">💾 Save</button>
-    <div id="copyOut"></div>
+    <h3>Export / Save</h3>
+    <button class="gold" onclick="saveToServer()" id="saveBtn">💾 Save to server</button>
+    <button onclick="downloadJSON()">⬇ Download JSON</button>
+    <div id="statusSave" class="status"></div>
   </div>
 </div>
 
+<!-- MAIN CANVAS AREA -->
 <div id="main">
   <div id="toolbar">
     <span id="tbZoom">50%</span>
     <span id="tbSheet">—</span>
     <span id="tbFrame">—</span>
     <span id="tbMouse">—</span>
-    <span style="margin-left:auto;color:#555">Drag frame rect để di chuyển · Drag góc để resize</span>
+    <span style="margin-left:auto;color:#555">Drag rect: di chuyển · Drag góc: resize</span>
   </div>
   <div id="canvasWrap">
     <canvas id="sheetCanvas"></canvas>
   </div>
 </div>
 
-<!-- Floating anim preview -->
+<!-- FLOATING ANIM PREVIEW -->
 <div id="animWrap">
   <canvas id="animCanvas" width="100" height="140"></canvas>
   <div id="animCtrl">
     <button onclick="playAnim()">▶</button>
     <button onclick="stopAnim()">⏹</button>
-    <button onclick="stepAnim(-1)">◀</button>
-    <button onclick="stepAnim(1)">▶|</button>
+    <button onclick="stepAnim(-1)">◀|</button>
+    <button onclick="stepAnim(1)">|▶</button>
   </div>
-  <div id="animFps">
-    <input type="range" id="fpsIn" min="20" max="300" value="70" style="width:100%">
-    <span id="fpsVal">70</span>ms/frame
+  <div id="animFpsRow">
+    <input type="range" id="fpsIn" min="20" max="400" value="90">
+    <span id="fpsVal">90</span>ms
   </div>
+  <div id="animFrameLabel">F0</div>
 </div>
 
 <script>
 const BASE = '../assets/sort_blossom/flower_';
+const COLOR_KEY = { red:'R', pink:'P', yellow:'Y', purple:'V', white:'W', orange:'O', blue:'B', camellia:'C' };
+
 let img = new Image();
 let zoom = 0.5;
-let cols = 5, rows = 2;
-let frames = []; // [{x,y,w,h}] one per frame, in sheet pixels
+let frames = []; // [{x,y,w,h}]
 let selIdx = -1;
 let animTimer = null, animFrame = 0;
-
-// Drag state
-let drag = null; // {type:'move'|'resize', frameIdx, corner, startMx,startMy, startFx,startFy,startFw,startFh}
+let drag = null;
 
 const canvas = document.getElementById('sheetCanvas');
-const ctx = canvas.getContext('2d');
+const ctx    = canvas.getContext('2d');
 
-// ─── LOAD ────────────────────────────────────────────────
-function reload() {
+document.getElementById('fpsIn').addEventListener('input', function() {
+  document.getElementById('fpsVal').textContent = this.value;
+});
+
+// ─── LOAD SHEET ──────────────────────────────────────────────
+function loadSheet() {
   const color = document.getElementById('colorPicker').value;
-  cols = parseInt(document.getElementById('colsIn').value) || 5;
-  rows = parseInt(document.getElementById('rowsIn').value) || 2;
   zoom = (parseInt(document.getElementById('zoomIn').value) || 50) / 100;
-
   img = new Image();
-  img.onerror = () => alert('Không load được: ' + BASE + color + '_bloom.webp');
-  img.onload  = () => { initFrames(); render(); buildStrip(); playAnim(); };
+  img.onerror = () => setStatus('statusLoad', '❌ Không load: ' + BASE + color + '_bloom.webp', 'err');
+  img.onload  = () => {
+    setStatus('statusLoad', `✅ Loaded ${img.naturalWidth}×${img.naturalHeight}`, 'ok');
+    if (!frames.length) initFramesDefault();
+    render(); buildStrip(); playAnim();
+  };
   img.src = BASE + color + '_bloom.webp?v=' + Date.now();
 }
 
-function initFrames() {
+function initFramesDefault() {
+  // Default: 5×2 grid
+  const cols = 5, rows = 2;
   const fw = img.naturalWidth  / cols;
   const fh = img.naturalHeight / rows;
   frames = [];
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < cols; c++)
-      frames.push({ x: c * fw, y: r * fh, w: fw, h: fh });
+      frames.push({ x: c*fw, y: r*fh, w: fw, h: fh });
   selIdx = 0;
   updateInfoPanel();
-  document.getElementById('tbSheet').textContent = `Sheet: ${img.naturalWidth}×${img.naturalHeight}`;
+  document.getElementById('tbSheet').textContent = `${img.naturalWidth}×${img.naturalHeight}`;
 }
 
-// ─── RENDER ──────────────────────────────────────────────
+// ─── LOAD RECTS FROM SERVER ──────────────────────────────────
+async function loadFromServer() {
+  setStatus('statusLoad', '⏳ Loading...', 'info');
+  try {
+    const res  = await fetch('/api/bloom-rects');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    const color = document.getElementById('colorPicker').value;
+    const key   = COLOR_KEY[color];
+    const rects = data.rects[key];
+    if (!rects || !rects.length) throw new Error(`No rects for ${key}`);
+    frames = rects.map(([x,y,w,h]) => ({x,y,w,h}));
+    selIdx = 0;
+    updateInfoPanel();
+    buildStrip();
+    render();
+    playAnim();
+    setStatus('statusLoad', `✅ Loaded ${frames.length} frames [${key}]`, 'ok');
+  } catch(e) {
+    setStatus('statusLoad', '❌ ' + e.message, 'err');
+  }
+}
+
+// ─── RENDER CANVAS ───────────────────────────────────────────
 function render() {
   if (!img.naturalWidth) return;
   canvas.width  = Math.round(img.naturalWidth  * zoom);
@@ -189,74 +255,90 @@ function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  // Draw frame rects
   frames.forEach((f, i) => {
-    const x = f.x * zoom, y = f.y * zoom, w = f.w * zoom, h = f.h * zoom;
-    const isSel = i === selIdx;
+    const x = f.x*zoom, y = f.y*zoom, w = f.w*zoom, h = f.h*zoom;
+    const isSel = (i === selIdx);
 
-    // Dim overlay outside frame
-    ctx.fillStyle = isSel ? 'rgba(255,215,0,0.06)' : 'rgba(0,0,0,0.0)';
-    ctx.fillRect(x, y, w, h);
-
-    // Border
-    ctx.strokeStyle = isSel ? '#FFD700' : 'rgba(255,255,255,0.25)';
+    ctx.strokeStyle = isSel ? '#FFD700' : 'rgba(255,255,255,0.3)';
     ctx.lineWidth   = isSel ? 2 : 1;
-    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.strokeRect(x+0.5, y+0.5, w-1, h-1);
 
-    // Label
-    ctx.fillStyle = isSel ? '#FFD700' : 'rgba(255,255,255,0.5)';
-    ctx.font = `${Math.max(10, Math.round(13 * zoom))}px monospace`;
-    ctx.fillText('F' + i, x + 4, y + 14 * zoom);
-
-    // Resize handles (corners) for selected
     if (isSel) {
-      [
-        [x,   y],   [x+w, y],
-        [x,   y+h], [x+w, y+h],
-      ].forEach(([hx, hy]) => {
+      ctx.fillStyle = 'rgba(255,215,0,0.08)';
+      ctx.fillRect(x, y, w, h);
+    }
+
+    // Frame label
+    ctx.fillStyle = isSel ? '#FFD700' : 'rgba(255,255,255,0.55)';
+    ctx.font = `${Math.max(9, Math.round(12*zoom))}px monospace`;
+    ctx.fillText('F'+i, x+3, y+Math.max(10, 13*zoom));
+
+    // Corner handles for selected
+    if (isSel) {
+      [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([hx,hy]) => {
         ctx.fillStyle = '#FFD700';
-        ctx.fillRect(hx - 5, hy - 5, 10, 10);
+        ctx.fillRect(hx-5, hy-5, 10, 10);
       });
     }
   });
 }
 
-// ─── THUMB STRIP ─────────────────────────────────────────
+// ─── FRAME STRIP ─────────────────────────────────────────────
 function buildStrip() {
   const strip = document.getElementById('frameStrip');
   strip.innerHTML = '';
   frames.forEach((f, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'fthumb' + (i===selIdx?' sel':'');
+    wrap.id = 'tw'+i;
+    wrap.style.cssText = 'width:36px;height:50px;';
+    wrap.title = `F${i}`;
+
     const cv = document.createElement('canvas');
-    cv.className = 'fthumb' + (i === selIdx ? ' sel' : '');
-    cv.id = 'th' + i;
-    cv.width  = 36; cv.height = 50;
-    cv.style.cssText = 'width:36px;height:50px;';
-    const tc = cv.getContext('2d');
-    tc.drawImage(img, f.x, f.y, f.w, f.h, 0, 0, 36, 50);
-    cv.onclick = () => selectFrame(i);
-    strip.appendChild(cv);
+    cv.width = 36; cv.height = 50;
+    cv.style.cssText = 'display:block;';
+    if (img.naturalWidth) cv.getContext('2d').drawImage(img, f.x, f.y, f.w, f.h, 0, 0, 36, 50);
+    wrap.appendChild(cv);
+
+    const del = document.createElement('div');
+    del.className = 'fdel';
+    del.textContent = '✕';
+    del.onclick = (e) => { e.stopPropagation(); deleteFrameAt(i); };
+    wrap.appendChild(del);
+
+    wrap.onclick = () => selectFrame(i);
+    strip.appendChild(wrap);
   });
+  document.getElementById('frameCount').textContent = `(${frames.length})`;
 }
 
 function refreshThumb(i) {
-  const cv = document.getElementById('th' + i);
-  if (!cv) return;
+  const wrap = document.getElementById('tw'+i);
+  if (!wrap) return;
+  const cv = wrap.querySelector('canvas');
+  if (!cv || !img.naturalWidth) return;
   const tc = cv.getContext('2d');
   const f = frames[i];
   tc.clearRect(0, 0, 36, 50);
   tc.drawImage(img, f.x, f.y, f.w, f.h, 0, 0, 36, 50);
 }
 
-// ─── SELECTION ───────────────────────────────────────────
+// ─── SELECTION ───────────────────────────────────────────────
 function selectFrame(i) {
   selIdx = i;
-  document.querySelectorAll('.fthumb').forEach((c,j) => c.classList.toggle('sel', j===i));
+  document.querySelectorAll('.fthumb').forEach((w,j) => w.classList.toggle('sel', j===i));
   updateInfoPanel();
   render();
+  stopAnim();
+  drawAnimFrame(i);
+  document.getElementById('animFrameLabel').textContent = 'F'+i;
 }
 
 function updateInfoPanel() {
-  if (selIdx < 0 || selIdx >= frames.length) return;
+  if (selIdx < 0 || selIdx >= frames.length) {
+    document.getElementById('selectedInfo').textContent = 'Chưa chọn frame';
+    return;
+  }
   const f = frames[selIdx];
   document.getElementById('selectedInfo').textContent =
     `Frame ${selIdx}  (${Math.round(f.x)}, ${Math.round(f.y)})  ${Math.round(f.w)}×${Math.round(f.h)}`;
@@ -270,340 +352,289 @@ function updateInfoPanel() {
 
 function applyInput(field) {
   if (selIdx < 0) return;
-  const f = frames[selIdx];
-  f[field] = parseFloat(document.getElementById('f'+field+'In').value) || 0;
+  frames[selIdx][field] = parseFloat(document.getElementById('f'+field+'In').value) || 0;
   refreshThumb(selIdx);
+  render();
+  updateInfoPanel();
+  drawAnimFrame(selIdx);
+}
+
+// ─── ADD / DELETE / MOVE FRAMES ──────────────────────────────
+function addFrame() {
+  // Add copy of last frame (or default)
+  const last = frames[frames.length-1] || { x:0, y:0, w:100, h:100 };
+  frames.push({ ...last });
+  selIdx = frames.length - 1;
+  buildStrip();
   render();
   updateInfoPanel();
 }
 
-// ─── BEST FIT ─────────────────────────────────────────────
-// Scan alpha channel inside current frame rect → shrink to tight content bounds
-function getImagePixels(frameIdx) {
-  const f = frames[frameIdx];
+function duplicateFrame() {
+  if (selIdx < 0) return;
+  frames.splice(selIdx+1, 0, { ...frames[selIdx] });
+  selIdx = selIdx + 1;
+  buildStrip();
+  render();
+  updateInfoPanel();
+}
+
+function deleteFrameAt(i) {
+  if (frames.length <= 1) { setStatus('bfDebug','❌ Cần ít nhất 1 frame','err'); return; }
+  frames.splice(i, 1);
+  if (selIdx >= frames.length) selIdx = frames.length - 1;
+  buildStrip();
+  render();
+  updateInfoPanel();
+}
+
+function deleteFrame() {
+  deleteFrameAt(selIdx);
+}
+
+function moveFrame(dir) {
+  if (selIdx < 0) return;
+  const ni = selIdx + dir;
+  if (ni < 0 || ni >= frames.length) return;
+  [frames[selIdx], frames[ni]] = [frames[ni], frames[selIdx]];
+  selIdx = ni;
+  buildStrip();
+  render();
+  updateInfoPanel();
+}
+
+// ─── BEST FIT ────────────────────────────────────────────────
+function getImagePixels(idx) {
+  const f = frames[idx];
   const oc = document.createElement('canvas');
   oc.width = Math.ceil(f.w); oc.height = Math.ceil(f.h);
   const oc2 = oc.getContext('2d');
   oc2.drawImage(img, f.x, f.y, f.w, f.h, 0, 0, oc.width, oc.height);
-  try { return { px: oc2.getImageData(0,0,oc.width,oc.height).data, W: oc.width, H: oc.height }; }
-  catch(e) { throw new Error('Canvas bị block — mở từ: localhost:3459/tools/bloom_test.html'); }
+  try { return { px: oc2.getImageData(0,0,oc.width,oc.height).data, W:oc.width, H:oc.height }; }
+  catch(e) { throw new Error('Canvas blocked — dùng localhost:3456'); }
 }
 
-function computeBestFit(frameIdx) {
-  if (!img.naturalWidth || !frames[frameIdx]) return null;
-  const ALPHA = parseInt(document.getElementById('alphaIn')?.value) || 8;
-  const PAD   = parseInt(document.getElementById('padIn')?.value)   || 4;
-  const f = frames[frameIdx];
-  const { px, W, H } = getImagePixels(frameIdx);
-
-  // Scan từng cạnh vào trong — dừng khi gặp hàng/cột có pixel visible
-  const hasVisible = (x0,y0,x1,y1) => {
-    for (let y=y0; y<=y1; y++)
-      for (let x=x0; x<=x1; x++)
-        if (px[(y*W+x)*4+3] > ALPHA) return true;
+function computeBestFit(idx) {
+  if (!img.naturalWidth || !frames[idx]) return null;
+  const ALPHA = parseInt(document.getElementById('alphaIn').value) || 8;
+  const PAD   = parseInt(document.getElementById('padIn').value)   || 4;
+  const f = frames[idx];
+  const { px, W, H } = getImagePixels(idx);
+  const has = (x0,y0,x1,y1) => {
+    for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) if (px[(y*W+x)*4+3]>ALPHA) return true;
     return false;
   };
-
-  let minX=0, maxX=W-1, minY=0, maxY=H-1;
-
-  // top → down
-  for (let y=0; y<H; y++) { if (hasVisible(0,y,W-1,y)) { minY=y; break; } }
-  // bottom → up
-  for (let y=H-1; y>=0; y--) { if (hasVisible(0,y,W-1,y)) { maxY=y; break; } }
-  // left → right
-  for (let x=0; x<W; x++) { if (hasVisible(x,minY,x,maxY)) { minX=x; break; } }
-  // right → left
-  for (let x=W-1; x>=0; x--) { if (hasVisible(x,minY,x,maxY)) { maxX=x; break; } }
-
-  if (minX >= maxX || minY >= maxY) return null;
-
-  const x1 = Math.max(0,   minX - PAD);
-  const y1 = Math.max(0,   minY - PAD);
-  const x2 = Math.min(W-1, maxX + PAD);
-  const y2 = Math.min(H-1, maxY + PAD);
-
-  return { x: f.x + x1, y: f.y + y1, w: x2-x1+1, h: y2-y1+1 };
-}
-
-// Best Fit ALL rồi normalize W×H về max — tất cả frames cùng size, chỉ khác vị trí
-function bestFitAllUniform() {
-  const dbg = document.getElementById('bfDebug');
-  const fits = frames.map((_,i) => { try { return computeBestFit(i); } catch(e) { return null; } });
-  const valid = fits.filter(Boolean);
-  if (!valid.length) { dbg.textContent = '❌ Không fit được frame nào'; return; }
-
-  // Max W và H trong tất cả fits
-  const maxW = Math.max(...valid.map(f => f.w));
-  const maxH = Math.max(...valid.map(f => f.h));
-
-  // Expand mỗi fit ra center → size maxW × maxH
-  fits.forEach((fit, i) => {
-    if (!fit) return;
-    const cx = fit.x + fit.w/2;
-    const cy = fit.y + fit.h/2;
-    frames[i] = {
-      x: Math.max(0, cx - maxW/2),
-      y: Math.max(0, cy - maxH/2),
-      w: maxW, h: maxH,
-    };
-    refreshThumb(i);
-  });
-  render(); updateInfoPanel();
-  dbg.textContent = `✅ Uniform ${Math.round(maxW)}×${Math.round(maxH)} — ${valid.length} frames`;
+  let minX=0,maxX=W-1,minY=0,maxY=H-1;
+  for (let y=0;y<H;y++)   { if (has(0,y,W-1,y))    { minY=y; break; } }
+  for (let y=H-1;y>=0;y--){ if (has(0,y,W-1,y))    { maxY=y; break; } }
+  for (let x=0;x<W;x++)   { if (has(x,minY,x,maxY)){ minX=x; break; } }
+  for (let x=W-1;x>=0;x--){ if (has(x,minY,x,maxY)){ maxX=x; break; } }
+  if (minX>=maxX||minY>=maxY) return null;
+  return {
+    x: f.x+Math.max(0,minX-PAD), y: f.y+Math.max(0,minY-PAD),
+    w: Math.min(W-1,maxX+PAD)-Math.max(0,minX-PAD)+1,
+    h: Math.min(H-1,maxY+PAD)-Math.max(0,minY-PAD)+1,
+  };
 }
 
 function bestFit() {
-  const dbg = document.getElementById('bfDebug');
-  if (selIdx < 0) { dbg.textContent = '❌ Chưa chọn frame (selIdx=' + selIdx + ')'; return; }
-  if (!img.naturalWidth) { dbg.textContent = '❌ Ảnh chưa load'; return; }
-  dbg.textContent = '⏳ Scanning frame ' + selIdx + '...';
+  if (selIdx<0) return;
   try {
     const fit = computeBestFit(selIdx);
-    if (!fit) { dbg.textContent = '❌ Không tìm được content (toàn transparent?)'; return; }
+    if (!fit) { setStatus('bfDebug','❌ Không tìm thấy content','err'); return; }
     frames[selIdx] = fit;
-    refreshThumb(selIdx);
-    render();
-    updateInfoPanel();
-    dbg.textContent = `✅ F${selIdx}: x=${Math.round(fit.x)} y=${Math.round(fit.y)} w=${Math.round(fit.w)} h=${Math.round(fit.h)}`;
-  } catch(e) { dbg.textContent = '❌ Error: ' + e.message; }
+    refreshThumb(selIdx); render(); updateInfoPanel();
+    setStatus('bfDebug',`✅ F${selIdx}: ${Math.round(fit.w)}×${Math.round(fit.h)}`,'ok');
+  } catch(e) { setStatus('bfDebug','❌ '+e.message,'err'); }
 }
 
 function bestFitAll() {
-  const dbg = document.getElementById('bfDebug');
-  let ok = 0, fail = 0;
-  frames.forEach((_, i) => {
-    try {
-      const fit = computeBestFit(i);
-      if (fit) { frames[i] = fit; refreshThumb(i); ok++; }
-      else fail++;
-    } catch(e) { fail++; }
+  let ok=0;
+  frames.forEach((_,i)=>{
+    try { const f=computeBestFit(i); if(f){frames[i]=f;refreshThumb(i);ok++;} } catch(e){}
   });
-  render();
-  updateInfoPanel();
-  dbg.textContent = `✅ Done: ${ok} OK, ${fail} failed`;
+  render(); updateInfoPanel();
+  setStatus('bfDebug',`✅ ${ok}/${frames.length} frames fit`,'ok');
+}
+
+function bestFitAllUniform() {
+  const fits = frames.map((_,i)=>{ try{return computeBestFit(i);}catch(e){return null;} });
+  const valid = fits.filter(Boolean);
+  if (!valid.length) { setStatus('bfDebug','❌ Không fit được','err'); return; }
+  const maxW = Math.max(...valid.map(f=>f.w));
+  const maxH = Math.max(...valid.map(f=>f.h));
+  fits.forEach((fit,i)=>{
+    if(!fit) return;
+    const cx=fit.x+fit.w/2, cy=fit.y+fit.h/2;
+    frames[i]={x:Math.max(0,cx-maxW/2),y:Math.max(0,cy-maxH/2),w:maxW,h:maxH};
+    refreshThumb(i);
+  });
+  render(); updateInfoPanel();
+  setStatus('bfDebug',`✅ Uniform ${Math.round(maxW)}×${Math.round(maxH)}`,'ok');
 }
 
 function applyToAll() {
-  if (selIdx < 0) return;
-  const f = frames[selIdx];
-  frames.forEach((fr, i) => { fr.w = f.w; fr.h = f.h; refreshThumb(i); });
+  if (selIdx<0) return;
+  const f=frames[selIdx];
+  frames.forEach((fr,i)=>{ fr.w=f.w; fr.h=f.h; refreshThumb(i); });
   render();
 }
-
 function resetSelected() {
-  if (selIdx < 0) return;
-  const fw = img.naturalWidth  / cols;
-  const fh = img.naturalHeight / rows;
-  const c = selIdx % cols, r = Math.floor(selIdx / cols);
-  frames[selIdx] = { x: c * fw, y: r * fh, w: fw, h: fh };
-  refreshThumb(selIdx);
-  render();
-  updateInfoPanel();
+  if (selIdx<0||!img.naturalWidth) return;
+  const cols=5,rows=2;
+  const fw=img.naturalWidth/cols, fh=img.naturalHeight/rows;
+  const c=selIdx%cols, r=Math.floor(selIdx/cols);
+  frames[selIdx]={x:c*fw,y:r*fh,w:fw,h:fh};
+  refreshThumb(selIdx); render(); updateInfoPanel();
 }
-
 function resetAll() {
-  initFrames();
-  buildStrip();
-  render();
+  if (!img.naturalWidth) return;
+  initFramesDefault(); buildStrip(); render();
 }
 
-// ─── MOUSE / DRAG ────────────────────────────────────────
-const HANDLE = 8; // px on canvas for corner grab
-
+// ─── DRAG ────────────────────────────────────────────────────
+const HANDLE = 8;
 function hitTest(mx, my) {
-  // Check corners of selected frame first
-  if (selIdx >= 0) {
-    const f = frames[selIdx];
-    const x = f.x * zoom, y = f.y * zoom, w = f.w * zoom, h = f.h * zoom;
-    const corners = [
-      {cx:x,   cy:y,   dx:-1, dy:-1},
-      {cx:x+w, cy:y,   dx: 1, dy:-1},
-      {cx:x,   cy:y+h, dx:-1, dy: 1},
-      {cx:x+w, cy:y+h, dx: 1, dy: 1},
-    ];
-    for (const c of corners) {
-      if (Math.abs(mx - c.cx) < HANDLE && Math.abs(my - c.cy) < HANDLE)
-        return { type: 'resize', frameIdx: selIdx, dx: c.dx, dy: c.dy };
-    }
+  if (selIdx>=0) {
+    const f=frames[selIdx];
+    const x=f.x*zoom,y=f.y*zoom,w=f.w*zoom,h=f.h*zoom;
+    const corners=[{cx:x,cy:y,dx:-1,dy:-1},{cx:x+w,cy:y,dx:1,dy:-1},{cx:x,cy:y+h,dx:-1,dy:1},{cx:x+w,cy:y+h,dx:1,dy:1}];
+    for (const c of corners)
+      if (Math.abs(mx-c.cx)<HANDLE&&Math.abs(my-c.cy)<HANDLE)
+        return {type:'resize',frameIdx:selIdx,dx:c.dx,dy:c.dy};
   }
-  // Check if inside any frame (back-to-front)
-  for (let i = frames.length - 1; i >= 0; i--) {
-    const f = frames[i];
-    if (mx >= f.x*zoom && mx <= (f.x+f.w)*zoom &&
-        my >= f.y*zoom && my <= (f.y+f.h)*zoom)
-      return { type: 'move', frameIdx: i };
+  for (let i=frames.length-1;i>=0;i--) {
+    const f=frames[i];
+    if (mx>=f.x*zoom&&mx<=(f.x+f.w)*zoom&&my>=f.y*zoom&&my<=(f.y+f.h)*zoom)
+      return {type:'move',frameIdx:i};
   }
   return null;
 }
 
-canvas.addEventListener('mousedown', e => {
-  const r = canvas.getBoundingClientRect();
-  const mx = e.clientX - r.left, my = e.clientY - r.top;
-  const hit = hitTest(mx, my);
+canvas.addEventListener('mousedown', e=>{
+  const r=canvas.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  const hit=hitTest(mx,my);
   if (!hit) { selectFrame(-1); render(); return; }
   selectFrame(hit.frameIdx);
-  const f = frames[hit.frameIdx];
-  drag = { ...hit, startMx:mx, startMy:my, startFx:f.x, startFy:f.y, startFw:f.w, startFh:f.h };
+  const f=frames[hit.frameIdx];
+  drag={...hit,startMx:mx,startMy:my,startFx:f.x,startFy:f.y,startFw:f.w,startFh:f.h};
   e.preventDefault();
 });
-
-window.addEventListener('mousemove', e => {
-  const r = canvas.getBoundingClientRect();
-  const mx = e.clientX - r.left, my = e.clientY - r.top;
-  // Update cursor
-  const hit = hitTest(mx, my);
-  canvas.style.cursor = hit ? (hit.type === 'resize' ? 'nwse-resize' : 'move') : 'crosshair';
-  // Mouse coords on sheet
-  document.getElementById('tbMouse').textContent = `mouse: ${Math.round(mx/zoom)},${Math.round(my/zoom)}`;
-
+window.addEventListener('mousemove', e=>{
+  const r=canvas.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  canvas.style.cursor=hitTest(mx,my)?((hitTest(mx,my).type==='resize')?'nwse-resize':'move'):'crosshair';
+  document.getElementById('tbMouse').textContent=`${Math.round(mx/zoom)},${Math.round(my/zoom)}`;
   if (!drag) return;
-  const dx = (mx - drag.startMx) / zoom;
-  const dy = (my - drag.startMy) / zoom;
-  const f = frames[drag.frameIdx];
-
-  if (drag.type === 'move') {
-    f.x = drag.startFx + dx;
-    f.y = drag.startFy + dy;
-  } else {
-    // resize: adjust w/h based on which corner
-    if (drag.dx < 0) { f.x = drag.startFx + dx; f.w = Math.max(10, drag.startFw - dx); }
-    else             { f.w = Math.max(10, drag.startFw + dx); }
-    if (drag.dy < 0) { f.y = drag.startFy + dy; f.h = Math.max(10, drag.startFh - dy); }
-    else             { f.h = Math.max(10, drag.startFh + dy); }
+  const dx=(mx-drag.startMx)/zoom, dy=(my-drag.startMy)/zoom;
+  const f=frames[drag.frameIdx];
+  if (drag.type==='move') { f.x=drag.startFx+dx; f.y=drag.startFy+dy; }
+  else {
+    if (drag.dx<0){f.x=drag.startFx+dx;f.w=Math.max(10,drag.startFw-dx);}
+    else           {f.w=Math.max(10,drag.startFw+dx);}
+    if (drag.dy<0){f.y=drag.startFy+dy;f.h=Math.max(10,drag.startFh-dy);}
+    else           {f.h=Math.max(10,drag.startFh+dy);}
   }
-  refreshThumb(drag.frameIdx);
-  render();
-  updateInfoPanel();
+  refreshThumb(drag.frameIdx); render(); updateInfoPanel();
 });
-
-window.addEventListener('mouseup', () => { drag = null; });
-
-// Zoom with wheel
-canvas.addEventListener('wheel', e => {
+window.addEventListener('mouseup', ()=>{ drag=null; });
+canvas.addEventListener('wheel', e=>{
   e.preventDefault();
-  zoom = Math.max(0.1, Math.min(3, zoom + (e.deltaY < 0 ? 0.05 : -0.05)));
-  document.getElementById('zoomIn').value = Math.round(zoom * 100);
-  document.getElementById('tbZoom').textContent = Math.round(zoom * 100) + '%';
+  zoom=Math.max(0.1,Math.min(3,zoom+(e.deltaY<0?0.05:-0.05)));
+  document.getElementById('zoomIn').value=Math.round(zoom*100);
+  document.getElementById('tbZoom').textContent=Math.round(zoom*100)+'%';
   render();
-}, { passive: false });
+},{passive:false});
 
-// ─── ANIMATION ───────────────────────────────────────────
+// ─── ANIMATION ───────────────────────────────────────────────
 function drawAnimFrame(fi) {
-  if (!img.naturalWidth || !frames[fi]) return;
-  const f = frames[fi];
-  const ac = document.getElementById('animCanvas');
-  const aspect = f.h / f.w;
-  ac.width = 100; ac.height = Math.round(100 * aspect);
-  const ac2 = ac.getContext('2d');
-  ac2.clearRect(0, 0, ac.width, ac.height);
-  ac2.drawImage(img, f.x, f.y, f.w, f.h, 0, 0, ac.width, ac.height);
-  document.getElementById('animFps').innerHTML =
-    `<input type="range" id="fpsIn" min="20" max="300" value="${document.getElementById('fpsIn')?.value||70}" style="width:100%" oninput="document.getElementById('fpsVal').textContent=this.value">
-     <span id="fpsVal">${document.getElementById('fpsIn')?.value||70}</span>ms/frame`;
+  if (!img.naturalWidth||!frames[fi]) return;
+  const f=frames[fi];
+  const ac=document.getElementById('animCanvas');
+  const aspect=f.h/f.w;
+  ac.width=100; ac.height=Math.max(10,Math.round(100*aspect));
+  ac.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,ac.width,ac.height);
+  document.getElementById('animFrameLabel').textContent='F'+fi+' / '+(frames.length-1);
 }
-
 function playAnim() {
-  stopAnim();
-  animFrame = 0;
+  stopAnim(); animFrame=0;
   function tick() {
     if (!frames.length) return;
     drawAnimFrame(animFrame);
-    animFrame = (animFrame + 1) % frames.length;
-    const ms = parseInt(document.getElementById('fpsIn')?.value) || 70;
-    animTimer = setTimeout(tick, ms);
+    animFrame=(animFrame+1)%frames.length;
+    animTimer=setTimeout(tick, parseInt(document.getElementById('fpsIn').value)||90);
   }
   tick();
 }
-function stopAnim() { if (animTimer) { clearTimeout(animTimer); animTimer = null; } }
-function stepAnim(d) { stopAnim(); animFrame = ((animFrame+d)+frames.length)%frames.length; drawAnimFrame(animFrame); }
+function stopAnim() { if(animTimer){clearTimeout(animTimer);animTimer=null;} }
+function stepAnim(d) { stopAnim(); animFrame=((animFrame+d)+frames.length)%frames.length; drawAnimFrame(animFrame); }
 
-// ─── EXPORT ──────────────────────────────────────────────
-let _saveDir = null; // remembered directory handle
-
-function buildConfigData() {
+// ─── SAVE TO SERVER ──────────────────────────────────────────
+async function saveToServer() {
   const color = document.getElementById('colorPicker').value;
-  return {
-    json: JSON.stringify({
-      color, cols, rows,
-      sheetW: img.naturalWidth,
-      sheetH: img.naturalHeight,
-      rects: frames.map(f => [Math.round(f.x), Math.round(f.y), Math.round(f.w), Math.round(f.h)])
-    }, null, 2),
-    filename: `bloom_rects_${color}.json`
-  };
-}
-
-async function pickSaveDir() {
+  const key   = COLOR_KEY[color];
+  const rects = frames.map(f=>[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)]);
+  const btn   = document.getElementById('saveBtn');
+  btn.textContent='⏳ Saving...'; btn.disabled=true;
+  setStatus('statusSave','','info');
   try {
-    _saveDir = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' });
-    document.getElementById('saveDirLabel').textContent = '📁 ' + _saveDir.name;
-  } catch(e) { if (e.name !== 'AbortError') console.warn(e); }
+    const res  = await fetch('/api/save-bloom-rects', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ color: key, rects }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    btn.textContent='✅ Saved!';
+    setStatus('statusSave', `✅ ${data.message}`, 'ok');
+  } catch(e) {
+    btn.textContent='❌ Error';
+    setStatus('statusSave','❌ '+e.message,'err');
+  }
+  setTimeout(()=>{ btn.textContent='💾 Save to server'; btn.disabled=false; },2000);
 }
 
-async function saveConfig() {
-  const { json, filename } = buildConfigData();
-  const btn = document.getElementById('saveBtn');
-
-  // If we have a remembered directory, save directly — no dialog
-  if (_saveDir) {
-    try {
-      const fh = await _saveDir.getFileHandle(filename, { create: true });
-      const w  = await fh.createWritable();
-      await w.write(json);
-      await w.close();
-      btn.textContent = '✅ Saved!';
-      setTimeout(() => btn.textContent = '💾 Save', 1800);
-      return;
-    } catch(e) { console.warn('direct save failed:', e); }
-  }
-
-  // Fallback: showSaveFilePicker
-  if (window.showSaveFilePicker) {
-    try {
-      const fh = await window.showSaveFilePicker({
-        suggestedName: filename,
-        startIn: 'downloads',
-        types: [{ description: 'JSON', accept: {'application/json': ['.json']} }],
-      });
-      const w = await fh.createWritable();
-      await w.write(json);
-      await w.close();
-      btn.textContent = '✅ Saved!';
-      setTimeout(() => btn.textContent = '💾 Save', 1800);
-      return;
-    } catch(e) {
-      if (e.name === 'AbortError') return;
-    }
-  }
-
-  // Fallback: trigger download
-  const a = document.createElement('a');
-  a.href = 'data:application/json,' + encodeURIComponent(json);
-  a.download = filename;
+function downloadJSON() {
+  const color = document.getElementById('colorPicker').value;
+  const key   = COLOR_KEY[color];
+  const data  = { color:key, frames:frames.length, rects: frames.map(f=>[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)]) };
+  const a     = document.createElement('a');
+  a.href      = 'data:application/json,'+encodeURIComponent(JSON.stringify(data,null,2));
+  a.download  = `bloom_rects_${color}.json`;
   a.click();
 }
 
-// ─── INIT ─────────────────────────────────────────────────
-document.getElementById('zoomIn').addEventListener('change', () => {
-  zoom = (parseInt(document.getElementById('zoomIn').value)||50)/100;
-  document.getElementById('tbZoom').textContent = Math.round(zoom*100)+'%';
+// ─── UTIL ────────────────────────────────────────────────────
+function setStatus(id, msg, type='info') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+
+document.getElementById('zoomIn').addEventListener('change', ()=>{
+  zoom=(parseInt(document.getElementById('zoomIn').value)||50)/100;
+  document.getElementById('tbZoom').textContent=Math.round(zoom*100)+'%';
   render();
 });
+document.getElementById('colorPicker').addEventListener('change', ()=>{
+  frames = []; selIdx = -1; // reset frames when color changes
+});
 
-// Auto-redirect if opened from file:// (canvas getImageData blocked)
-if (location.protocol === 'file:') {
-  document.body.innerHTML = `
+// ─── INIT ────────────────────────────────────────────────────
+if (location.protocol==='file:') {
+  document.body.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#0f0f1a;color:#ddd;font-family:monospace;">
       <div style="font-size:32px">⚠️</div>
-      <div style="font-size:16px;color:#FFD700">Mở từ file:// — Chrome block canvas pixel access</div>
-      <div style="font-size:13px;color:#888">Phải mở qua localhost server</div>
-      <a href="http://localhost:3459/tools/bloom_test.html"
+      <div style="font-size:16px;color:#FFD700">Mở từ file:// — canvas bị block</div>
+      <div style="font-size:13px;color:#888">Phải mở qua dev server: node scripts/dev-server.js</div>
+      <a href="http://localhost:3456/tools/bloom_test.html"
          style="background:#3d5a3d;border:1px solid #5a8;color:#afa;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">
-        ▶ Mở tại localhost:3459
+        ▶ Mở tại localhost:3456
       </a>
     </div>`;
 } else {
-  reload();
+  loadSheet();
 }
 </script>
 </body>

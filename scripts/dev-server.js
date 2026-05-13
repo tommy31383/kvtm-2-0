@@ -93,6 +93,62 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── API: get bloom rects ──────────────────────────────────────
+  if (req.method === 'GET' && req.url.startsWith('/api/bloom-rects')) {
+    try {
+      const renderFile = path.join(ROOT, 'engine', 'sort_blossom_render.js');
+      const src = fs.readFileSync(renderFile, 'utf8');
+      const match = src.match(/_BLOOM_RECTS\s*=\s*\{([\s\S]*?)\};/);
+      if (!match) throw new Error('_BLOOM_RECTS not found');
+      const rects = Function('return ({' + match[1] + '})')();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, rects }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: e.message }));
+    }
+    return;
+  }
+
+  // ── API: save bloom rects ─────────────────────────────────────
+  if (req.method === 'POST' && req.url === '/api/save-bloom-rects') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { color, rects } = JSON.parse(body);
+        if (!color || !Array.isArray(rects)) throw new Error('color + rects required');
+        const renderFile = path.join(ROOT, 'engine', 'sort_blossom_render.js');
+        let src = fs.readFileSync(renderFile, 'utf8');
+        // Replace the specific color line: e.g.  R: [[...],...],
+        const rectsStr = JSON.stringify(rects);
+        const lineRe = new RegExp(`(\\s+${color}:\\s*)\\[.*?\\](,?)`, '');
+        // Find the color line inside _BLOOM_RECTS block
+        const blockStart = src.indexOf('_BLOOM_RECTS');
+        const blockEnd   = src.indexOf('};', blockStart);
+        const before = src.slice(0, blockStart);
+        let block = src.slice(blockStart, blockEnd + 2);
+        const after  = src.slice(blockEnd + 2);
+        const colorRe = new RegExp(`([ \\t]+${color}:[ \\t*)\\[([\\s\\S]*?)\\](,?\\n)`);
+        // Simpler: line-by-line replacement
+        const lines = block.split('\n');
+        const updated = lines.map(line => {
+          const m = line.match(new RegExp(`^(\\s+${color}:\\s*)\\[.*\\](,?)$`));
+          if (m) return `${m[1]}${rectsStr}${m[2]}`;
+          return line;
+        });
+        src = before + updated.join('\n') + after;
+        fs.writeFileSync(renderFile, src, 'utf8');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, message: `Saved ${color}: ${rects.length} frames` }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: e.message }));
+      }
+    });
+    return;
+  }
+
   // ── Static file server ─────────────────────────────────────────
   let filePath = path.join(ROOT, req.url.split('?')[0]);
   if (filePath === path.join(ROOT, '/') || filePath === ROOT) {
