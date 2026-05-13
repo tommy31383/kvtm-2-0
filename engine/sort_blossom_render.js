@@ -129,16 +129,31 @@
     cell.querySelectorAll('canvas.sb-queue-bud').forEach(cv => {
       const color = cv.dataset.color;
       if (!color || !COLORS[color]) return;
-      const w = cv.offsetWidth, h = cv.offsetHeight;
-      if (!w || !h) return;
+      const w = cv.offsetWidth || 34, h = cv.offsetHeight || 34;
       cv.width = w; cv.height = h;
+
+      function drawStatic() {
+        // Fallback: draw static flower img (works even when bloom sheet unavailable)
+        const fb = new Image();
+        fb.onload = () => {
+          const ctx = cv.getContext('2d');
+          ctx.clearRect(0, 0, w, h);
+          ctx.drawImage(fb, 0, 0, w, h);
+        };
+        fb.src = assetPath + COLORS[color].img;
+      }
+
       _probeBloom(color, assetPath, (cached) => {
-        if (!cached || !cached.rects || !cached.rects[0]) return;
+        if (!cached || !cached.rects || !cached.rects[0]) { drawStatic(); return; }
         const { sheet, rects } = cached;
         const [sx, sy, sw, sh] = rects[0];
         const ctx = cv.getContext('2d');
         ctx.clearRect(0, 0, w, h);
-        ctx.drawImage(sheet, sx, sy, sw, sh, 0, 0, w, h);
+        try {
+          ctx.drawImage(sheet, sx, sy, sw, sh, 0, 0, w, h);
+        } catch (e) {
+          drawStatic(); // CORS tainted canvas on file:// — use static img
+        }
       });
     });
   }
