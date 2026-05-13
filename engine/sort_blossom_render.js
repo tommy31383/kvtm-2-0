@@ -80,26 +80,14 @@
     return cell;
   }
 
-  // 1px transparent GIF — used as placeholder src when background-image carries the visual
-  const _TRANSPARENT_SRC = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-
   function renderQueuePreview(pot, assetPath) {
+    // Return <canvas> placeholders — upgradeQueueBuds draws frame 0 on them.
+    // Canvas write (drawImage) works on file:// and localhost; no toDataURL needed.
     return [0,1,2].map(p => {
       if (pot.active[p] !== null) return '';
       const f = pot.queue[p];
       if (!f) return '';
-      const c = COLORS[f];
-      // Show frame 0 of bloom sheet (bud stage) via background-image.
-      // background-size 500% 200% = 5 cols × 2 rows → 1 frame = 100% element size.
-      // background-position 0% 0% = top-left = frame 0 (bud).
-      // Falls back to static img if sheet fails to load (onerror keeps src).
-      const bloomSrc = assetPath + c.bloom;
-      const staticSrc = assetPath + c.img;
-      return `<img class="sb-queue-bud" data-pos="${p}" data-color="${f}" draggable="false"
-        src="${_TRANSPARENT_SRC}"
-        data-static="${staticSrc}"
-        style="background-image:url('${bloomSrc}');background-size:500% 200%;background-position:0% 0%;background-repeat:no-repeat;"
-        onerror="this.onerror=null;this.src=this.dataset.static;this.style.backgroundImage='';">`;
+      return `<canvas class="sb-queue-bud" data-pos="${p}" data-color="${f}"></canvas>`;
     }).join('');
   }
 
@@ -132,6 +120,29 @@
     probe.onerror = () => { _bloomCache[color] = false; cb(false); };
     probe.src = assetPath + COLORS[color].bloom;
   }
+  /**
+   * Draw frame 0 of bloom sheet onto each .sb-queue-bud canvas in cell.
+   * Uses drawImage (write-only) — works on file:// and localhost.
+   * Falls back gracefully if sheet not loaded yet (retries via _probeBloom cache).
+   */
+  function upgradeQueueBuds(cell, assetPath) {
+    cell.querySelectorAll('canvas.sb-queue-bud').forEach(cv => {
+      const color = cv.dataset.color;
+      if (!color || !COLORS[color]) return;
+      const w = cv.offsetWidth, h = cv.offsetHeight;
+      if (!w || !h) return;
+      cv.width = w; cv.height = h;
+      _probeBloom(color, assetPath, (cached) => {
+        if (!cached || !cached.rects || !cached.rects[0]) return;
+        const { sheet, rects } = cached;
+        const [sx, sy, sw, sh] = rects[0];
+        const ctx = cv.getContext('2d');
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(sheet, sx, sy, sw, sh, 0, 0, w, h);
+      });
+    });
+  }
+
   /**
    * Play bloom sprite sheet animation on an active-flower img.
    * Draws frames 0→9 from the bloom sheet using a canvas overlay.
@@ -226,8 +237,9 @@
     }
     const previewEl = cell.querySelector('.sb-queue-preview');
     if (previewEl) {
-      // renderQueuePreview now embeds frame 0 via background-image inline style — no upgradeQueueBuds needed
       previewEl.innerHTML = renderQueuePreview(pot, assetPath);
+      // Draw frame 0 after layout so offsetWidth/Height are available
+      requestAnimationFrame(() => upgradeQueueBuds(cell, assetPath));
     }
   }
 

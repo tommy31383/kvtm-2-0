@@ -113,27 +113,26 @@
   z-index: 12;
   pointer-events: none;
 }
-.sb-queue-preview img {
+.sb-queue-preview canvas.sb-queue-bud {
   position: absolute;
   bottom: 0;
-  /* width/height = bud render size — smaller than active flowers */
-  width: calc(var(--sb-flower-w-side) * .42);
-  height: calc(var(--sb-flower-w-side) * .42);
+  width: calc(var(--sb-flower-w-side) * .45);
+  height: calc(var(--sb-flower-w-side) * .45);
   opacity: .55;
   filter: brightness(.80) saturate(.85);
   transform-origin: 50% 95%;
 }
-.sb-queue-preview img[data-pos="0"] {
+.sb-queue-preview canvas[data-pos="0"] {
   left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread));
   transform: translateX(-50%) translateY(8px) rotate(calc(-1 * var(--sb-flower-angle)));
 }
-.sb-queue-preview img[data-pos="1"] {
+.sb-queue-preview canvas[data-pos="1"] {
   left: calc(50% + var(--sb-stem-x));
-  width: calc(var(--sb-flower-w-mid) * .42);
-  height: calc(var(--sb-flower-w-mid) * .42);
+  width: calc(var(--sb-flower-w-mid) * .45);
+  height: calc(var(--sb-flower-w-mid) * .45);
   transform: translateX(-50%) translateY(8px);
 }
-.sb-queue-preview img[data-pos="2"] {
+.sb-queue-preview canvas[data-pos="2"] {
   left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread));
   transform: translateX(-50%) translateY(8px) rotate(var(--sb-flower-angle));
 }
