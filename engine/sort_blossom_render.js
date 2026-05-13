@@ -179,12 +179,15 @@
       const rect = imgEl.getBoundingClientRect();
       if (!rect.width || !rect.height) { _bloomA(imgEl, onDone); return; }
 
-      // Create canvas overlay positioned over imgEl (fixed coords)
+      // Create canvas with extra padding so grow animation isn't clipped
+      const PAD = Math.round(Math.max(rect.width, rect.height) * 0.6);
+      const cvW  = Math.round(rect.width)  + PAD * 2;
+      const cvH  = Math.round(rect.height) + PAD * 2;
       const cv = document.createElement('canvas');
-      cv.width  = Math.round(rect.width);
-      cv.height = Math.round(rect.height);
-      cv.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;`
-        + `width:${rect.width}px;height:${rect.height}px;`
+      cv.width  = cvW;
+      cv.height = cvH;
+      cv.style.cssText = `position:fixed;left:${rect.left - PAD}px;top:${rect.top - PAD}px;`
+        + `width:${cvW}px;height:${cvH}px;`
         + `pointer-events:none;z-index:9999;transform-origin:50% 95%;`;
       document.body.appendChild(cv);
       const ctx = cv.getContext('2d');
@@ -200,20 +203,20 @@
 
       const N = rects.length;
 
-      // Draw frame content at full canvas size (offset applied)
+      // Draw frame centered in padded canvas + CSS scale grow
       function drawFrame(f) {
-        ctx.clearRect(0, 0, cv.width, cv.height);
+        ctx.clearRect(0, 0, cvW, cvH);
         const fr = rects[f];
         const [sx, sy, sw, sh] = fr;
         const dx = (fr[4] || 0), dy = (fr[5] || 0);
-        ctx.drawImage(sheet, sx, sy, sw, sh, dx, dy, cv.width, cv.height);
+        // Draw at natural rect size, centered in padded canvas
+        const dw = Math.round(rect.width), dh = Math.round(rect.height);
+        ctx.drawImage(sheet, sx, sy, sw, sh, PAD + dx, PAD + dy, dw, dh);
 
-        // CSS scale: starts near 0, grows to 1 — anchored at stem base (50% 95%)
-        // ease-out quad: fast start, slow finish feels like spring
+        // CSS scale: 5% → 50%, ease-out, anchored at stem base
         const t = f / Math.max(1, N - 1);
         const ease = t * (2 - t);
-        const scale = 0.05 + 0.45 * ease; // start tiny (5%), end 50%
-        cv.style.transformOrigin = '50% 95%';
+        const scale = 0.05 + 0.45 * ease;
         cv.style.transform = `scale(${scale.toFixed(3)})`;
       }
 
