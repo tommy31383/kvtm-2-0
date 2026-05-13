@@ -7,7 +7,7 @@
 <!-- Shared engine modules (single source of truth) -->
 <link rel="stylesheet" href="../engine/sort_blossom.css">
 <script src="../engine/sort_blossom_engine.js?v=3"></script>
-<script src="../engine/sort_blossom_render.js?v=17"></script>
+<script src="../engine/sort_blossom_render.js?v=21"></script>
 <script src="../engine/sort_blossom_data.js?v=3"></script>
 
 <style>
@@ -692,6 +692,15 @@ function log(msg) {
 }
 
 // ─── TEST PLAY (uses engine + render in compact mode) ───
+function getPlayReadyColors(pots) {
+  const ready = new Set();
+  for (const pot of pots) {
+    const flowers = pot.active.filter(x => x !== null);
+    if (flowers.length === 2 && flowers[0] === flowers[1]) ready.add(flowers[0]);
+  }
+  return ready;
+}
+
 let playState = null;
 function openPlay() {
   syncFromForm();
@@ -765,8 +774,11 @@ function onPlayTap(potIdx, pos) {
   if (!sel) {
     // IGNORE: pot không có bông active để chọn
     if (pot.active.every(x => x === null)) return;
-    // Tap đúng bông → chọn. Tap slot rỗng → resolve nearest occupied
-    const targetPos = pot.active[pos] ? pos : SortBlossomRender.nearestOccupiedPos(pot, pos);
+    // Ưu tiên chọn hoa ready-to-match nếu có trên pot này
+    const playReadyColors = getPlayReadyColors(playState.pots);
+    const readyPos = pot.active.findIndex(c => c !== null && playReadyColors.has(c));
+    const targetPos = readyPos !== -1 ? readyPos
+      : (pot.active[pos] ? pos : SortBlossomRender.nearestOccupiedPos(pot, pos));
     if (!pot.active[targetPos]) return;
     playState.selected = { pot: potIdx, pos: targetPos };
     renderPlay();
@@ -840,25 +852,30 @@ function onPlayTap(potIdx, pos) {
       const wasNullBefore = playState.pots.map(p => p.active.map(x => x === null));
       playState.pots.forEach(p => SortBlossomEngine.promote(p));
       renderPlay();   // user thấy bông cắm + queue auto-shift nếu source rỗng
-      // Play bloom animation on newly-promoted slots
+      // Promise chain: bloom(dest) → bloom(promoted×N) → vanish
+      const wrap = fn => new Promise(resolve => fn(resolve));
       const playPotCells = [...document.querySelectorAll('#play-pots .sb-pot-cell')];
+      const bloomTasks = [];
+      const destImgEl = playPotCells[potIdx]?.querySelector(`.sb-active-flowers img[data-pos="${placePos}"]`);
+      if (destImgEl) bloomTasks.push(() => wrap(done => SortBlossomRender.playBloom(destImgEl, flyColor, ASSETS, done)));
       playState.pots.forEach((pot, pi) => {
         pot.active.forEach((color, posi) => {
-          if (color && wasNullBefore[pi][posi]) {
+          const wasNull = wasNullBefore[pi][posi];
+          const isNewDest = (pi === potIdx && posi === placePos);
+          if (color && wasNull && !isNewDest) {
             const imgEl = playPotCells[pi]?.querySelector(`.sb-active-flowers img[data-pos="${posi}"]`);
-            if (imgEl) SortBlossomRender.playBloom(imgEl, color, ASSETS);
+            if (imgEl) bloomTasks.push(() => wrap(done => SortBlossomRender.playBloom(imgEl, color, ASSETS, done)));
           }
         });
       });
-      // Step 2: nếu match → đợi 220ms cho mắt thấy, RỒI vanish
+      let chain = bloomTasks.reduce((p, task) => p.then(task), Promise.resolve());
       if (r.willVanish) {
-        const destCellEl = document.querySelectorAll('#play-pots .sb-pot-cell')[potIdx];
-        setTimeout(() => {
-          SortBlossomRender.playVanish(destCellEl, () => {
-            SortBlossomEngine.settle(playState.pots);
-            renderPlay();
-          });
-        }, 220);
+        chain = chain.then(() => wrap(done => {
+          SortBlossomRender.playVanish(playPotCells[potIdx], done);
+        })).then(() => {
+          SortBlossomEngine.settle(playState.pots);
+          renderPlay();
+        });
       }
     },
     onDone: () => {
