@@ -198,28 +198,23 @@
       let startTs = null;
       let lastFrame = -1;
 
-      // Bud size matches CSS: calc(var(--sb-flower-w-side) * .45)
-      // Frame 0 starts at BUD_SCALE, grows to 1.0 at last frame
-      const BUD_SCALE = 0.45;
       const N = rects.length;
 
+      // Draw frame content at full canvas size (offset applied)
       function drawFrame(f) {
         ctx.clearRect(0, 0, cv.width, cv.height);
         const fr = rects[f];
         const [sx, sy, sw, sh] = fr;
         const dx = (fr[4] || 0), dy = (fr[5] || 0);
+        ctx.drawImage(sheet, sx, sy, sw, sh, dx, dy, cv.width, cv.height);
 
-        // Ease-out grow: eased so early frames stay small longer
+        // CSS scale: starts near 0, grows to 1 — anchored at stem base (50% 95%)
+        // ease-out quad: fast start, slow finish feels like spring
         const t = f / Math.max(1, N - 1);
-        const ease = t * (2 - t); // ease-out quad
-        const scale = BUD_SCALE + (1 - BUD_SCALE) * ease;
-
-        const dw = cv.width  * scale;
-        const dh = cv.height * scale;
-        // Anchor bottom-center (stem base) — hoa mọc từ dưới lên
-        const ddx = (cv.width  - dw) / 2 + dx * scale;
-        const ddy =  cv.height - dh      + dy * scale;
-        ctx.drawImage(sheet, sx, sy, sw, sh, ddx, ddy, dw, dh);
+        const ease = t * (2 - t);
+        const scale = 0.05 + 0.95 * ease; // start tiny (5%), end full
+        cv.style.transformOrigin = '50% 95%';
+        cv.style.transform = `scale(${scale.toFixed(3)})`;
       }
 
       // Build cumulative time table from per-frame durations
