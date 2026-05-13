@@ -93,7 +93,7 @@
 
   // Embedded bloom rects — no fetch needed, works on file:// and localhost
   const _BLOOM_RECTS = {
-    R: [[44,59,75,114],[139,58,82,115],[240,52,84,119],[340,53,98,119],[468,54,95,117],[28,249,92,120],[128,246,100,122],[232,246,100,125],[339,243,102,125],[478,243,99,126]],
+    R: [[44,59,75,114],[139,58,82,115],[240,48,88,125],[340,53,98,119],[470,54,93,119],[28,249,92,120],[128,246,100,122],[230,246,106,123],[340,243,101,125],[480,243,97,126]],
     P: [[118,166,180,260],[368,162,184,264],[621,153,189,270],[883,143,239,284],[1212,151,249,276],[99,634,207,299],[349,635,222,300],[605,628,237,304],[876,625,276,310],[1208,615,269,318]],
     Y: [[122,147,176,265],[364,150,189,260],[622,140,186,271],[880,137,228,278],[1201,135,242,279],[81,621,217,323],[327,621,240,328],[582,619,266,332],[868,614,253,332],[1195,608,269,338]],
     V: [[122,148,161,291],[360,148,180,298],[624,129,182,314],[876,128,212,312],[1207,135,213,307],[113,617,169,312],[360,608,181,321],[614,611,198,320],[862,611,222,322],[1215,614,215,315]],
@@ -109,7 +109,7 @@
     if (color in _bloomCache) return cb(_bloomCache[color]);
     const c = COLORS[color];
     const sheet = new Image();
-    sheet.onload  = () => { _bloomCache[color] = { sheet, rects: _BLOOM_RECTS[color] || null }; cb(_bloomCache[color]); };
+    sheet.onload  = () => { _bloomCache[color] = { sheet, rects: _BLOOM_RECTS[color] || null, durations: (_BLOOM_DURS && _BLOOM_DURS[color]) || null }; cb(_bloomCache[color]); };
     sheet.onerror = () => { _bloomCache[color] = false; cb(false); };
     sheet.src = assetPath + c.bloom;
   }
@@ -188,23 +188,34 @@
       const origOpacity = imgEl.style.opacity;
       imgEl.style.opacity = '0';
 
-      const FRAME_DUR = 90; // ~900ms for 10 frames
+      const durations = cached.durations || [];
+      const FRAME_DUR = 90; // fallback per-frame ms
       let startTs = null;
       let lastFrame = -1;
 
       function drawFrame(f) {
         ctx.clearRect(0, 0, cv.width, cv.height);
-        const [sx, sy, sw, sh] = rects[f];
-        ctx.drawImage(sheet, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+        const fr = rects[f];
+        const [sx, sy, sw, sh] = fr;
+        const dx = (fr[4] || 0), dy = (fr[5] || 0); // per-frame display offset px
+        ctx.drawImage(sheet, sx, sy, sw, sh, dx, dy, cv.width, cv.height);
       }
+
+      // Build cumulative time table from per-frame durations
+      const frameTimes = [];
+      let t = 0;
+      for (let i = 0; i < rects.length; i++) { frameTimes.push(t); t += (durations[i] || FRAME_DUR); }
+      const totalDur = t;
 
       function tick(ts) {
         if (!startTs) startTs = ts;
         const elapsed = ts - startTs;
-        const fi = Math.min(BLOOM_FRAMES - 1, Math.floor(elapsed / FRAME_DUR));
+        // Find current frame by cumulative time
+        let fi = rects.length - 1;
+        for (let i = 0; i < frameTimes.length - 1; i++) { if (elapsed < frameTimes[i+1]) { fi = i; break; } }
         if (fi !== lastFrame) { lastFrame = fi; drawFrame(fi); }
 
-        if (elapsed < FRAME_DUR * BLOOM_FRAMES) {
+        if (elapsed < totalDur) {
           requestAnimationFrame(tick);
         } else {
           cv.remove();
