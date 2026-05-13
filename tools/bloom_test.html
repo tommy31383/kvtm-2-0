@@ -185,8 +185,14 @@ select{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
     style="width:48px;background:var(--bg3);color:var(--text);border:1px solid var(--border2);
     padding:2px 4px;border-radius:4px;font-size:11px;height:26px;" onchange="onZoomChange()">
   <span style="font-size:10px;color:var(--muted);">%</span>
+  <div class="sep"></div>
+  <button class="btn active" id="tabAnim" onclick="switchTab('anim')">🌸 Anim</button>
+  <button class="btn" id="tabLayout" onclick="switchTab('layout')">🪴 Layout</button>
   <div id="tbStatus">Chọn màu → Load Sheet</div>
 </div>
+
+<!-- LAYOUT PANEL (tab 2) -->
+<div id="layoutPanel" style="display:none;flex:1;min-height:0;"></div>
 
 <!-- MAIN -->
 <div id="main">
@@ -390,6 +396,7 @@ function afterSheetLoad(tmp) {
   st(`✅ Sheet ${img.naturalWidth}×${img.naturalHeight}`,'ok');
   if (!frames.length) initDefaultFrames();
   else { renderSheet(); buildTL(); drawPrev(selIdx); }
+  renderPotPreview();
 }
 
 function initDefaultFrames() {
@@ -922,6 +929,275 @@ function onColorChange(){frames=[];selIdx=-1;pctx.clearRect(0,0,PW,PH);document.
 
 // ── INIT ─────────────────────────────────────────────────────
 loadSheet();
+buildLayoutPanel();
+
+// ── TAB SWITCH ────────────────────────────────────────────────
+function switchTab(tab) {
+  const isAnim = tab === 'anim';
+  document.getElementById('main').style.display = isAnim ? 'flex' : 'none';
+  document.getElementById('tl').style.display   = isAnim ? 'flex' : 'none';
+  document.getElementById('layoutPanel').style.display = isAnim ? 'none' : 'flex';
+  document.getElementById('tabAnim').classList.toggle('active', isAnim);
+  document.getElementById('tabLayout').classList.toggle('active', !isAnim);
+  if (!isAnim) renderPotPreview();
+}
+
+// ── LAYOUT / POT PREVIEW ──────────────────────────────────────
+const POT_VARS = [
+  { id:'lv_stem_x',      label:'Stem X',        css:'--sb-stem-x',        val:4,   min:-30, max:30,  step:1,  unit:'px' },
+  { id:'lv_stem_spread', label:'Stem spread',   css:'--sb-stem-spread',   val:3,   min:0,   max:30,  step:1,  unit:'px' },
+  { id:'lv_fl_bottom',   label:'Flower bottom', css:'--sb-flower-bottom', val:40,  min:0,   max:100, step:1,  unit:'px' },
+  { id:'lv_fl_w_side',   label:'Side W',        css:'--sb-flower-w-side', val:76,  min:20,  max:200, step:1,  unit:'px' },
+  { id:'lv_fl_w_mid',    label:'Mid W',         css:'--sb-flower-w-mid',  val:82,  min:20,  max:200, step:1,  unit:'px' },
+  { id:'lv_fl_angle',    label:'Angle L/R',     css:'--sb-flower-angle',  val:18,  min:0,   max:45,  step:1,  unit:'deg'},
+  { id:'lv_active_h',    label:'Active H',      css:'--sb-active-h',      val:110, min:40,  max:250, step:1,  unit:'px' },
+  { id:'lv_pot_w',       label:'Pot W',         css:'--sb-pot-w',         val:88,  min:40,  max:200, step:1,  unit:'px' },
+  { id:'lv_pot_h',       label:'Pot H',         css:'--sb-pot-h',         val:150, min:80,  max:300, step:1,  unit:'px' },
+  { id:'lv_pot_img_w',   label:'Pot img W',     css:'--sb-pot-img-w',     val:82,  min:40,  max:180, step:1,  unit:'px' },
+];
+// Per-slot offsets (L=0, C=1, R=2)
+const SLOT_VARS = [
+  { slot:0, label:'L',  ox:0, oy:0, sc:1 },
+  { slot:1, label:'C',  ox:0, oy:0, sc:1 },
+  { slot:2, label:'R',  ox:0, oy:0, sc:1 },
+];
+const BUD_VAR = { ox:0, oy:0, sc:0.45 };
+
+function buildLayoutPanel() {
+  const p = document.getElementById('layoutPanel');
+  p.innerHTML = '';
+
+  // Left: sliders
+  const left = document.createElement('div');
+  left.style.cssText='width:260px;flex-shrink:0;background:#161b23;border-right:1px solid #2a3040;overflow-y:auto;padding:10px;';
+
+  // CSS Vars section
+  const h1 = document.createElement('div');
+  h1.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.9px;color:#6b7280;margin-bottom:8px;';
+  h1.textContent='CSS Variables'; left.appendChild(h1);
+
+  POT_VARS.forEach(v => {
+    const row = document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:5px;';
+    row.innerHTML = `
+      <label style="font-size:10px;color:#8090b0;width:90px;flex-shrink:0;">${v.label}</label>
+      <input type="range" id="${v.id}" min="${v.min}" max="${v.max}" step="${v.step}" value="${v.val}"
+        style="flex:1;accent-color:#FFD700;" oninput="onPotVar('${v.id}','${v.css}',this.value,'${v.unit}')">
+      <span id="${v.id}_v" style="font-size:10px;color:#FFD700;width:36px;text-align:right;">${v.val}${v.unit}</span>
+    `;
+    left.appendChild(row);
+  });
+
+  // Per-slot offsets
+  const h2 = document.createElement('div');
+  h2.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.9px;color:#6b7280;margin:12px 0 8px;';
+  h2.textContent='Slot offset (L / C / R)'; left.appendChild(h2);
+
+  SLOT_VARS.forEach((sv,i) => {
+    ['ox','oy','sc'].forEach(k => {
+      const row = document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:4px;';
+      const label = `${sv.label} ${k==='ox'?'dX':k==='oy'?'dY':'Scale'}`;
+      const min = k==='sc'?0.1:-60, max = k==='sc'?2:60, step = k==='sc'?0.05:1;
+      const val = sv[k];
+      row.innerHTML = `
+        <label style="font-size:10px;color:#8090b0;width:90px;flex-shrink:0;">${label}</label>
+        <input type="range" id="sv_${i}_${k}" min="${min}" max="${max}" step="${step}" value="${val}"
+          style="flex:1;accent-color:#60a5fa;" oninput="onSlotVar(${i},'${k}',this.value)">
+        <span id="sv_${i}_${k}_v" style="font-size:10px;color:#60a5fa;width:36px;text-align:right;">${val}</span>
+      `;
+      left.appendChild(row);
+    });
+  });
+
+  // Bud offset
+  const h3 = document.createElement('div');
+  h3.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.9px;color:#6b7280;margin:12px 0 8px;';
+  h3.textContent='Bud (nụ) offset'; left.appendChild(h3);
+  ['ox','oy','sc'].forEach(k => {
+    const row = document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:4px;';
+    const label = k==='ox'?'dX':k==='oy'?'dY':'Scale';
+    const min = k==='sc'?0.05:-60, max = k==='sc'?1.5:60, step = k==='sc'?0.05:1;
+    const val = BUD_VAR[k];
+    row.innerHTML = `
+      <label style="font-size:10px;color:#8090b0;width:90px;flex-shrink:0;">Bud ${label}</label>
+      <input type="range" id="bv_${k}" min="${min}" max="${max}" step="${step}" value="${val}"
+        style="flex:1;accent-color:#4ade80;" oninput="onBudVar('${k}',this.value)">
+      <span id="bv_${k}_v" style="font-size:10px;color:#4ade80;width:36px;text-align:right;">${val}</span>
+    `;
+    left.appendChild(row);
+  });
+
+  // Copy CSS button
+  const copyBtn = document.createElement('button');
+  copyBtn.className='btn green'; copyBtn.style.cssText='width:100%;margin-top:12px;height:28px;';
+  copyBtn.textContent='📋 Copy CSS vars'; copyBtn.onclick = copyCSSVars;
+  left.appendChild(copyBtn);
+
+  p.appendChild(left);
+
+  // Right: pot preview
+  const right = document.createElement('div');
+  right.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080a10;overflow:auto;gap:20px;';
+
+  const hint = document.createElement('div');
+  hint.style.cssText='font-size:10px;color:#6b7280;text-align:center;';
+  hint.textContent='Bông = frame 9 · Nụ = frame 0 · Chỉnh sliders để canh vị trí';
+  right.appendChild(hint);
+
+  const potWrap = document.createElement('div');
+  potWrap.id='potPreviewWrap';
+  potWrap.style.cssText='display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;justify-content:center;';
+  right.appendChild(potWrap);
+
+  p.appendChild(right);
+}
+
+function onPotVar(id, css, val, unit) {
+  document.getElementById(id+'_v').textContent = val+unit;
+  document.getElementById('potPreviewWrap')?.style.setProperty(css, val+unit);
+  renderPotPreview();
+}
+function onSlotVar(i, k, val) {
+  SLOT_VARS[i][k] = parseFloat(val);
+  document.getElementById(`sv_${i}_${k}_v`).textContent = val;
+  renderPotPreview();
+}
+function onBudVar(k, val) {
+  BUD_VAR[k] = parseFloat(val);
+  document.getElementById(`bv_${k}_v`).textContent = val;
+  renderPotPreview();
+}
+
+function renderPotPreview() {
+  const wrap = document.getElementById('potPreviewWrap');
+  if (!wrap || !img.naturalWidth) return;
+  wrap.innerHTML = '';
+
+  // Apply current CSS vars to wrap
+  POT_VARS.forEach(v => {
+    const el = document.getElementById(v.id);
+    if (el) wrap.style.setProperty(v.css, el.value + v.unit);
+  });
+
+  // Get frame 0 and frame 9 rects
+  const f0 = frames[0], f9 = frames[Math.min(9, frames.length-1)];
+  if (!f0 || !f9) { wrap.textContent='Load frames trước'; return; }
+
+  // Build 3 pot cells (empty, 1 active, full)
+  const configs = [
+    { label:'Queue only', active:[null,null,null], queue:[0,1,2] },
+    { label:'Mixed',      active:[null,0,null],    queue:[1,2,null] },
+    { label:'Full bloom', active:[0,1,2],          queue:[] },
+  ];
+
+  configs.forEach(cfg => {
+    const cell = document.createElement('div');
+    cell.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;';
+
+    const lbl = document.createElement('div');
+    lbl.style.cssText='font-size:9px;color:#6b7280;'; lbl.textContent=cfg.label;
+    cell.appendChild(lbl);
+
+    const potCell = buildPotPreviewCell(cfg.active, cfg.queue, f0, f9);
+    cell.appendChild(potCell);
+    wrap.appendChild(cell);
+  });
+}
+
+function buildPotPreviewCell(activeSlots, queueSlots, f0, f9) {
+  const potW   = parseFloat(document.getElementById('lv_pot_w')?.value || 88);
+  const potH   = parseFloat(document.getElementById('lv_pot_h')?.value || 150);
+  const potImgW= parseFloat(document.getElementById('lv_pot_img_w')?.value || 82);
+  const activeH= parseFloat(document.getElementById('lv_active_h')?.value || 110);
+  const flBot  = parseFloat(document.getElementById('lv_fl_bottom')?.value || 40);
+  const stemX  = parseFloat(document.getElementById('lv_stem_x')?.value || 4);
+  const stemSp = parseFloat(document.getElementById('lv_stem_spread')?.value || 3);
+  const wSide  = parseFloat(document.getElementById('lv_fl_w_side')?.value || 76);
+  const wMid   = parseFloat(document.getElementById('lv_fl_w_mid')?.value || 82);
+  const angle  = parseFloat(document.getElementById('lv_fl_angle')?.value || 18);
+
+  const cell = document.createElement('div');
+  cell.style.cssText = `position:relative;width:${potW}px;display:flex;flex-direction:column;align-items:center;`;
+
+  const visual = document.createElement('div');
+  visual.style.cssText = `position:relative;width:${potW}px;height:${potH}px;display:flex;align-items:flex-end;justify-content:center;`;
+
+  // Pot back
+  const potBack = document.createElement('img');
+  potBack.src = '../assets/sort_blossom/pot_empty.webp';
+  potBack.style.cssText = `position:absolute;width:${potImgW}px;bottom:0;left:50%;transform:translateX(-50%);z-index:1;`;
+  visual.appendChild(potBack);
+
+  // Queue buds preview layer
+  const budLayer = document.createElement('div');
+  budLayer.style.cssText = `position:absolute;left:0;right:0;bottom:${flBot-8}px;height:${activeH}px;z-index:5;pointer-events:none;`;
+
+  queueSlots.forEach(pos => {
+    if (pos === null || pos === undefined) return;
+    const cv = document.createElement('canvas');
+    const sv = SLOT_VARS[pos];
+    const bscale = BUD_VAR.sc;
+    const bw = wSide * bscale, bh = wSide * bscale;
+    cv.width = Math.round(bw); cv.height = Math.round(bh);
+    const [posX, rotDeg] = getSlotTransform(pos, potW, stemX, stemSp, wSide, wMid, angle);
+    cv.style.cssText = `position:absolute;bottom:30%;opacity:.6;filter:brightness(.82) saturate(.85);`
+      + `left:${posX}px;transform:translateX(-50%) rotate(${rotDeg}deg);`
+      + `width:${bw}px;height:${bh}px;`;
+    // Draw frame 0
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(img, f0.x, f0.y, f0.w, f0.h, 0, 0, cv.width, cv.height);
+    budLayer.appendChild(cv);
+  });
+  visual.appendChild(budLayer);
+
+  // Active flowers layer
+  const flowerLayer = document.createElement('div');
+  flowerLayer.style.cssText = `position:absolute;left:0;right:0;bottom:${flBot}px;height:${activeH}px;z-index:20;pointer-events:none;`;
+
+  activeSlots.forEach((active, pos) => {
+    if (active === null || active === undefined) return;
+    const cv = document.createElement('canvas');
+    const sv = SLOT_VARS[pos];
+    const fw = pos===1 ? wMid : wSide;
+    cv.width = Math.round(fw * sv.sc); cv.height = Math.round(fw * sv.sc);
+    const [posX, rotDeg] = getSlotTransform(pos, potW, stemX, stemSp, wSide, wMid, angle);
+    cv.style.cssText = `position:absolute;bottom:0;height:auto;`
+      + `left:${posX + sv.ox}px;transform:translateX(-50%) rotate(${rotDeg}deg) translateY(${sv.oy}px);`
+      + `width:${fw * sv.sc}px;height:${fw * sv.sc}px;`
+      + `filter:drop-shadow(0 4px 6px rgba(0,0,0,.45));z-index:${pos===1?3:pos===0?1:2};`;
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(img, f9.x, f9.y, f9.w, f9.h, 0, 0, cv.width, cv.height);
+    flowerLayer.appendChild(cv);
+  });
+  visual.appendChild(flowerLayer);
+
+  // Pot front
+  const potFront = document.createElement('img');
+  potFront.src = '../assets/sort_blossom/pot_front.webp';
+  potFront.style.cssText = `position:absolute;width:${potImgW}px;bottom:0;left:50%;transform:translateX(-50%);z-index:30;`;
+  visual.appendChild(potFront);
+
+  cell.appendChild(visual);
+  return cell;
+}
+
+function getSlotTransform(pos, potW, stemX, stemSp, wSide, wMid, angle) {
+  const cx = potW / 2 + stemX;
+  if (pos === 0) return [cx - stemSp, -angle];
+  if (pos === 1) return [cx, 0];
+  return [cx + stemSp, angle];
+}
+
+function copyCSSVars() {
+  const lines = POT_VARS.map(v => {
+    const el = document.getElementById(v.id);
+    return `  ${v.css}: ${el ? el.value+v.unit : v.val+v.unit};`;
+  });
+  const txt = '.sb-compact {\n' + lines.join('\n') + '\n}';
+  navigator.clipboard.writeText(txt).then(() => st('✅ Copied CSS vars','ok'));
+}
 </script>
 </body>
 </html>
