@@ -2,635 +2,653 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Bloom Frame Editor</title>
+<title>Bloom Anim Editor</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #0f0f1a; color: #ddd; font-family: monospace; display: flex; height: 100vh; overflow: hidden; }
-
-/* ── SIDEBAR ── */
-#sidebar {
-  width: 240px; flex-shrink: 0;
-  background: #16162a;
-  border-right: 1px solid #2a2a40;
-  display: flex; flex-direction: column;
-  padding: 12px; gap: 8px; overflow-y: auto;
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#111318;--bg2:#1a1d24;--bg3:#22262f;--border:#2e3340;
+  --gold:#FFD700;--green:#4ade80;--red:#f87171;--blue:#60a5fa;
+  --text:#d4d8e2;--muted:#6b7280;--accent:#7c6fcd;
 }
-#sidebar h1 { font-size: 13px; color: #FFD700; margin-bottom: 2px; }
-.sg { border: 1px solid #2a2a40; border-radius: 6px; padding: 10px; }
-.sg h3 { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-.row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
-.row label { font-size: 11px; color: #888; width: 54px; flex-shrink: 0; }
-.row input[type=number] { flex:1; background:#111; color:#fff; border:1px solid #333; padding:3px 5px; border-radius:4px; font-family:monospace; }
-.row select { flex:1; background:#111; color:#fff; border:1px solid #333; padding:3px 5px; border-radius:4px; font-family:monospace; }
-button { width:100%; background:#222; color:#eee; border:1px solid #444; padding:5px; border-radius:5px; cursor:pointer; font-family:monospace; font-size:11px; margin-bottom:3px; }
-button:hover { background:#333; }
-button.gold  { background:#3a3010; border-color:#FFD700; color:#FFD700; }
-button.gold:hover  { background:#4a4020; }
-button.green { background:#103a10; border-color:#5a8a5a; color:#afa; }
-button.green:hover { background:#1a4a1a; }
-button.red   { background:#3a1010; border-color:#a05050; color:#f99; }
-button.red:hover   { background:#4a1a1a; }
-button.blue  { background:#101838; border-color:#4060a0; color:#9af; }
-button.blue:hover  { background:#18234a; }
-.status { font-size:10px; min-height:14px; margin-top:3px; word-break:break-all; }
-.status.ok  { color:#5fa; }
-.status.err { color:#f77; }
-.status.info { color:#fa0; }
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,monospace;display:flex;flex-direction:column;height:100vh;overflow:hidden;font-size:12px;}
 
-/* ── FRAME STRIP ── */
-#frameStrip { display:flex; flex-wrap:wrap; gap:3px; max-height:200px; overflow-y:auto; }
-.fthumb { border:2px solid #333; cursor:pointer; position:relative; flex-shrink:0; }
-.fthumb.sel { border-color:#FFD700; }
-.fthumb .fdel {
-  display:none; position:absolute; top:0; right:0;
-  background:rgba(180,30,30,.85); color:#fff; font-size:9px;
-  width:14px; height:14px; line-height:14px; text-align:center; cursor:pointer;
-  border-radius:0 0 0 4px;
+/* ── TOP BAR ── */
+#topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+#topbar .logo{font-size:14px;color:var(--gold);font-weight:700;margin-right:8px;}
+.tb-sep{width:1px;height:20px;background:var(--border);}
+select,input[type=number]{background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:3px 7px;border-radius:4px;font-size:11px;height:26px;}
+select:focus,input:focus{outline:1px solid var(--accent);border-color:var(--accent);}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:0 10px;height:26px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:11px;white-space:nowrap;transition:background .1s;}
+.btn:hover{background:#2e3340;}
+.btn.gold{border-color:var(--gold);color:var(--gold);}
+.btn.gold:hover{background:#2e2800;}
+.btn.green{border-color:#4ade80;color:#4ade80;}
+.btn.green:hover{background:#0a2010;}
+.btn.blue{border-color:var(--blue);color:var(--blue);}
+.btn.blue:hover{background:#0d1a2e;}
+.btn.red{border-color:var(--red);color:var(--red);}
+.btn.red:hover{background:#2e0a0a;}
+#tbStatus{margin-left:auto;font-size:10px;color:var(--muted);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#tbStatus.ok{color:var(--green);}
+#tbStatus.err{color:var(--red);}
+
+/* ── MAIN LAYOUT ── */
+#workspace{flex:1;display:flex;min-height:0;}
+
+/* LEFT PANEL */
+#leftPanel{width:220px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;}
+.panel-sec{padding:10px;border-bottom:1px solid var(--border);}
+.panel-sec h4{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px;}
+.prop-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.prop-row label{font-size:10px;color:var(--muted);width:28px;flex-shrink:0;}
+.prop-row input[type=number]{flex:1;height:24px;font-size:11px;}
+.prop-row span{font-size:10px;color:var(--muted);}
+.range-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.range-row label{font-size:10px;color:var(--muted);width:40px;flex-shrink:0;}
+.range-row input[type=range]{flex:1;}
+.range-row span{font-size:10px;color:var(--muted);width:24px;text-align:right;}
+.lbtn{width:100%;height:24px;margin-bottom:4px;font-size:11px;}
+#selInfo{font-size:10px;color:var(--muted);line-height:1.7;padding:6px 0;}
+
+/* CENTER CANVAS */
+#canvasArea{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#canvasWrap{flex:1;overflow:auto;position:relative;background:#0a0b0f;}
+#sheetCanvas{display:block;cursor:crosshair;}
+
+/* RIGHT PANEL — preview + onion */
+#rightPanel{width:160px;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;}
+.preview-sec{padding:10px;border-bottom:1px solid var(--border);}
+.preview-sec h4{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px;}
+#previewCanvas{display:block;border:1px solid var(--border);border-radius:4px;background:#0a0b0f;width:140px;height:140px;}
+#prevFrameLabel{text-align:center;font-size:10px;color:var(--gold);margin-top:4px;}
+.playbar{display:flex;gap:3px;padding:6px 10px;border-bottom:1px solid var(--border);}
+.playbar .btn{flex:1;padding:0 4px;justify-content:center;}
+.fps-row{padding:6px 10px;display:flex;align-items:center;gap:6px;}
+.fps-row label{font-size:10px;color:var(--muted);}
+.fps-row input[type=range]{flex:1;}
+.fps-row span{font-size:10px;color:var(--gold);width:30px;text-align:right;}
+
+/* ── TIMELINE ── */
+#timeline{height:110px;flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;flex-direction:column;}
+#tlHeader{display:flex;align-items:center;gap:8px;padding:4px 8px;border-bottom:1px solid var(--border);flex-shrink:0;}
+#tlHeader h4{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
+#tlHeader .btn{height:22px;padding:0 8px;font-size:10px;}
+#tlScroll{flex:1;overflow-x:auto;overflow-y:hidden;display:flex;align-items:stretch;padding:6px 8px;gap:4px;}
+.tl-frame{
+  flex-shrink:0;width:64px;
+  border:1px solid var(--border);border-radius:5px;
+  background:var(--bg3);cursor:pointer;
+  display:flex;flex-direction:column;align-items:stretch;
+  transition:border-color .1s;position:relative;
+  user-select:none;
 }
-.fthumb:hover .fdel { display:block; }
-#selectedInfo { font-size:10px; color:#888; line-height:1.6; }
-
-/* ── MAIN ── */
-#main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-#toolbar { background:#12122a; border-bottom:1px solid #2a2a40; padding:6px 12px; display:flex; gap:12px; align-items:center; font-size:11px; color:#888; flex-wrap:wrap; }
-#toolbar span { color:#FFD700; }
-#canvasWrap { flex:1; overflow:auto; position:relative; background:#0a0a16; }
-#sheetCanvas { display:block; cursor:crosshair; }
-
-/* ── ANIM PREVIEW ── */
-#animWrap {
-  position:fixed; bottom:12px; right:12px;
-  background:#16162a; border:1px solid #444; border-radius:8px;
-  padding:10px; z-index:100; min-width:120px;
+.tl-frame:hover{border-color:#4a5168;}
+.tl-frame.sel{border-color:var(--gold);}
+.tl-frame.dragging{opacity:.5;}
+.tl-thumb{display:block;width:100%;height:52px;border-radius:4px 4px 0 0;background:#0a0b0f;}
+.tl-bottom{padding:3px 4px;display:flex;align-items:center;justify-content:space-between;gap:2px;}
+.tl-idx{font-size:9px;color:var(--muted);}
+.tl-dur{font-size:9px;color:var(--gold);border:none;background:transparent;width:32px;text-align:right;cursor:text;padding:0;}
+.tl-dur:focus{outline:none;color:#fff;}
+.tl-del{position:absolute;top:2px;right:2px;width:14px;height:14px;background:rgba(200,50,50,.8);border-radius:2px;display:none;align-items:center;justify-content:center;font-size:9px;cursor:pointer;color:#fff;}
+.tl-frame:hover .tl-del{display:flex;}
+.tl-add{
+  flex-shrink:0;width:52px;height:100%;
+  border:1px dashed #3a4050;border-radius:5px;
+  background:transparent;display:flex;align-items:center;justify-content:center;
+  font-size:20px;color:#3a4050;cursor:pointer;transition:all .15s;
 }
-#animCanvas { border:1px solid #444; display:block; margin-bottom:6px; }
-#animCtrl { display:flex; gap:4px; margin-bottom:4px; }
-#animCtrl button { width:auto; padding:3px 8px; margin:0; font-size:12px; }
-#animFpsRow { display:flex; align-items:center; gap:6px; font-size:10px; color:#888; }
-#animFpsRow input { flex:1; }
-#animFrameLabel { font-size:10px; color:#FFD700; text-align:center; margin-top:4px; }
+.tl-add:hover{border-color:var(--green);color:var(--green);}
 </style>
 </head>
 <body>
 
-<div id="sidebar">
-  <h1>🌸 Bloom Frame Editor</h1>
-
-  <!-- SHEET LOADER -->
-  <div class="sg">
-    <h3>Sheet</h3>
-    <div class="row"><label>Màu</label>
-      <select id="colorPicker">
-        <option value="red">Red (R)</option>
-        <option value="pink">Pink (P)</option>
-        <option value="yellow">Yellow (Y)</option>
-        <option value="purple">Purple (V)</option>
-        <option value="white">White (W)</option>
-        <option value="orange">Orange (O)</option>
-        <option value="blue">Blue (B)</option>
-        <option value="camellia">Camellia (C)</option>
-      </select>
-    </div>
-    <div class="row"><label>Zoom</label><input type="number" id="zoomIn" value="50" min="10" max="200" step="5"><span style="font-size:10px;color:#666">%</span></div>
-    <button onclick="loadSheet()">↺ Load Sheet</button>
-    <button class="blue" onclick="loadFromServer()">📥 Load rects từ server</button>
-    <div id="statusLoad" class="status"></div>
-  </div>
-
-  <!-- SELECTED FRAME -->
-  <div class="sg">
-    <h3>Frame đang chọn</h3>
-    <div id="selectedInfo">Click frame để chọn</div>
-    <div style="margin-top:8px;">
-      <div class="row"><label>X</label><input type="number" id="fxIn" oninput="applyInput('x')"></div>
-      <div class="row"><label>Y</label><input type="number" id="fyIn" oninput="applyInput('y')"></div>
-      <div class="row"><label>W</label><input type="number" id="fwIn" oninput="applyInput('w')"></div>
-      <div class="row"><label>H</label><input type="number" id="fhIn" oninput="applyInput('h')"></div>
-    </div>
-    <div class="row"><label>Alpha</label>
-      <input type="range" id="alphaIn" min="1" max="128" value="8" oninput="document.getElementById('alphaVal').textContent=this.value">
-      <span id="alphaVal" style="font-size:10px;color:#aaa">8</span>
-    </div>
-    <div class="row"><label>Pad</label>
-      <input type="range" id="padIn" min="0" max="40" value="4" oninput="document.getElementById('padVal').textContent=this.value">
-      <span id="padVal" style="font-size:10px;color:#aaa">4</span>
-    </div>
-    <button class="green" onclick="bestFit()">✨ Best Fit frame này</button>
-    <button onclick="bestFitAll()">✨ Best Fit ALL</button>
-    <button onclick="bestFitAllUniform()">✨ Best Fit ALL + đồng đều W×H</button>
-    <div id="bfDebug" class="status info"></div>
-    <button onclick="applyToAll()">↕ Apply W×H to all</button>
-    <button onclick="resetSelected()">↺ Reset frame này</button>
-    <button onclick="resetAll()">↺ Reset ALL frames</button>
-  </div>
-
-  <!-- FRAME LIST -->
-  <div class="sg">
-    <h3>Frames <span id="frameCount" style="color:#FFD700;font-size:10px;font-weight:normal;"></span></h3>
-    <div id="frameStrip"></div>
-    <div style="display:flex;gap:4px;margin-top:6px;">
-      <button onclick="addFrame()" style="flex:1;background:#103a10;border-color:#5a8;color:#afa;">+ Add</button>
-      <button onclick="duplicateFrame()" style="flex:1;" title="Duplicate selected frame">⧉ Dup</button>
-      <button onclick="deleteFrame()" class="red" style="flex:1;">✕ Del</button>
-    </div>
-    <div style="display:flex;gap:4px;margin-top:3px;">
-      <button onclick="moveFrame(-1)" style="flex:1;">◀ Move</button>
-      <button onclick="moveFrame(1)"  style="flex:1;">Move ▶</button>
-    </div>
-  </div>
-
-  <!-- SAVE -->
-  <div class="sg">
-    <h3>Export / Save</h3>
-    <button class="gold" onclick="saveToServer()" id="saveBtn">💾 Save to server</button>
-    <button onclick="downloadJSON()">⬇ Download JSON</button>
-    <div id="statusSave" class="status"></div>
-  </div>
+<!-- TOP BAR -->
+<div id="topbar">
+  <span class="logo">🌸 Bloom Anim Editor</span>
+  <div class="tb-sep"></div>
+  <select id="colorPicker" style="width:110px;" onchange="onColorChange()">
+    <option value="red">Red (R)</option>
+    <option value="pink">Pink (P)</option>
+    <option value="yellow">Yellow (Y)</option>
+    <option value="purple">Purple (V)</option>
+    <option value="white">White (W)</option>
+    <option value="orange">Orange (O)</option>
+    <option value="blue">Blue (B)</option>
+    <option value="camellia">Camellia (C)</option>
+  </select>
+  <button class="btn" onclick="loadSheet()">↺ Load Sheet</button>
+  <div class="tb-sep"></div>
+  <button class="btn blue" onclick="loadFromServer()">📥 Load rects</button>
+  <button class="btn gold" onclick="saveToServer()">💾 Save to server</button>
+  <button class="btn" onclick="downloadJSON()">⬇ JSON</button>
+  <div class="tb-sep"></div>
+  <label style="font-size:10px;color:var(--muted);">Zoom</label>
+  <input type="number" id="zoomIn" value="50" min="10" max="300" step="5" style="width:58px;" onchange="onZoomChange()">
+  <span style="font-size:10px;color:var(--muted);">%</span>
+  <div id="tbStatus">Chọn màu → Load Sheet → Load rects</div>
 </div>
 
-<!-- MAIN CANVAS AREA -->
-<div id="main">
-  <div id="toolbar">
-    <span id="tbZoom">50%</span>
-    <span id="tbSheet">—</span>
-    <span id="tbFrame">—</span>
-    <span id="tbMouse">—</span>
-    <span style="margin-left:auto;color:#555">Drag rect: di chuyển · Drag góc: resize</span>
-  </div>
-  <div id="canvasWrap">
-    <canvas id="sheetCanvas"></canvas>
-  </div>
-</div>
+<!-- WORKSPACE -->
+<div id="workspace">
 
-<!-- FLOATING ANIM PREVIEW -->
-<div id="animWrap">
-  <canvas id="animCanvas" width="100" height="140"></canvas>
-  <div id="animCtrl">
-    <button onclick="playAnim()">▶</button>
-    <button onclick="stopAnim()">⏹</button>
-    <button onclick="stepAnim(-1)">◀|</button>
-    <button onclick="stepAnim(1)">|▶</button>
+  <!-- LEFT PANEL -->
+  <div id="leftPanel">
+
+    <div class="panel-sec">
+      <h4>Frame đang chọn</h4>
+      <div id="selInfo">—</div>
+      <div class="prop-row"><label>X</label><input type="number" id="fxIn" oninput="applyInput('x')"></div>
+      <div class="prop-row"><label>Y</label><input type="number" id="fyIn" oninput="applyInput('y')"></div>
+      <div class="prop-row"><label>W</label><input type="number" id="fwIn" oninput="applyInput('w')"></div>
+      <div class="prop-row"><label>H</label><input type="number" id="fhIn" oninput="applyInput('h')"></div>
+      <div class="prop-row"><label>ms</label><input type="number" id="fdurIn" min="10" max="2000" step="10" oninput="applyDur()"><span>duration</span></div>
+    </div>
+
+    <div class="panel-sec">
+      <h4>Best Fit</h4>
+      <div class="range-row"><label>Alpha</label><input type="range" id="alphaIn" min="1" max="128" value="8" oninput="document.getElementById('alphaVal').textContent=this.value"><span id="alphaVal">8</span></div>
+      <div class="range-row"><label>Pad</label><input type="range" id="padIn" min="0" max="40" value="4" oninput="document.getElementById('padVal').textContent=this.value"><span id="padVal">4</span></div>
+      <button class="btn green lbtn" onclick="bestFit()">✨ Fit frame này</button>
+      <button class="btn lbtn" onclick="bestFitAll()">✨ Fit ALL</button>
+      <button class="btn lbtn" onclick="bestFitAllUniform()">✨ Fit ALL uniform W×H</button>
+      <div id="bfStatus" style="font-size:10px;color:var(--muted);margin-top:4px;"></div>
+    </div>
+
+    <div class="panel-sec">
+      <h4>Apply</h4>
+      <button class="btn lbtn" onclick="applyToAll()">↕ Apply W×H to all</button>
+      <button class="btn lbtn" onclick="resetSelected()">↺ Reset frame này</button>
+      <button class="btn red lbtn" onclick="resetAll()">↺ Reset ALL</button>
+    </div>
+
+    <div class="panel-sec">
+      <h4>Onion Skin</h4>
+      <div style="display:flex;gap:5px;">
+        <button class="btn lbtn" id="onionBtn" onclick="toggleOnion()" style="flex:1;">⊙ OFF</button>
+      </div>
+      <div class="range-row" style="margin-top:6px;"><label>Opacity</label><input type="range" id="onionAlpha" min="5" max="60" value="22" oninput="render()"><span id="onionAlphaVal" style="font-size:10px;color:var(--muted);">22</span></div>
+    </div>
+
+  </div><!-- /leftPanel -->
+
+  <!-- CENTER CANVAS -->
+  <div id="canvasArea">
+    <div id="canvasWrap">
+      <canvas id="sheetCanvas"></canvas>
+    </div>
   </div>
-  <div id="animFpsRow">
-    <input type="range" id="fpsIn" min="20" max="400" value="90">
-    <span id="fpsVal">90</span>ms
+
+  <!-- RIGHT PANEL -->
+  <div id="rightPanel">
+    <div class="preview-sec">
+      <h4>Preview</h4>
+      <canvas id="previewCanvas" width="140" height="140"></canvas>
+      <div id="prevFrameLabel">F0 / 0</div>
+    </div>
+    <div class="playbar">
+      <button class="btn" onclick="stepAnim(-1)" title="Prev">⏮</button>
+      <button class="btn" id="playBtn" onclick="togglePlay()" title="Play/Pause" style="flex:2;">▶</button>
+      <button class="btn" onclick="stepAnim(1)" title="Next">⏭</button>
+    </div>
+    <div class="fps-row">
+      <label>ms</label>
+      <input type="range" id="fpsIn" min="20" max="500" value="90" oninput="document.getElementById('fpsVal').textContent=this.value">
+      <span id="fpsVal">90</span>
+    </div>
+    <div class="panel-sec" style="padding:8px 10px;">
+      <h4>Sheet info</h4>
+      <div id="sheetInfo" style="font-size:10px;color:var(--muted);line-height:1.8;">—</div>
+    </div>
   </div>
-  <div id="animFrameLabel">F0</div>
+
+</div><!-- /workspace -->
+
+<!-- TIMELINE -->
+<div id="timeline">
+  <div id="tlHeader">
+    <h4>Timeline</h4>
+    <button class="btn green" onclick="addFrame()" style="height:22px;padding:0 8px;font-size:10px;">+ Add</button>
+    <button class="btn" onclick="duplicateFrame()" style="height:22px;padding:0 8px;font-size:10px;">⧉ Dup</button>
+    <button class="btn red" onclick="deleteFrame()" style="height:22px;padding:0 8px;font-size:10px;">✕ Del</button>
+    <button class="btn" onclick="moveFrame(-1)" style="height:22px;padding:0 6px;font-size:10px;">◀</button>
+    <button class="btn" onclick="moveFrame(1)" style="height:22px;padding:0 6px;font-size:10px;">▶</button>
+    <span style="margin-left:auto;font-size:10px;color:var(--muted);" id="tlInfo"></span>
+  </div>
+  <div id="tlScroll"></div>
 </div>
 
 <script>
 const BASE = '../assets/sort_blossom/flower_';
-const COLOR_KEY = { red:'R', pink:'P', yellow:'Y', purple:'V', white:'W', orange:'O', blue:'B', camellia:'C' };
+const COLOR_KEY = {red:'R',pink:'P',yellow:'Y',purple:'V',white:'W',orange:'O',blue:'B',camellia:'C'};
 
-let img = new Image();
-let zoom = 0.5;
-let frames = []; // [{x,y,w,h}]
-let selIdx = -1;
-let animTimer = null, animFrame = 0;
+let img     = new Image();
+let zoom    = 0.5;
+let frames  = [];   // [{x,y,w,h,dur}]
+let selIdx  = -1;
+let animPlaying = false, animTimer = null, animCursor = 0;
+let onionEnabled = false;
 let drag = null;
+let tlDrag = null; // timeline drag-to-reorder
 
 const canvas = document.getElementById('sheetCanvas');
 const ctx    = canvas.getContext('2d');
+const prevCv = document.getElementById('previewCanvas');
+const prevCtx= prevCv.getContext('2d');
 
-document.getElementById('fpsIn').addEventListener('input', function() {
-  document.getElementById('fpsVal').textContent = this.value;
-});
-
-// ─── LOAD SHEET ──────────────────────────────────────────────
+// ─── LOAD ──────────────────────────────────────────────────
 function loadSheet() {
   const color = document.getElementById('colorPicker').value;
-  zoom = (parseInt(document.getElementById('zoomIn').value) || 50) / 100;
+  zoom = (parseInt(document.getElementById('zoomIn').value)||50)/100;
   img = new Image();
-  img.onerror = () => setStatus('statusLoad', '❌ Không load: ' + BASE + color + '_bloom.webp', 'err');
+  img.onerror = () => setStatus('❌ Không load sheet: '+color, 'err');
   img.onload  = () => {
-    setStatus('statusLoad', `✅ Loaded ${img.naturalWidth}×${img.naturalHeight}`, 'ok');
-    if (!frames.length) initFramesDefault();
-    render(); buildStrip(); playAnim();
+    setStatus(`✅ Sheet loaded ${img.naturalWidth}×${img.naturalHeight}`, 'ok');
+    document.getElementById('sheetInfo').innerHTML =
+      `Size: ${img.naturalWidth}×${img.naturalHeight}<br>Frames: ${frames.length}`;
+    if (!frames.length) initDefaultFrames();
+    render(); buildTimeline(); drawPreview(selIdx>=0?selIdx:0);
   };
-  img.src = BASE + color + '_bloom.webp?v=' + Date.now();
+  img.src = BASE + color + '_bloom.webp?v='+Date.now();
 }
 
-function initFramesDefault() {
-  // Default: 5×2 grid
-  const cols = 5, rows = 2;
-  const fw = img.naturalWidth  / cols;
-  const fh = img.naturalHeight / rows;
-  frames = [];
-  for (let r = 0; r < rows; r++)
-    for (let c = 0; c < cols; c++)
-      frames.push({ x: c*fw, y: r*fh, w: fw, h: fh });
-  selIdx = 0;
-  updateInfoPanel();
-  document.getElementById('tbSheet').textContent = `${img.naturalWidth}×${img.naturalHeight}`;
+function initDefaultFrames() {
+  const cols=5,rows=2, fw=img.naturalWidth/cols, fh=img.naturalHeight/rows;
+  frames=[];
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) frames.push({x:c*fw,y:r*fh,w:fw,h:fh,dur:90});
+  selIdx=0;
 }
 
-// ─── LOAD RECTS FROM SERVER ──────────────────────────────────
 async function loadFromServer() {
-  setStatus('statusLoad', '⏳ Loading...', 'info');
+  setStatus('⏳ Loading from server...','');
   try {
     const res  = await fetch('/api/bloom-rects');
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch(e) { throw new Error('Server response: '+text.slice(0,80)); }
     if (!data.ok) throw new Error(data.error);
-    const color = document.getElementById('colorPicker').value;
-    const key   = COLOR_KEY[color];
+    const key = COLOR_KEY[document.getElementById('colorPicker').value];
     const rects = data.rects[key];
-    if (!rects || !rects.length) throw new Error(`No rects for ${key}`);
-    frames = rects.map(([x,y,w,h]) => ({x,y,w,h}));
+    if (!rects||!rects.length) throw new Error(`Không có rects cho màu ${key}`);
+    frames = rects.map(([x,y,w,h])=>({x,y,w,h,dur:90}));
     selIdx = 0;
-    updateInfoPanel();
-    buildStrip();
-    render();
-    playAnim();
-    setStatus('statusLoad', `✅ Loaded ${frames.length} frames [${key}]`, 'ok');
-  } catch(e) {
-    setStatus('statusLoad', '❌ ' + e.message, 'err');
-  }
+    updatePropPanel(); buildTimeline(); render(); drawPreview(0);
+    setStatus(`✅ Loaded ${frames.length} frames [${key}]`,'ok');
+    document.getElementById('sheetInfo').innerHTML =
+      `Size: ${img.naturalWidth}×${img.naturalHeight}<br>Frames: ${frames.length}`;
+  } catch(e) { setStatus('❌ '+e.message,'err'); }
 }
 
-// ─── RENDER CANVAS ───────────────────────────────────────────
+// ─── MAIN CANVAS RENDER ────────────────────────────────────
 function render() {
   if (!img.naturalWidth) return;
   canvas.width  = Math.round(img.naturalWidth  * zoom);
   canvas.height = Math.round(img.naturalHeight * zoom);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
 
-  frames.forEach((f, i) => {
-    const x = f.x*zoom, y = f.y*zoom, w = f.w*zoom, h = f.h*zoom;
-    const isSel = (i === selIdx);
+  // Onion skin: prev frame (blue) + next frame (orange)
+  if (onionEnabled && selIdx>=0) {
+    const oa = parseInt(document.getElementById('onionAlpha').value)/100;
+    document.getElementById('onionAlphaVal').textContent = document.getElementById('onionAlpha').value;
+    const draw = (fi, color) => {
+      if (fi<0||fi>=frames.length||fi===selIdx) return;
+      const f=frames[fi];
+      ctx.globalAlpha=oa;
+      ctx.fillStyle=color;
+      ctx.fillRect(f.x*zoom,f.y*zoom,f.w*zoom,f.h*zoom);
+      ctx.globalAlpha=1;
+      ctx.strokeStyle=color; ctx.lineWidth=1.5;
+      ctx.strokeRect(f.x*zoom+.5,f.y*zoom+.5,f.w*zoom-1,f.h*zoom-1);
+    };
+    draw(selIdx-1,'#60a5fa'); // prev = blue
+    draw(selIdx+1,'#fb923c'); // next = orange
+  }
 
-    ctx.strokeStyle = isSel ? '#FFD700' : 'rgba(255,255,255,0.3)';
-    ctx.lineWidth   = isSel ? 2 : 1;
-    ctx.strokeRect(x+0.5, y+0.5, w-1, h-1);
-
-    if (isSel) {
-      ctx.fillStyle = 'rgba(255,215,0,0.08)';
-      ctx.fillRect(x, y, w, h);
-    }
-
-    // Frame label
-    ctx.fillStyle = isSel ? '#FFD700' : 'rgba(255,255,255,0.55)';
-    ctx.font = `${Math.max(9, Math.round(12*zoom))}px monospace`;
-    ctx.fillText('F'+i, x+3, y+Math.max(10, 13*zoom));
-
-    // Corner handles for selected
-    if (isSel) {
-      [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([hx,hy]) => {
-        ctx.fillStyle = '#FFD700';
-        ctx.fillRect(hx-5, hy-5, 10, 10);
+  // All frame rects
+  frames.forEach((f,i)=>{
+    const x=f.x*zoom,y=f.y*zoom,w=f.w*zoom,h=f.h*zoom,sel=(i===selIdx);
+    ctx.strokeStyle=sel?'#FFD700':'rgba(255,255,255,0.2)';
+    ctx.lineWidth=sel?2:1;
+    ctx.strokeRect(x+.5,y+.5,w-1,h-1);
+    if(sel){ ctx.fillStyle='rgba(255,215,0,0.07)'; ctx.fillRect(x,y,w,h); }
+    ctx.fillStyle=sel?'#FFD700':'rgba(255,255,255,0.45)';
+    ctx.font=`${Math.max(9,Math.round(11*zoom))}px monospace`;
+    ctx.fillText('F'+i, x+3, y+Math.max(10,12*zoom));
+    if(sel){
+      [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([hx,hy])=>{
+        ctx.fillStyle='#FFD700'; ctx.fillRect(hx-5,hy-5,10,10);
       });
     }
   });
 }
 
-// ─── FRAME STRIP ─────────────────────────────────────────────
-function buildStrip() {
-  const strip = document.getElementById('frameStrip');
-  strip.innerHTML = '';
-  frames.forEach((f, i) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'fthumb' + (i===selIdx?' sel':'');
-    wrap.id = 'tw'+i;
-    wrap.style.cssText = 'width:36px;height:50px;';
-    wrap.title = `F${i}`;
+// ─── PREVIEW ───────────────────────────────────────────────
+function drawPreview(fi) {
+  if (!img.naturalWidth||!frames[fi]) return;
+  const f=frames[fi];
+  prevCv.width=140; prevCv.height=140;
+  prevCtx.clearRect(0,0,140,140);
+  // Checkerboard bg
+  for(let r=0;r<7;r++) for(let c=0;c<7;c++){
+    prevCtx.fillStyle=(r+c)%2?'#1a1d24':'#22262f';
+    prevCtx.fillRect(c*20,r*20,20,20);
+  }
+  // Fit frame into 140×140
+  const scale=Math.min(140/f.w,140/f.h);
+  const dw=f.w*scale, dh=f.h*scale;
+  const dx=(140-dw)/2, dy=(140-dh)/2;
+  prevCtx.drawImage(img,f.x,f.y,f.w,f.h,dx,dy,dw,dh);
+  document.getElementById('prevFrameLabel').textContent=`F${fi} / ${frames.length-1}  ${f.dur||90}ms`;
+}
 
+// ─── TIMELINE ──────────────────────────────────────────────
+function buildTimeline() {
+  const tl = document.getElementById('tlScroll');
+  tl.innerHTML = '';
+  frames.forEach((f,i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'tl-frame'+(i===selIdx?' sel':'');
+    wrap.dataset.idx = i;
+    wrap.draggable = true;
+
+    // Thumbnail canvas
     const cv = document.createElement('canvas');
-    cv.width = 36; cv.height = 50;
-    cv.style.cssText = 'display:block;';
-    if (img.naturalWidth) cv.getContext('2d').drawImage(img, f.x, f.y, f.w, f.h, 0, 0, 36, 50);
+    cv.className = 'tl-thumb';
+    cv.width=64; cv.height=52;
+    if(img.naturalWidth) cv.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,64,52);
     wrap.appendChild(cv);
 
+    // Bottom row: index + duration input
+    const bot = document.createElement('div');
+    bot.className='tl-bottom';
+    const idx = document.createElement('span');
+    idx.className='tl-idx'; idx.textContent='F'+i;
+    const dur = document.createElement('input');
+    dur.className='tl-dur'; dur.type='number'; dur.min=10; dur.max=2000; dur.step=10;
+    dur.value=f.dur||90; dur.title='Duration ms';
+    dur.onclick = e=>e.stopPropagation();
+    dur.oninput = e=>{ frames[i].dur=parseInt(e.target.value)||90; if(selIdx===i) document.getElementById('fdurIn').value=frames[i].dur; };
+    bot.appendChild(idx); bot.appendChild(dur);
+    wrap.appendChild(bot);
+
+    // Delete X
     const del = document.createElement('div');
-    del.className = 'fdel';
-    del.textContent = '✕';
-    del.onclick = (e) => { e.stopPropagation(); deleteFrameAt(i); };
+    del.className='tl-del'; del.textContent='✕';
+    del.onclick=e=>{ e.stopPropagation(); deleteFrameAt(i); };
     wrap.appendChild(del);
 
-    wrap.onclick = () => selectFrame(i);
-    strip.appendChild(wrap);
+    wrap.onclick=()=>selectFrame(i);
+
+    // Drag-to-reorder
+    wrap.addEventListener('dragstart', e=>{ tlDrag=i; wrap.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+    wrap.addEventListener('dragend',   ()=>{ wrap.classList.remove('dragging'); tlDrag=null; });
+    wrap.addEventListener('dragover',  e=>{ e.preventDefault(); e.dataTransfer.dropEffect='move'; });
+    wrap.addEventListener('drop',      e=>{ e.preventDefault(); if(tlDrag===null||tlDrag===i) return; const f2=frames.splice(tlDrag,1)[0]; frames.splice(i,0,f2); selIdx=i; buildTimeline(); render(); updatePropPanel(); });
+
+    tl.appendChild(wrap);
   });
-  document.getElementById('frameCount').textContent = `(${frames.length})`;
+
+  // + Add button at end
+  const addBtn = document.createElement('div');
+  addBtn.className='tl-add'; addBtn.textContent='+'; addBtn.title='Add frame';
+  addBtn.onclick=addFrame;
+  tl.appendChild(addBtn);
+
+  document.getElementById('tlInfo').textContent = `${frames.length} frames · total ${frames.reduce((s,f)=>s+(f.dur||90),0)}ms`;
 }
 
-function refreshThumb(i) {
-  const wrap = document.getElementById('tw'+i);
-  if (!wrap) return;
+function refreshTlThumb(i) {
+  const tl = document.getElementById('tlScroll');
+  const wrap = tl.children[i];
+  if (!wrap||!img.naturalWidth) return;
   const cv = wrap.querySelector('canvas');
-  if (!cv || !img.naturalWidth) return;
-  const tc = cv.getContext('2d');
+  if (!cv) return;
   const f = frames[i];
-  tc.clearRect(0, 0, 36, 50);
-  tc.drawImage(img, f.x, f.y, f.w, f.h, 0, 0, 36, 50);
+  cv.getContext('2d').clearRect(0,0,64,52);
+  cv.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,64,52);
 }
 
-// ─── SELECTION ───────────────────────────────────────────────
+// ─── SELECTION ─────────────────────────────────────────────
 function selectFrame(i) {
   selIdx = i;
-  document.querySelectorAll('.fthumb').forEach((w,j) => w.classList.toggle('sel', j===i));
-  updateInfoPanel();
+  document.querySelectorAll('.tl-frame').forEach((w,j)=>w.classList.toggle('sel',j===i));
+  updatePropPanel();
   render();
   stopAnim();
-  drawAnimFrame(i);
-  document.getElementById('animFrameLabel').textContent = 'F'+i;
+  animCursor=i;
+  drawPreview(i);
 }
 
-function updateInfoPanel() {
-  if (selIdx < 0 || selIdx >= frames.length) {
-    document.getElementById('selectedInfo').textContent = 'Chưa chọn frame';
-    return;
-  }
-  const f = frames[selIdx];
-  document.getElementById('selectedInfo').textContent =
-    `Frame ${selIdx}  (${Math.round(f.x)}, ${Math.round(f.y)})  ${Math.round(f.w)}×${Math.round(f.h)}`;
-  document.getElementById('fxIn').value = Math.round(f.x);
-  document.getElementById('fyIn').value = Math.round(f.y);
-  document.getElementById('fwIn').value = Math.round(f.w);
-  document.getElementById('fhIn').value = Math.round(f.h);
-  document.getElementById('tbFrame').textContent =
-    `F${selIdx}: x=${Math.round(f.x)} y=${Math.round(f.y)} w=${Math.round(f.w)} h=${Math.round(f.h)}`;
+function updatePropPanel() {
+  if (selIdx<0||selIdx>=frames.length){ document.getElementById('selInfo').textContent='—'; return; }
+  const f=frames[selIdx];
+  document.getElementById('selInfo').textContent=`F${selIdx}  (${Math.round(f.x)},${Math.round(f.y)})  ${Math.round(f.w)}×${Math.round(f.h)}`;
+  document.getElementById('fxIn').value=Math.round(f.x);
+  document.getElementById('fyIn').value=Math.round(f.y);
+  document.getElementById('fwIn').value=Math.round(f.w);
+  document.getElementById('fhIn').value=Math.round(f.h);
+  document.getElementById('fdurIn').value=f.dur||90;
 }
 
 function applyInput(field) {
-  if (selIdx < 0) return;
-  frames[selIdx][field] = parseFloat(document.getElementById('f'+field+'In').value) || 0;
-  refreshThumb(selIdx);
-  render();
-  updateInfoPanel();
-  drawAnimFrame(selIdx);
-}
-
-// ─── ADD / DELETE / MOVE FRAMES ──────────────────────────────
-function addFrame() {
-  // Add copy of last frame (or default)
-  const last = frames[frames.length-1] || { x:0, y:0, w:100, h:100 };
-  frames.push({ ...last });
-  selIdx = frames.length - 1;
-  buildStrip();
-  render();
-  updateInfoPanel();
-}
-
-function duplicateFrame() {
-  if (selIdx < 0) return;
-  frames.splice(selIdx+1, 0, { ...frames[selIdx] });
-  selIdx = selIdx + 1;
-  buildStrip();
-  render();
-  updateInfoPanel();
-}
-
-function deleteFrameAt(i) {
-  if (frames.length <= 1) { setStatus('bfDebug','❌ Cần ít nhất 1 frame','err'); return; }
-  frames.splice(i, 1);
-  if (selIdx >= frames.length) selIdx = frames.length - 1;
-  buildStrip();
-  render();
-  updateInfoPanel();
-}
-
-function deleteFrame() {
-  deleteFrameAt(selIdx);
-}
-
-function moveFrame(dir) {
-  if (selIdx < 0) return;
-  const ni = selIdx + dir;
-  if (ni < 0 || ni >= frames.length) return;
-  [frames[selIdx], frames[ni]] = [frames[ni], frames[selIdx]];
-  selIdx = ni;
-  buildStrip();
-  render();
-  updateInfoPanel();
-}
-
-// ─── BEST FIT ────────────────────────────────────────────────
-function getImagePixels(idx) {
-  const f = frames[idx];
-  const oc = document.createElement('canvas');
-  oc.width = Math.ceil(f.w); oc.height = Math.ceil(f.h);
-  const oc2 = oc.getContext('2d');
-  oc2.drawImage(img, f.x, f.y, f.w, f.h, 0, 0, oc.width, oc.height);
-  try { return { px: oc2.getImageData(0,0,oc.width,oc.height).data, W:oc.width, H:oc.height }; }
-  catch(e) { throw new Error('Canvas blocked — dùng localhost:3456'); }
-}
-
-function computeBestFit(idx) {
-  if (!img.naturalWidth || !frames[idx]) return null;
-  const ALPHA = parseInt(document.getElementById('alphaIn').value) || 8;
-  const PAD   = parseInt(document.getElementById('padIn').value)   || 4;
-  const f = frames[idx];
-  const { px, W, H } = getImagePixels(idx);
-  const has = (x0,y0,x1,y1) => {
-    for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) if (px[(y*W+x)*4+3]>ALPHA) return true;
-    return false;
-  };
-  let minX=0,maxX=W-1,minY=0,maxY=H-1;
-  for (let y=0;y<H;y++)   { if (has(0,y,W-1,y))    { minY=y; break; } }
-  for (let y=H-1;y>=0;y--){ if (has(0,y,W-1,y))    { maxY=y; break; } }
-  for (let x=0;x<W;x++)   { if (has(x,minY,x,maxY)){ minX=x; break; } }
-  for (let x=W-1;x>=0;x--){ if (has(x,minY,x,maxY)){ maxX=x; break; } }
-  if (minX>=maxX||minY>=maxY) return null;
-  return {
-    x: f.x+Math.max(0,minX-PAD), y: f.y+Math.max(0,minY-PAD),
-    w: Math.min(W-1,maxX+PAD)-Math.max(0,minX-PAD)+1,
-    h: Math.min(H-1,maxY+PAD)-Math.max(0,minY-PAD)+1,
-  };
-}
-
-function bestFit() {
   if (selIdx<0) return;
-  try {
-    const fit = computeBestFit(selIdx);
-    if (!fit) { setStatus('bfDebug','❌ Không tìm thấy content','err'); return; }
-    frames[selIdx] = fit;
-    refreshThumb(selIdx); render(); updateInfoPanel();
-    setStatus('bfDebug',`✅ F${selIdx}: ${Math.round(fit.w)}×${Math.round(fit.h)}`,'ok');
-  } catch(e) { setStatus('bfDebug','❌ '+e.message,'err'); }
+  frames[selIdx][field]=parseFloat(document.getElementById('f'+field+'In').value)||0;
+  refreshTlThumb(selIdx); render(); updatePropPanel(); drawPreview(selIdx);
+}
+function applyDur() {
+  if (selIdx<0) return;
+  frames[selIdx].dur=parseInt(document.getElementById('fdurIn').value)||90;
+  const tl=document.getElementById('tlScroll');
+  const wrap=tl.children[selIdx];
+  if (wrap){ const inp=wrap.querySelector('.tl-dur'); if(inp) inp.value=frames[selIdx].dur; }
+  document.getElementById('tlInfo').textContent=`${frames.length} frames · total ${frames.reduce((s,f)=>s+(f.dur||90),0)}ms`;
 }
 
+// ─── ADD / DELETE / MOVE ───────────────────────────────────
+function addFrame() {
+  const last=frames[frames.length-1]||{x:0,y:0,w:100,h:100,dur:90};
+  frames.push({...last});
+  selIdx=frames.length-1;
+  buildTimeline(); render(); updatePropPanel(); drawPreview(selIdx);
+}
+function duplicateFrame() {
+  if (selIdx<0) return;
+  frames.splice(selIdx+1,0,{...frames[selIdx]});
+  selIdx++;
+  buildTimeline(); render(); updatePropPanel(); drawPreview(selIdx);
+}
+function deleteFrameAt(i) {
+  if (frames.length<=1){ setStatus('❌ Cần ít nhất 1 frame','err'); return; }
+  frames.splice(i,1);
+  if (selIdx>=frames.length) selIdx=frames.length-1;
+  buildTimeline(); render(); updatePropPanel();
+}
+function deleteFrame(){ deleteFrameAt(selIdx); }
+function moveFrame(dir) {
+  if (selIdx<0) return;
+  const ni=selIdx+dir;
+  if (ni<0||ni>=frames.length) return;
+  [frames[selIdx],frames[ni]]=[frames[ni],frames[selIdx]];
+  selIdx=ni; buildTimeline(); render(); updatePropPanel();
+}
+
+// ─── ONION SKIN ────────────────────────────────────────────
+function toggleOnion() {
+  onionEnabled=!onionEnabled;
+  const btn=document.getElementById('onionBtn');
+  btn.textContent=onionEnabled?'⊙ ON':'⊙ OFF';
+  btn.style.color=onionEnabled?'#fb923c':'';
+  btn.style.borderColor=onionEnabled?'#fb923c':'';
+  render();
+}
+
+// ─── PLAY ──────────────────────────────────────────────────
+function togglePlay() {
+  animPlaying?stopAnim():playAnim();
+}
+function playAnim() {
+  stopAnim(); animPlaying=true;
+  document.getElementById('playBtn').textContent='⏸';
+  if (!frames.length) return;
+  function tick() {
+    if (!animPlaying) return;
+    drawPreview(animCursor);
+    // highlight in timeline
+    document.querySelectorAll('.tl-frame').forEach((w,j)=>w.classList.toggle('sel',j===animCursor));
+    const dur = frames[animCursor]?.dur || parseInt(document.getElementById('fpsIn').value) || 90;
+    animCursor=(animCursor+1)%frames.length;
+    animTimer=setTimeout(tick,dur);
+  }
+  tick();
+}
+function stopAnim() {
+  animPlaying=false; if(animTimer){clearTimeout(animTimer);animTimer=null;}
+  document.getElementById('playBtn').textContent='▶';
+}
+function stepAnim(d) {
+  stopAnim();
+  animCursor=((animCursor+d)+frames.length)%frames.length;
+  selectFrame(animCursor);
+}
+
+// ─── BEST FIT ──────────────────────────────────────────────
+function getPixels(idx) {
+  const f=frames[idx];
+  const oc=document.createElement('canvas');
+  oc.width=Math.ceil(f.w); oc.height=Math.ceil(f.h);
+  const c2=oc.getContext('2d');
+  c2.drawImage(img,f.x,f.y,f.w,f.h,0,0,oc.width,oc.height);
+  return {px:c2.getImageData(0,0,oc.width,oc.height).data,W:oc.width,H:oc.height};
+}
+function computeBF(idx) {
+  const ALPHA=parseInt(document.getElementById('alphaIn').value)||8;
+  const PAD  =parseInt(document.getElementById('padIn').value)||4;
+  const f=frames[idx];
+  const {px,W,H}=getPixels(idx);
+  const has=(x0,y0,x1,y1)=>{ for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) if(px[(y*W+x)*4+3]>ALPHA) return true; return false; };
+  let minX=0,maxX=W-1,minY=0,maxY=H-1;
+  for(let y=0;y<H;y++)    if(has(0,y,W-1,y)){minY=y;break;}
+  for(let y=H-1;y>=0;y--) if(has(0,y,W-1,y)){maxY=y;break;}
+  for(let x=0;x<W;x++)    if(has(x,minY,x,maxY)){minX=x;break;}
+  for(let x=W-1;x>=0;x--) if(has(x,minY,x,maxY)){maxX=x;break;}
+  if(minX>=maxX||minY>=maxY) return null;
+  return {x:f.x+Math.max(0,minX-PAD),y:f.y+Math.max(0,minY-PAD),w:Math.min(W-1,maxX+PAD)-Math.max(0,minX-PAD)+1,h:Math.min(H-1,maxY+PAD)-Math.max(0,minY-PAD)+1};
+}
+function bestFit() {
+  if(selIdx<0) return;
+  try { const r=computeBF(selIdx); if(!r){document.getElementById('bfStatus').textContent='❌ No content';return;} Object.assign(frames[selIdx],r); refreshTlThumb(selIdx);render();updatePropPanel();drawPreview(selIdx); document.getElementById('bfStatus').textContent=`✅ F${selIdx}: ${Math.round(r.w)}×${Math.round(r.h)}`; } catch(e){document.getElementById('bfStatus').textContent='❌ '+e.message;}
+}
 function bestFitAll() {
   let ok=0;
-  frames.forEach((_,i)=>{
-    try { const f=computeBestFit(i); if(f){frames[i]=f;refreshThumb(i);ok++;} } catch(e){}
-  });
-  render(); updateInfoPanel();
-  setStatus('bfDebug',`✅ ${ok}/${frames.length} frames fit`,'ok');
+  frames.forEach((_,i)=>{ try{const r=computeBF(i);if(r){Object.assign(frames[i],r);refreshTlThumb(i);ok++;}}catch(e){} });
+  render();updatePropPanel();
+  document.getElementById('bfStatus').textContent=`✅ ${ok}/${frames.length}`;
 }
-
 function bestFitAllUniform() {
-  const fits = frames.map((_,i)=>{ try{return computeBestFit(i);}catch(e){return null;} });
-  const valid = fits.filter(Boolean);
-  if (!valid.length) { setStatus('bfDebug','❌ Không fit được','err'); return; }
-  const maxW = Math.max(...valid.map(f=>f.w));
-  const maxH = Math.max(...valid.map(f=>f.h));
-  fits.forEach((fit,i)=>{
-    if(!fit) return;
-    const cx=fit.x+fit.w/2, cy=fit.y+fit.h/2;
-    frames[i]={x:Math.max(0,cx-maxW/2),y:Math.max(0,cy-maxH/2),w:maxW,h:maxH};
-    refreshThumb(i);
-  });
-  render(); updateInfoPanel();
-  setStatus('bfDebug',`✅ Uniform ${Math.round(maxW)}×${Math.round(maxH)}`,'ok');
+  const fits=frames.map((_,i)=>{try{return computeBF(i);}catch(e){return null;}});
+  const valid=fits.filter(Boolean);
+  if(!valid.length){document.getElementById('bfStatus').textContent='❌ No fit';return;}
+  const maxW=Math.max(...valid.map(f=>f.w)), maxH=Math.max(...valid.map(f=>f.h));
+  fits.forEach((fit,i)=>{if(!fit)return;const cx=fit.x+fit.w/2,cy=fit.y+fit.h/2;frames[i].x=Math.max(0,cx-maxW/2);frames[i].y=Math.max(0,cy-maxH/2);frames[i].w=maxW;frames[i].h=maxH;refreshTlThumb(i);});
+  render();updatePropPanel();
+  document.getElementById('bfStatus').textContent=`✅ Uniform ${Math.round(maxW)}×${Math.round(maxH)}`;
 }
+function applyToAll() { if(selIdx<0)return; const f=frames[selIdx]; frames.forEach((fr,i)=>{fr.w=f.w;fr.h=f.h;refreshTlThumb(i);}); render(); }
+function resetSelected() { if(selIdx<0||!img.naturalWidth)return; const cols=5,rows=2,fw=img.naturalWidth/cols,fh=img.naturalHeight/rows,c=selIdx%cols,r=Math.floor(selIdx/cols); frames[selIdx]={x:c*fw,y:r*fh,w:fw,h:fh,dur:frames[selIdx].dur||90}; refreshTlThumb(selIdx);render();updatePropPanel(); }
+function resetAll() { if(!img.naturalWidth)return; initDefaultFrames();buildTimeline();render(); }
 
-function applyToAll() {
-  if (selIdx<0) return;
-  const f=frames[selIdx];
-  frames.forEach((fr,i)=>{ fr.w=f.w; fr.h=f.h; refreshThumb(i); });
-  render();
-}
-function resetSelected() {
-  if (selIdx<0||!img.naturalWidth) return;
-  const cols=5,rows=2;
-  const fw=img.naturalWidth/cols, fh=img.naturalHeight/rows;
-  const c=selIdx%cols, r=Math.floor(selIdx/cols);
-  frames[selIdx]={x:c*fw,y:r*fh,w:fw,h:fh};
-  refreshThumb(selIdx); render(); updateInfoPanel();
-}
-function resetAll() {
-  if (!img.naturalWidth) return;
-  initFramesDefault(); buildStrip(); render();
-}
-
-// ─── DRAG ────────────────────────────────────────────────────
-const HANDLE = 8;
-function hitTest(mx, my) {
-  if (selIdx>=0) {
-    const f=frames[selIdx];
-    const x=f.x*zoom,y=f.y*zoom,w=f.w*zoom,h=f.h*zoom;
+// ─── DRAG ON SHEET CANVAS ──────────────────────────────────
+const HSIZE=8;
+function hitTest(mx,my) {
+  if(selIdx>=0){
+    const f=frames[selIdx],x=f.x*zoom,y=f.y*zoom,w=f.w*zoom,h=f.h*zoom;
     const corners=[{cx:x,cy:y,dx:-1,dy:-1},{cx:x+w,cy:y,dx:1,dy:-1},{cx:x,cy:y+h,dx:-1,dy:1},{cx:x+w,cy:y+h,dx:1,dy:1}];
-    for (const c of corners)
-      if (Math.abs(mx-c.cx)<HANDLE&&Math.abs(my-c.cy)<HANDLE)
-        return {type:'resize',frameIdx:selIdx,dx:c.dx,dy:c.dy};
+    for(const c of corners) if(Math.abs(mx-c.cx)<HSIZE&&Math.abs(my-c.cy)<HSIZE) return{type:'resize',frameIdx:selIdx,dx:c.dx,dy:c.dy};
   }
-  for (let i=frames.length-1;i>=0;i--) {
+  for(let i=frames.length-1;i>=0;i--){
     const f=frames[i];
-    if (mx>=f.x*zoom&&mx<=(f.x+f.w)*zoom&&my>=f.y*zoom&&my<=(f.y+f.h)*zoom)
-      return {type:'move',frameIdx:i};
+    if(mx>=f.x*zoom&&mx<=(f.x+f.w)*zoom&&my>=f.y*zoom&&my<=(f.y+f.h)*zoom) return{type:'move',frameIdx:i};
   }
   return null;
 }
-
-canvas.addEventListener('mousedown', e=>{
-  const r=canvas.getBoundingClientRect();
-  const mx=e.clientX-r.left, my=e.clientY-r.top;
+canvas.addEventListener('mousedown',e=>{
+  const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
   const hit=hitTest(mx,my);
-  if (!hit) { selectFrame(-1); render(); return; }
+  if(!hit){selectFrame(-1);render();return;}
   selectFrame(hit.frameIdx);
   const f=frames[hit.frameIdx];
   drag={...hit,startMx:mx,startMy:my,startFx:f.x,startFy:f.y,startFw:f.w,startFh:f.h};
   e.preventDefault();
 });
-window.addEventListener('mousemove', e=>{
-  const r=canvas.getBoundingClientRect();
-  const mx=e.clientX-r.left, my=e.clientY-r.top;
-  canvas.style.cursor=hitTest(mx,my)?((hitTest(mx,my).type==='resize')?'nwse-resize':'move'):'crosshair';
-  document.getElementById('tbMouse').textContent=`${Math.round(mx/zoom)},${Math.round(my/zoom)}`;
-  if (!drag) return;
-  const dx=(mx-drag.startMx)/zoom, dy=(my-drag.startMy)/zoom;
+window.addEventListener('mousemove',e=>{
+  if(!img.naturalWidth) return;
+  const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  const hit=hitTest(mx,my);
+  canvas.style.cursor=hit?(hit.type==='resize'?'nwse-resize':'move'):'crosshair';
+  if(!drag)return;
+  const dx=(mx-drag.startMx)/zoom,dy=(my-drag.startMy)/zoom;
   const f=frames[drag.frameIdx];
-  if (drag.type==='move') { f.x=drag.startFx+dx; f.y=drag.startFy+dy; }
-  else {
-    if (drag.dx<0){f.x=drag.startFx+dx;f.w=Math.max(10,drag.startFw-dx);}
-    else           {f.w=Math.max(10,drag.startFw+dx);}
-    if (drag.dy<0){f.y=drag.startFy+dy;f.h=Math.max(10,drag.startFh-dy);}
-    else           {f.h=Math.max(10,drag.startFh+dy);}
+  if(drag.type==='move'){f.x=drag.startFx+dx;f.y=drag.startFy+dy;}
+  else{
+    if(drag.dx<0){f.x=drag.startFx+dx;f.w=Math.max(10,drag.startFw-dx);}else{f.w=Math.max(10,drag.startFw+dx);}
+    if(drag.dy<0){f.y=drag.startFy+dy;f.h=Math.max(10,drag.startFh-dy);}else{f.h=Math.max(10,drag.startFh+dy);}
   }
-  refreshThumb(drag.frameIdx); render(); updateInfoPanel();
+  refreshTlThumb(drag.frameIdx);render();updatePropPanel();drawPreview(drag.frameIdx);
 });
-window.addEventListener('mouseup', ()=>{ drag=null; });
-canvas.addEventListener('wheel', e=>{
+window.addEventListener('mouseup',()=>{drag=null;});
+canvas.addEventListener('wheel',e=>{
   e.preventDefault();
-  zoom=Math.max(0.1,Math.min(3,zoom+(e.deltaY<0?0.05:-0.05)));
+  zoom=Math.max(0.1,Math.min(4,zoom+(e.deltaY<0?0.05:-0.05)));
   document.getElementById('zoomIn').value=Math.round(zoom*100);
-  document.getElementById('tbZoom').textContent=Math.round(zoom*100)+'%';
   render();
 },{passive:false});
 
-// ─── ANIMATION ───────────────────────────────────────────────
-function drawAnimFrame(fi) {
-  if (!img.naturalWidth||!frames[fi]) return;
-  const f=frames[fi];
-  const ac=document.getElementById('animCanvas');
-  const aspect=f.h/f.w;
-  ac.width=100; ac.height=Math.max(10,Math.round(100*aspect));
-  ac.getContext('2d').drawImage(img,f.x,f.y,f.w,f.h,0,0,ac.width,ac.height);
-  document.getElementById('animFrameLabel').textContent='F'+fi+' / '+(frames.length-1);
-}
-function playAnim() {
-  stopAnim(); animFrame=0;
-  function tick() {
-    if (!frames.length) return;
-    drawAnimFrame(animFrame);
-    animFrame=(animFrame+1)%frames.length;
-    animTimer=setTimeout(tick, parseInt(document.getElementById('fpsIn').value)||90);
-  }
-  tick();
-}
-function stopAnim() { if(animTimer){clearTimeout(animTimer);animTimer=null;} }
-function stepAnim(d) { stopAnim(); animFrame=((animFrame+d)+frames.length)%frames.length; drawAnimFrame(animFrame); }
-
-// ─── SAVE TO SERVER ──────────────────────────────────────────
+// ─── SAVE / EXPORT ─────────────────────────────────────────
 async function saveToServer() {
-  const color = document.getElementById('colorPicker').value;
-  const key   = COLOR_KEY[color];
-  const rects = frames.map(f=>[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)]);
-  const btn   = document.getElementById('saveBtn');
-  btn.textContent='⏳ Saving...'; btn.disabled=true;
-  setStatus('statusSave','','info');
+  const color=document.getElementById('colorPicker').value;
+  const key=COLOR_KEY[color];
+  const rects=frames.map(f=>[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)]);
+  setStatus('⏳ Saving...','');
   try {
-    const res  = await fetch('/api/save-bloom-rects', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ color: key, rects }),
-    });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error);
-    btn.textContent='✅ Saved!';
-    setStatus('statusSave', `✅ ${data.message}`, 'ok');
-  } catch(e) {
-    btn.textContent='❌ Error';
-    setStatus('statusSave','❌ '+e.message,'err');
-  }
-  setTimeout(()=>{ btn.textContent='💾 Save to server'; btn.disabled=false; },2000);
+    const res=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({color:key,rects})});
+    const text=await res.text();
+    let data; try{data=JSON.parse(text);}catch(e){throw new Error('Server: '+text.slice(0,80));}
+    if(!data.ok) throw new Error(data.error);
+    setStatus('✅ '+data.message,'ok');
+  } catch(e){ setStatus('❌ '+e.message,'err'); }
 }
-
 function downloadJSON() {
-  const color = document.getElementById('colorPicker').value;
-  const key   = COLOR_KEY[color];
-  const data  = { color:key, frames:frames.length, rects: frames.map(f=>[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)]) };
-  const a     = document.createElement('a');
-  a.href      = 'data:application/json,'+encodeURIComponent(JSON.stringify(data,null,2));
-  a.download  = `bloom_rects_${color}.json`;
+  const color=document.getElementById('colorPicker').value;
+  const key=COLOR_KEY[color];
+  const data={color:key,frames:frames.length,rects:frames.map(f=>[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)]),durations:frames.map(f=>f.dur||90)};
+  const a=document.createElement('a');
+  a.href='data:application/json,'+encodeURIComponent(JSON.stringify(data,null,2));
+  a.download='bloom_rects_'+color+'.json';
   a.click();
 }
 
-// ─── UTIL ────────────────────────────────────────────────────
-function setStatus(id, msg, type='info') {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = msg;
-  el.className = 'status ' + type;
+// ─── UTIL ──────────────────────────────────────────────────
+function setStatus(msg,type) {
+  const el=document.getElementById('tbStatus');
+  el.textContent=msg; el.className=type||'';
 }
-
-document.getElementById('zoomIn').addEventListener('change', ()=>{
+function onZoomChange() {
   zoom=(parseInt(document.getElementById('zoomIn').value)||50)/100;
-  document.getElementById('tbZoom').textContent=Math.round(zoom*100)+'%';
   render();
-});
-document.getElementById('colorPicker').addEventListener('change', ()=>{
-  frames = []; selIdx = -1; // reset frames when color changes
-});
+}
+function onColorChange() { frames=[]; selIdx=-1; }
 
-// ─── INIT ────────────────────────────────────────────────────
+// ─── INIT ──────────────────────────────────────────────────
 if (location.protocol==='file:') {
   document.body.innerHTML=`
-    <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#0f0f1a;color:#ddd;font-family:monospace;">
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#111318;color:#d4d8e2;font-family:monospace;">
       <div style="font-size:32px">⚠️</div>
-      <div style="font-size:16px;color:#FFD700">Mở từ file:// — canvas bị block</div>
-      <div style="font-size:13px;color:#888">Phải mở qua dev server: node scripts/dev-server.js</div>
+      <div style="font-size:15px;color:#FFD700">Phải mở qua dev server</div>
+      <div style="font-size:12px;color:#6b7280">cd "E:\\Game AI\\KVTM 2.0" && node scripts/dev-server.js</div>
       <a href="http://localhost:3456/tools/bloom_test.html"
-         style="background:#3d5a3d;border:1px solid #5a8;color:#afa;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">
-        ▶ Mở tại localhost:3456
+         style="background:#1a3a1a;border:1px solid #4ade80;color:#4ade80;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">
+        ▶ localhost:3456
       </a>
     </div>`;
 } else {
