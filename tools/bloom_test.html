@@ -916,7 +916,12 @@ function downloadJSON() {
 // ── UTIL ─────────────────────────────────────────────────────
 function st(msg,type){const e=document.getElementById('tbStatus');e.textContent=msg;e.className=type||'';}
 function onZoomChange(){zoom=(parseInt(document.getElementById('zoomIn').value)||50)/100;render();}
-function onColorChange(){frames=[];selIdx=-1;document.getElementById('frameCounter').textContent='—';}
+function onColorChange(){
+  frames=[]; selIdx=-1;
+  document.getElementById('frameCounter').textContent='—';
+  document.getElementById('sheetInfo').textContent='—';
+  loadSheet(); // auto reload sheet + init frames for new color
+}
 
 // ── INIT ─────────────────────────────────────────────────────
 loadSheet();
