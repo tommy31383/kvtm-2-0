@@ -110,6 +110,37 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── API: save CSS vars → engine/sort_blossom.css ──────────────
+  if (req.method === 'POST' && req.url === '/api/save-css-vars') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const { vars } = JSON.parse(body); // {vars: {"--sb-stem-x":"4px", ...}}
+        if (!vars || typeof vars !== 'object') throw new Error('vars object required');
+        const cssFile = path.join(ROOT, 'engine', 'sort_blossom.css');
+        let src = fs.readFileSync(cssFile, 'utf8');
+        // Replace each var inside .sb-compact { ... } block
+        const blockStart = src.indexOf('.sb-compact');
+        const blockEnd   = src.indexOf('}', blockStart);
+        if (blockStart === -1 || blockEnd === -1) throw new Error('.sb-compact block not found');
+        let block = src.slice(blockStart, blockEnd + 1);
+        Object.entries(vars).forEach(([prop, val]) => {
+          const re = new RegExp(`(${prop.replace(/[-]/g,'\\-')}\\s*:\\s*)[^;]+(;)`, 'g');
+          block = block.replace(re, `$1${val}$2`);
+        });
+        src = src.slice(0, blockStart) + block + src.slice(blockEnd + 1);
+        fs.writeFileSync(cssFile, src, 'utf8');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, message: `Saved ${Object.keys(vars).length} CSS vars` }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: e.message }));
+      }
+    });
+    return;
+  }
+
   // ── API: save bloom rects ─────────────────────────────────────
   if (req.method === 'POST' && req.url === '/api/save-bloom-rects') {
     let body = '';

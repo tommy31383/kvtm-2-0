@@ -1030,9 +1030,13 @@ function buildLayoutPanel() {
   });
 
   // Copy CSS button
+  const saveBtn = document.createElement('button');
+  saveBtn.className='btn gold'; saveBtn.style.cssText='width:100%;margin-top:12px;height:28px;';
+  saveBtn.textContent='💾 Save CSS vars'; saveBtn.onclick = saveCSSVars;
+  left.appendChild(saveBtn);
   const copyBtn = document.createElement('button');
-  copyBtn.className='btn green'; copyBtn.style.cssText='width:100%;margin-top:12px;height:28px;';
-  copyBtn.textContent='📋 Copy CSS vars'; copyBtn.onclick = copyCSSVars;
+  copyBtn.className='btn'; copyBtn.style.cssText='width:100%;margin-top:4px;height:26px;font-size:10px;';
+  copyBtn.textContent='📋 Copy to clipboard'; copyBtn.onclick = copyCSSVars;
   left.appendChild(copyBtn);
 
   p.appendChild(left);
@@ -1190,6 +1194,23 @@ function getSlotTransform(pos, potW, stemX, stemSp, wSide, wMid, angle) {
   return [cx + stemSp, angle];
 }
 
+async function saveCSSVars() {
+  const vars = {};
+  POT_VARS.forEach(v => {
+    const el = document.getElementById(v.id);
+    if (el) vars[v.css] = el.value + v.unit;
+  });
+  st('⏳ Saving CSS...','warn');
+  try {
+    const text = await fetch('/api/save-css-vars', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ vars })
+    }).then(r=>r.text());
+    let data; try{data=JSON.parse(text);}catch(e){throw new Error(text.slice(0,80));}
+    if (!data.ok) throw new Error(data.error);
+    st('✅ '+data.message,'ok');
+  } catch(e) { st('❌ '+e.message,'err'); }
+}
 function copyCSSVars() {
   const lines = POT_VARS.map(v => {
     const el = document.getElementById(v.id);
