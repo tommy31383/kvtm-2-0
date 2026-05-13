@@ -337,27 +337,28 @@
       { transform: `translate3d(${startX}px, ${startY}px, 0) scale(0.7)`, opacity: 0 }
     ], { duration: duration * 0.45, fill: 'forwards', easing: 'ease-in' });
 
-    // Mid-way: commit place + dest flower pop-in
+    // Mid-way: commit state first (onLand), THEN animate pop-in on newly-painted flower
     setTimeout(() => {
-      onLand && onLand();
+      onLand && onLand();  // state mutation + repaint happens here
       fly.remove();
-      // Pop-in animation on dest cell's new flower
-      const destImg = destCell.querySelector(`.sb-active-flowers img[data-pos="${destPos}"]`);
-      if (destImg) {
-        destImg.animate([
-          { transform: 'translateX(-50%) scale(0.4)', opacity: 0 },
-          { transform: 'translateX(-50%) scale(1.15)', opacity: 1, offset: 0.6 },
-          { transform: 'translateX(-50%) scale(1.0)', opacity: 1 }
-        ], { duration: duration * 0.55, fill: 'none', easing: 'cubic-bezier(0.34,1.4,0.64,1)' });
-      }
-      // Subtle pot bounce
-      destCell.classList.remove('sb-land-bounce');
-      void destCell.offsetWidth;
-      destCell.classList.add('sb-land-bounce');
-      setTimeout(() => {
+      // After onLand repaint, destImg is the freshly-painted element — query AFTER onLand
+      requestAnimationFrame(() => {
+        const destImg = destCell.querySelector(`.sb-active-flowers img[data-pos="${destPos}"]`);
+        if (destImg) {
+          destImg.animate([
+            { transform: 'translateX(-50%) scale(0.4)', opacity: 0 },
+            { transform: 'translateX(-50%) scale(1.15)', opacity: 1, offset: 0.6 },
+            { transform: 'translateX(-50%) scale(1.0)', opacity: 1 }
+          ], { duration: duration * 0.55, fill: 'none', easing: 'cubic-bezier(0.34,1.4,0.64,1)' });
+        }
         destCell.classList.remove('sb-land-bounce');
-        onDone && onDone();
-      }, 220);
+        void destCell.offsetWidth;
+        destCell.classList.add('sb-land-bounce');
+        setTimeout(() => {
+          destCell.classList.remove('sb-land-bounce');
+          onDone && onDone();
+        }, 220);
+      });
     }, duration * 0.45);
 
     _fadeOutSource(srcImg);
@@ -418,115 +419,6 @@
       destCell.classList.remove('sb-land-bounce');
       onDone && onDone();
     }, 220);
-  }
-
-  // Legacy stub (renamed earlier rAF version, no longer used directly)
-  function animateFlightLegacy(opts) { return animateFlightArc(opts); }
-  void animateFlightLegacy;
-
-  function animateFlightDispatcher(opts) {  // not used, kept for clarity
-    return animateFlight(opts);
-  }
-  void animateFlightDispatcher;
-
-  // Original rAF function disabled — replaced by mode dispatcher
-  function _disabledLegacy_animateFlight({ srcCell, destCell, srcPos, destPos, color, assetPath, onLand, onDone, duration = 780 }) {
-    if (!srcCell || !destCell) { onLand && onLand(); onDone && onDone(); return; }
-    const srcImg = srcCell.querySelector(`.sb-active-flowers img[data-pos="${srcPos}"]`);
-    const destFlowers = destCell.querySelector('.sb-active-flowers');
-    if (!srcImg || !destFlowers) { onLand && onLand(); onDone && onDone(); return; }
-
-    const srcRect = srcImg.getBoundingClientRect();
-    const destRect = destFlowers.getBoundingClientRect();
-    const slotWidth = destRect.width / 3;
-
-    const startX = srcRect.left;
-    const startY = srcRect.top;
-    const endX = destRect.left + slotWidth * destPos + slotWidth / 2 - srcRect.width / 2;
-    const endY = destRect.top + destRect.height - srcRect.height - 12;
-
-    // Peak height: very gentle arc — lower peak = softer floating feel
-    const distance = Math.hypot(endX - startX, endY - startY);
-    const peakH = Math.max(34, distance * 0.22);
-
-    // Build flying clone — constant scale 1.12, smooth transform updates
-    const fly = document.createElement('img');
-    fly.src = assetPath + COLORS[color].img;
-    fly.style.cssText = `
-      position: fixed;
-      left: 0; top: 0;
-      width: ${srcRect.width}px;
-      height: auto;
-      z-index: 9999;
-      pointer-events: none;
-      filter: drop-shadow(0 8px 14px rgba(0,0,0,.32));
-      will-change: transform;
-      transform: translate3d(${startX}px, ${startY}px, 0) scale(1.12);
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
-    `;
-    document.body.appendChild(fly);
-
-    // Hide source flower (smooth fade to invisible)
-    srcImg.style.transition = 'opacity .12s';
-    srcImg.style.opacity = '0';
-    setTimeout(() => { srcImg.style.visibility = 'hidden'; srcImg.style.opacity = ''; srcImg.style.transition = ''; }, 130);
-
-    // Composite easing — extra gentle feather landing
-    //   - Body (0→0.48): easeInOutQuint covers 85% of distance
-    //   - Tail (0.48→1): easeOutExpo covers last 15% of distance over 52% of time
-    //     → bông "lướt nhẹ" cuối hành trình, hạ xuống như lông vũ
-    const easeBody = (t) => (t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2);
-    const easeTail = (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));   // easeOutExpo
-    const ease = (t) => {
-      if (t < 0.48) return easeBody(t / 0.48) * 0.85;
-      const tt = (t - 0.48) / 0.52;
-      return 0.85 + easeTail(tt) * 0.15;
-    };
-
-    const start = performance.now();
-    function frame(now) {
-      const elapsed = now - start;
-      const t = Math.min(1, elapsed / duration);
-      const e = ease(t);
-
-      // X & Y travel
-      const x = startX + (endX - startX) * e;
-      const yLinear = startY + (endY - startY) * e;
-      const arcLift = Math.sin(Math.PI * e) * peakH;
-      const y = yLinear - arcLift;
-
-      // Scale ramp down 1.10 → 1.0 over last 52% of TIME (very gentle settle)
-      let scale = 1.10;
-      if (t > 0.48) {
-        const k = (t - 0.48) / 0.52;
-        const ks = k * k * (3 - 2 * k);   // smoothstep
-        scale = 1.10 - 0.10 * ks;
-      }
-
-      fly.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
-
-      if (t < 1) {
-        requestAnimationFrame(frame);
-      } else {
-        // t=1 → clone is at (endX, endY) with scale 1.0 (no snap)
-        // Commit state immediately. Clone fades out as real flower paints in same spot.
-        onLand && onLand();
-        // Crossfade clone out (real flower now visible underneath at same position)
-        fly.style.transition = 'opacity .12s ease-out';
-        fly.style.opacity = '0';
-        setTimeout(() => fly.remove(), 130);
-        // Gentle pot bounce starting now (overlaps with crossfade for smoothness)
-        destCell.classList.remove('sb-land-bounce');
-        void destCell.offsetWidth;
-        destCell.classList.add('sb-land-bounce');
-        setTimeout(() => {
-          destCell.classList.remove('sb-land-bounce');
-          onDone && onDone();
-        }, 220);
-      }
-    }
-    requestAnimationFrame(frame);
   }
 
   /** Convert click event to position 0/1/2 within the pot's bounds. */

@@ -6898,7 +6898,9 @@ Scenes._levelBlossomV2 = function(cfg) {
       onDone: () => {
         // willVanish case: checkEndGame đã được gọi trong promise chain sau vanish
         // Non-vanish case: check ngay khi flight xong
-        if (!moveResult?.willVanish) checkEndGame();
+        // Guard: moveResult null chỉ xảy ra nếu onLand chưa fire (không bình thường)
+        // → treat như non-vanish để game không bị stuck
+        if (!moveResult || !moveResult.willVanish) checkEndGame();
       }
     });
   }
