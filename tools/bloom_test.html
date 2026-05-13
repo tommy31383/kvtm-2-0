@@ -102,7 +102,9 @@ select,input[type=number]{background:var(--bg3);color:var(--text);border:1px sol
     <option value="blue">Blue (B)</option>
     <option value="camellia">Camellia (C)</option>
   </select>
-  <button class="btn" onclick="loadSheet()">↺ Sheet</button>
+  <button class="btn" onclick="loadSheet()">↺ Sheet (auto)</button>
+  <button class="btn blue" onclick="loadSheetFile()">🖼 Sheet file</button>
+  <input type="file" id="sheetFileIn" accept=".webp,.png,.jpg" style="display:none" onchange="onSheetFile(this)">
   <div class="sep"></div>
 
   <!-- LOAD -->
@@ -151,7 +153,7 @@ select,input[type=number]{background:var(--bg3);color:var(--text);border:1px sol
   </div>
 
   <div class="sec">
-    <h4>Best Fit <span style="font-size:9px;color:#fb923c;">(cần localhost)</span></h4>
+    <h4>Best Fit</h4>
     <div class="rr"><label>Alpha</label><input type="range" id="alphaIn" min="1" max="128" value="8" oninput="document.getElementById('aVal').textContent=this.value"><span id="aVal">8</span></div>
     <div class="rr"><label>Pad</label><input type="range" id="padIn" min="0" max="40" value="4" oninput="document.getElementById('pVal').textContent=this.value"><span id="pVal">4</span></div>
     <button class="btn green lb" onclick="bestFit()">✨ Fit frame này</button>
@@ -240,6 +242,27 @@ function loadSheet() {
     render(); buildTL(); drawPrev(Math.max(0,selIdx));
   };
   tmp.src = BASE + color + '_bloom.webp?v='+Date.now();
+}
+
+// Load sheet from local file → data URL → no canvas taint → getImageData works
+function loadSheetFile() { document.getElementById('sheetFileIn').click(); }
+function onSheetFile(inp) {
+  const file = inp.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const tmp = new Image();
+    tmp.onerror = () => st('❌ Không load sheet file','err');
+    tmp.onload = () => {
+      img = tmp;
+      st(`✅ ${img.naturalWidth}×${img.naturalHeight} (data URL — Best Fit hoạt động)`,'ok');
+      document.getElementById('sheetInfo').innerHTML = `${img.naturalWidth}×${img.naturalHeight}<br>${frames.length} frames`;
+      if (!frames.length) initDefaultFrames();
+      render(); buildTL(); drawPrev(Math.max(0,selIdx));
+    };
+    tmp.src = e.target.result; // data URL = same-origin, không tainted
+  };
+  reader.readAsDataURL(file);
+  inp.value = '';
 }
 
 function initDefaultFrames() {
