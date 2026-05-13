@@ -223,10 +223,15 @@ select{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
     </div>
 
     <div id="speedWrap">
-      <label>Speed</label>
+      <label style="color:var(--muted);">Preview</label>
       <input type="range" id="speedIn" min="10" max="400" value="100"
         oninput="document.getElementById('speedV').textContent=this.value+'%'">
       <span id="speedV">100%</span>
+      <div class="sep" style="margin:0 4px;"></div>
+      <label style="color:var(--gold);">Game</label>
+      <input type="range" id="gameSpeedIn" min="10" max="400" value="100"
+        oninput="document.getElementById('gameSpeedV').textContent=this.value+'%'">
+      <span id="gameSpeedV" style="color:var(--gold);">100%</span>
     </div>
 
     <!-- inline frame props -->
@@ -408,6 +413,7 @@ function onJSONFile(inp) {
       if(!Array.isArray(rects)) throw new Error('rects not array');
       const durs = data.durations || [];
       frames = rects.map((r,i)=>({x:r[0],y:r[1],w:r[2],h:r[3],dur:durs[i]||90,dx:r[4]||0,dy:r[5]||0}));
+      if(data.gameSpeed){document.getElementById('gameSpeedIn').value=data.gameSpeed;document.getElementById('gameSpeedV').textContent=data.gameSpeed+'%';}
       selIdx=0; syncProps(); buildTL(); renderSheet(); drawPrev(0);
       st(`✅ ${frames.length} frames từ ${file.name}`,'ok');
     } catch(err){ st('❌ '+err.message,'err'); }
@@ -888,7 +894,8 @@ async function saveToServer(){
   const rects=frames.map(f=>{const r=[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)];if(f.dx||f.dy)r.push(Math.round(f.dx||0),Math.round(f.dy||0));return r;});
   st('⏳ Saving...','warn');
   try{
-    const durations=frames.map(f=>f.dur||90);
+    const gameSpeed=parseInt(document.getElementById('gameSpeedIn').value)||100;
+    const durations=frames.map(f=>Math.round((f.dur||90)*100/gameSpeed));
     const text=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({color:key,rects,durations})}).then(r=>r.text());
     let data;try{data=JSON.parse(text);}catch(e){throw new Error(text.slice(0,80));}
     if(!data.ok)throw new Error(data.error);
@@ -900,7 +907,8 @@ function downloadJSON(){
   const key=COLOR_KEY[color];
   const out={color:key,frames:frames.length,
     rects:frames.map(f=>{const r=[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)];if(f.dx||f.dy)r.push(Math.round(f.dx||0),Math.round(f.dy||0));return r;}),
-    durations:frames.map(f=>f.dur||90)};
+    durations:frames.map(f=>f.dur||90), // raw durations (editor values)
+    gameSpeed:parseInt(document.getElementById('gameSpeedIn').value)||100};
   const a=document.createElement('a');
   a.href='data:application/json,'+encodeURIComponent(JSON.stringify(out,null,2));
   a.download='bloom_rects_'+color+'.json';a.click();
