@@ -238,8 +238,10 @@ select{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
       <div class="sep" style="margin:0 4px;"></div>
       <label style="color:var(--gold);">Game</label>
       <input type="range" id="gameSpeedIn" min="10" max="400" value="100"
-        oninput="document.getElementById('gameSpeedV').textContent=this.value+'%'">
+        oninput="onGameSpeedInput()" onchange="applyGameSpeedToAllFrames()">
       <span id="gameSpeedV" style="color:var(--gold);">100%</span>
+      <button class="btn" onclick="applyGameSpeedToAllFrames()" title="Apply current Game speed to every frame uniformly"
+        style="margin-left:4px;font-size:11px;padding:0 6px;">Apply→all</button>
       <button class="btn" id="playPotBloomBtn" onclick="playPotBloom()"
         style="margin-left:6px;" title="Play bloom anim trong pot preview với Game speed">▶ Bloom</button>
     </div>
@@ -517,9 +519,12 @@ async function loadFromServer() {
       if (typeof durs === 'number' && durs > 0) return durs;
       return 90;
     }
-    // Reset Game slider to 100% since saved data no longer mixes with it.
-    document.getElementById('gameSpeedIn').value = 100;
-    document.getElementById('gameSpeedV').textContent = '100%';
+    // Game slider mirrors the loaded uniform dur (if any). Scalar `474` -> 19%,
+    // null -> 100%, array -> 100% (mixed dur can't map to single slider value).
+    let sliderPct = 100;
+    if (typeof durs === 'number' && durs > 0) sliderPct = Math.round(90 * 100 / durs);
+    document.getElementById('gameSpeedIn').value = sliderPct;
+    document.getElementById('gameSpeedV').textContent = sliderPct + '%';
 
     frames = rects.map((r, i) => ({ x: r[0], y: r[1], w: r[2], h: r[3], dur: _durFor(i), dx: r[4] || 0, dy: r[5] || 0 }));
     selIdx = 0; animCursor = 0; syncProps(); buildTL(); renderSheet(); drawPrev(0);
@@ -998,6 +1003,35 @@ window.addEventListener('keydown',e=>{
 });
 
 // ── SAVE ─────────────────────────────────────────────────────
+// Game slider semantics: 100% = 90ms per frame (engine default).
+// Lower % = slower (longer dur per frame). Higher % = faster.
+// onGameSpeedInput just refreshes the % readout while dragging; the actual
+// "apply to every frame" mutation runs on `change` (slider released) so we
+// don't spam the timeline DOM on every pixel of drag.
+function onGameSpeedInput() {
+  document.getElementById('gameSpeedV').textContent =
+    document.getElementById('gameSpeedIn').value + '%';
+}
+
+function applyGameSpeedToAllFrames() {
+  if (!frames.length) return;
+  const gs = parseInt(document.getElementById('gameSpeedIn').value) || 100;
+  const newDur = Math.round(90 * 100 / gs);
+  frames.forEach(f => { f.dur = newDur; });
+  // Sync timeline cards' .tdur inputs + selected frame's fdurIn.
+  const tl = document.getElementById('tlScroll');
+  if (tl) {
+    Array.from(tl.children).forEach((card, i) => {
+      const inp = card.querySelector?.('.tdur');
+      if (inp && i < frames.length) inp.value = newDur;
+    });
+  }
+  const fdur = document.getElementById('fdurIn');
+  if (fdur) fdur.value = newDur;
+  if (typeof updateTLInfo === 'function') updateTLInfo();
+  st(`✓ All frames set to ${newDur}ms (${gs}% game speed)`, 'ok');
+}
+
 // Canonical literal for _BLOOM_DURS[color] based on current frame state.
 // Game read path (_bloomSheet) handles all three forms; pick the most concise:
 //   - all 90  -> 'null'      (default, smallest diff)
