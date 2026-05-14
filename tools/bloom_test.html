@@ -502,17 +502,22 @@ async function loadFromServer() {
 
     if (!rects || !rects.length) throw new Error('No rects for ' + key);
 
-    // Restore gameSpeed from stored single number
-    let restoredSpeed = 100;
-    if (typeof durs === 'number' && durs > 0) {
-      restoredSpeed = Math.round(90 * 100 / durs);
-      document.getElementById('gameSpeedIn').value = restoredSpeed;
-      document.getElementById('gameSpeedV').textContent = restoredSpeed + '%';
+    // Per-frame dur resolver: handle scalar (uniform), array (per-frame), or null/missing.
+    // Scalar form (e.g. P: 474) means every frame plays at that ms — back-compat with
+    // the old save format. Array form (new) carries individual per-frame timing.
+    function _durFor(i) {
+      if (Array.isArray(durs)) return durs[i] || 90;
+      if (typeof durs === 'number' && durs > 0) return durs;
+      return 90;
     }
+    // Reset Game slider to 100% since saved data no longer mixes with it.
+    document.getElementById('gameSpeedIn').value = 100;
+    document.getElementById('gameSpeedV').textContent = '100%';
 
-    frames = rects.map(r => ({ x: r[0], y: r[1], w: r[2], h: r[3], dur: 90, dx: r[4] || 0, dy: r[5] || 0 }));
+    frames = rects.map((r, i) => ({ x: r[0], y: r[1], w: r[2], h: r[3], dur: _durFor(i), dx: r[4] || 0, dy: r[5] || 0 }));
     selIdx = 0; animCursor = 0; syncProps(); buildTL(); renderSheet(); drawPrev(0);
-    st(`✅ ${frames.length} frames [${key}] · ${restoredSpeed}% speed`,'ok');
+    const _total = frames.reduce((a, f) => a + (f.dur || 90), 0);
+    st(`✅ ${frames.length} frames [${key}] · ${_total}ms total`,'ok');
   } catch(e){ st('❌ '+e.message,'err'); }
 }
 
