@@ -668,8 +668,18 @@
   }
 
   // ─── shared helpers ────────────────────────────────────
+  // Kill any stale fly clone from a previous flight before starting a new one.
+  // Prevents background-tab throttle, exceptions, or rapid clicks from leaving
+  // an orphan flower image stuck at source position.
+  function _killStaleFlies() {
+    document.querySelectorAll('img.sb-fly-clone').forEach(el => {
+      try { el.remove(); } catch(e) {}
+    });
+  }
+
   function _prepFlight(srcCell, destCell, srcPos, destPos, color, assetPath) {
     if (!srcCell || !destCell) return null;
+    _killStaleFlies();
     const srcImg = srcCell.querySelector(`.sb-active-flowers [data-pos="${srcPos}"]`);
     const destFlowers = destCell.querySelector('.sb-active-flowers');
     if (!srcImg || !destFlowers) return null;
@@ -682,6 +692,7 @@
     const endY = destRect.top + destRect.height - srcRect.height - 12;
 
     const fly = document.createElement('img');
+    fly.className = 'sb-fly-clone';
     fly.src = assetPath + COLORS[color].img;
     fly.style.cssText = `
       position: fixed;
