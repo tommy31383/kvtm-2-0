@@ -4529,11 +4529,15 @@ function _kvtmSmokeCheck() {
   const issues = [];
   const Engine = (typeof SortBlossomEngine !== 'undefined') ? SortBlossomEngine : null;
   const Render = (typeof SortBlossomRender !== 'undefined') ? SortBlossomRender : null;
-  const levels = (typeof SORT_BLOSSOM_LEVELS !== 'undefined') ? SORT_BLOSSOM_LEVELS : null;
+  const Data   = (typeof SortBlossomData   !== 'undefined') ? SortBlossomData   : null;
+  // Use loadLevels() — it returns the active level set (hardcoded + any
+  // localStorage override from the editor). Matches what the game actually plays.
+  const levels = Data && Data.loadLevels ? Data.loadLevels() : null;
 
   if (!Engine) issues.push('SortBlossomEngine not loaded');
   if (!Render) issues.push('SortBlossomRender not loaded');
-  if (!levels) issues.push('SORT_BLOSSOM_LEVELS not loaded');
+  if (!Data)   issues.push('SortBlossomData not loaded');
+  if (!levels) issues.push('SortBlossomData.loadLevels() returned null');
 
   if (Engine && levels && Array.isArray(levels)) {
     levels.forEach((lvl, i) => {
