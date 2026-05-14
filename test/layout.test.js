@@ -1,27 +1,54 @@
 // Pot layout positions stay inside phone-frame.
+// Contract: x = pot CENTER, y = pot TOP EDGE (per scripts/layout-pots.js).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { layoutPots, FRAME_W, POT_W, POT_H } = require('../scripts/layout-pots.js');
+const {
+  layoutPots, validateLayout,
+  X_MIN, X_MAX, Y_MIN, Y_MAX, POT_W, POT_H,
+} = require('../scripts/layout-pots.js');
 
-const PAD = 12; // tolerance — accept slight overhang for organic feel
-
-test('layoutPots: all positions inside frame bounds (N=2..9)', () => {
+test('layoutPots: all positions inside safe zone (N=2..9)', () => {
   for (let n = 2; n <= 9; n++) {
     const positions = layoutPots(n);
     assert.equal(positions.length, n, `expected ${n} positions`);
-    positions.forEach((p, i) => {
-      assert.ok(p.x - POT_W/2 >= -PAD, `L${n} pot${i}.x=${p.x} too far left (left edge < 0)`);
-      assert.ok(p.x + POT_W/2 <= FRAME_W + PAD, `L${n} pot${i}.x=${p.x} too far right`);
-      assert.ok(p.y - POT_H/2 >= 120,            `L${n} pot${i}.y=${p.y} overlaps HUD`);
-      assert.ok(p.y + POT_H/2 <= 844 - 20,        `L${n} pot${i}.y=${p.y} overflows footer`);
+    const issues = validateLayout(positions);
+    assert.deepEqual(issues, [], `L${n} layout issues: ${issues.join(' | ')}`);
+  }
+});
+
+test('layoutPots: x is center (in safe range), y is top edge', () => {
+  for (let n = 2; n <= 9; n++) {
+    layoutPots(n).forEach((p, i) => {
+      assert.ok(p.x >= X_MIN && p.x <= X_MAX, `N=${n} pot${i}.x=${p.x} out of [${X_MIN},${X_MAX}]`);
+      assert.ok(p.y >= Y_MIN && p.y <= Y_MAX, `N=${n} pot${i}.y=${p.y} out of [${Y_MIN},${Y_MAX}]`);
     });
+  }
+});
+
+test('layoutPots: no overlapping pots in any preset', () => {
+  for (let n = 2; n <= 9; n++) {
+    const positions = layoutPots(n);
+    for (let i = 0; i < positions.length; i++) {
+      for (let j = i + 1; j < positions.length; j++) {
+        const a = positions[i], b = positions[j];
+        const overlap = Math.abs(a.x - b.x) < POT_W && Math.abs(a.y - b.y) < POT_H;
+        assert.ok(!overlap, `N=${n} pots ${i},${j} overlap @ Δx=${Math.abs(a.x-b.x)} Δy=${Math.abs(a.y-b.y)}`);
+      }
+    }
   }
 });
 
 test('layoutPots: 2 pots placed side by side', () => {
   const [a, b] = layoutPots(2);
-  assert.ok(Math.abs(a.y - b.y) < 5, 'same row');
+  assert.equal(a.y, b.y, 'same row');
   assert.ok(b.x > a.x, 'left-to-right');
+});
+
+test('layoutPots: 3 pots form triangle (2 top, 1 below centered)', () => {
+  const [a, b, c] = layoutPots(3);
+  assert.equal(a.y, b.y, 'top two same row');
+  assert.ok(c.y > a.y, 'third below');
+  assert.equal(c.x, 195, 'third horizontally centered');
 });
 
 test('layoutPots: jitter deterministic by seed', () => {
@@ -32,18 +59,36 @@ test('layoutPots: jitter deterministic by seed', () => {
   assert.notDeepEqual(a, c);
 });
 
-test('layoutPots: jitter respects max offset', () => {
+test('layoutPots: jitter respects max offset (≤ 4px)', () => {
   const base = layoutPots(4, { jitter: 0 });
   const jittered = layoutPots(4, { jitter: 1, seed: 1 });
   jittered.forEach((p, i) => {
-    assert.ok(Math.abs(p.x - base[i].x) <= 12, `x jitter <= 12, got ${p.x - base[i].x}`);
-    assert.ok(Math.abs(p.y - base[i].y) <= 12, `y jitter <= 12, got ${p.y - base[i].y}`);
+    assert.ok(Math.abs(p.x - base[i].x) <= 4, `x jitter <= 4, got ${p.x - base[i].x}`);
+    assert.ok(Math.abs(p.y - base[i].y) <= 4, `y jitter <= 4, got ${p.y - base[i].y}`);
   });
+});
+
+test('layoutPots: jitter never moves a pot out of safe zone', () => {
+  for (let seed = 1; seed <= 10; seed++) {
+    for (let n = 2; n <= 9; n++) {
+      const issues = validateLayout(layoutPots(n, { jitter: 1, seed }));
+      assert.deepEqual(issues, [], `N=${n} seed=${seed}: ${issues.join(' | ')}`);
+    }
+  }
 });
 
 test('layoutPots: invalid count throws', () => {
   assert.throws(() => layoutPots(0));
   assert.throws(() => layoutPots(10));
+});
+
+test('validateLayout: detects out-of-bounds + overlap', () => {
+  // out of bounds
+  assert.ok(validateLayout([{ x: 0, y: 0 }]).length > 0);
+  // overlap (two pots same position)
+  assert.ok(validateLayout([{ x: 195, y: 200 }, { x: 195, y: 200 }]).length > 0);
+  // clean
+  assert.deepEqual(validateLayout([{ x: 100, y: 100 }, { x: 250, y: 300 }]), []);
 });
 
 // ─── Generator smoke ────────────────────────────────────────────
