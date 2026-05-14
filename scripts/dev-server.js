@@ -259,7 +259,15 @@ const server = http.createServer((req, res) => {
     fs.stat(filePath, (err, stat) => {
     if (err || !stat.isFile()) { tryNext([]); return; }
       const ext = path.extname(filePath).toLowerCase();
-      res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+      const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
+      // Disable cache for editable source so edits in bloom_test / level_editor
+      // are picked up on the next game reload without bumping `?v=` manually.
+      if (['.html', '.js', '.css', '.json'].includes(ext)) {
+        headers['Cache-Control'] = 'no-store, must-revalidate';
+        headers['Pragma'] = 'no-cache';
+        headers['Expires'] = '0';
+      }
+      res.writeHead(200, headers);
       fs.createReadStream(filePath).pipe(res);
     });
   }

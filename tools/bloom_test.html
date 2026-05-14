@@ -981,15 +981,19 @@ async function saveToServer(){
   const key=COLOR_KEY[document.getElementById('colorPicker').value];
   const rects=frames.map(f=>{const r=[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)];if(f.dx||f.dy)r.push(Math.round(f.dx||0),Math.round(f.dy||0));return r;});
   const gameSpeed=parseInt(document.getElementById('gameSpeedIn').value)||100;
-  // Store single uniform frame duration (ms) — not per-frame array
-  const frameDur = Math.round(90 * 100 / gameSpeed);
-  const durVal = (gameSpeed === 100) ? 'null' : String(frameDur);
+  // Per-frame durations: scale each frame's dur by gameSpeed multiplier.
+  // Server expects an array; sending a scalar would skip the _BLOOM_DURS update.
+  const speedMul = 100 / gameSpeed;
+  const perFrameDurs = frames.map(f => Math.round((f.dur || 90) * speedMul));
+  // file:// fallback also needs the same array — written as JSON for _BLOOM_DURS,
+  // unless every frame is at the default 90ms (then write `null` for clean diff).
+  const allDefault = perFrameDurs.every(d => d === 90);
+  const durValLiteral = allDefault ? 'null' : JSON.stringify(perFrameDurs);
   st('⏳ Saving...','warn');
   try{
     if (IS_LOCAL) {
-      // localhost: POST to server API (send frameDur as single number)
       const token = await getDevToken();
-      const text=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json','X-Dev-Token':token},body:JSON.stringify({color:key,rects,durations:frameDur})}).then(r=>r.text());
+      const text=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json','X-Dev-Token':token},body:JSON.stringify({color:key,rects,durations:perFrameDurs})}).then(r=>r.text());
       let data;try{data=JSON.parse(text);}catch(e){throw new Error(text.slice(0,80));}
       if(!data.ok)throw new Error(data.error);
       st('✅ '+data.message,'ok');
@@ -998,7 +1002,7 @@ async function saveToServer(){
       if (!_rootDir) { await pickRootDir(); if (!_rootDir) return; }
       let src = await _fsRead('engine/sort_blossom_render.js');
       src = _patchColorLine(src, '_BLOOM_RECTS', key, JSON.stringify(rects));
-      src = _patchColorLine(src, '_BLOOM_DURS', key, durVal);
+      src = _patchColorLine(src, '_BLOOM_DURS', key, durValLiteral);
       await _fsWrite('engine/sort_blossom_render.js', src);
       st(`✅ Saved ${key}: ${rects.length} frames · ${gameSpeed}% speed`,'ok');
     }
@@ -1272,17 +1276,22 @@ function playPotBloom() {
   const buds = Array.from(wrap.querySelectorAll('.sb-queue-bud'));
   if (!buds.length) return;
 
-  const gameSpeed = parseInt(document.getElementById('gameSpeedIn').value) || 100;
-  const speedMul = 100 / gameSpeed;
-
-  // Build per-frame durations (use saved frame dur if available, else 90ms)
-  const frameTimes = [];
-  let t = 0;
-  for (let i = 0; i < frames.length; i++) {
-    frameTimes.push(t);
-    t += (frames[i]?.dur || 90) * speedMul;
+  // Live-react: read gameSpeed + per-frame dur on each tick instead of
+  // pre-computing frameTimes. Lets user drag the slider or edit a frame's
+  // dur mid-bloom and see the effect immediately.
+  function readSpeedMul() {
+    const gs = parseInt(document.getElementById('gameSpeedIn').value) || 100;
+    return 100 / gs;
   }
-  const totalDur = t;
+  function buildFrameTimes() {
+    const speedMul = readSpeedMul();
+    const out = []; let t = 0;
+    for (let i = 0; i < frames.length; i++) {
+      out.push(t);
+      t += (frames[i]?.dur || 90) * speedMul;
+    }
+    return { frameTimes: out, totalDur: t };
+  }
 
   // Pre-compute STABLE canvas dimensions: max height across all frames
   // (avoids per-frame layout jumps; frames are drawn bottom-aligned within fixed canvas).
@@ -1303,6 +1312,8 @@ function playPotBloom() {
 
   function tick(now) {
     const elapsed = now - startTs;
+    // Recompute every frame so slider drag + frame-dur edits take effect live.
+    const { frameTimes, totalDur } = buildFrameTimes();
     let fi = frames.length - 1;
     for (let i = 0; i < frameTimes.length - 1; i++) {
       if (elapsed < frameTimes[i+1]) { fi = i; break; }
@@ -1321,10 +1332,13 @@ function playPotBloom() {
       _potBloomRaf = requestAnimationFrame(tick);
     } else {
       _potBloomRaf = null;
+      const gameSpeed = parseInt(document.getElementById('gameSpeedIn').value) || 100;
       st(`✓ Bloom played at ${gameSpeed}% game speed (${Math.round(totalDur)}ms total)`, 'ok');
     }
   }
-  st(`▶ Playing bloom at ${gameSpeed}% (${Math.round(totalDur)}ms)`, 'info');
+  const _initialGameSpeed = parseInt(document.getElementById('gameSpeedIn').value) || 100;
+  const _initialTotal = buildFrameTimes().totalDur;
+  st(`▶ Playing bloom at ${_initialGameSpeed}% (${Math.round(_initialTotal)}ms)`, 'info');
   _potBloomRaf = requestAnimationFrame(tick);
 }
 
