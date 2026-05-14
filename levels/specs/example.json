@@ -1,0 +1,10 @@
+{
+  "id": 99,
+  "name": "Demo Level",
+  "colors": ["R", "P", "Y"],
+  "perColor": 6,
+  "pots": 4,
+  "queueDepth": 3,
+  "difficulty": "medium",
+  "seed": 1234
+}

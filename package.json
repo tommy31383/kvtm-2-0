@@ -5,6 +5,8 @@
     "dev": "powershell -ExecutionPolicy Bypass -File scripts/dev.ps1",
     "dev:bare": "node scripts/dev-server.js",
     "test": "node --test test/*.test.js",
+    "gen": "node scripts/gen-level.js",
+    "gen:example": "node scripts/gen-level.js --spec levels/specs/example.json",
     "setup": "git config core.hooksPath .githooks && echo \"✓ Git hooks enabled (.githooks/pre-commit will run tests)\""
   },
   "dependencies": {

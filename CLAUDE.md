@@ -42,7 +42,58 @@ kvtm_2_0_game.html          main game entry (~7200 LOC, still being modularized)
 ```powershell
 npm run dev        # ONE command: kill stale Node, restart server, run tests, open game
 npm test           # Run all unit tests (must be green before commit)
+npm run gen        # Generate level(s) from spec — see "Level generation" below
 ```
+
+## Level generation flow
+
+Generate a single level or batch from spec JSON. Generator does:
+- Validate spec (color count multiple of 3, pots 2..9, etc.)
+- Distribute flowers across pots (avoiding trivial-win layouts)
+- Run BFS solver to find minimum-move solution
+- Compute moveLimit + starThresholds from difficulty preset
+- Generate potLayout (x,y centers) for N pots
+- Output level JSON or write directly to engine/sort_blossom_data.js
+
+**Difficulty levers** (in spec):
+| Field | Effect |
+|---|---|
+| `colors: [...]` | More colors = harder (must be multiple of 3 each) |
+| `perColor: N` | More flowers per color = longer level |
+| `pots: N` | 2..9; generator reserves 1 empty pot for maneuver |
+| `queueDepth: N` | 0..6; hidden flowers waiting per pot |
+| `difficulty: "easy"\|"medium"\|"hard"\|"brutal"` | tightens moveLimit + star gaps |
+| `seed: N` | Deterministic randomness (omit for time-based) |
+| `tutorial: true` | Marks level as tutorial |
+
+**Commands:**
+```powershell
+# Single level from spec file
+npm run gen -- --spec levels/specs/example.json
+
+# Batch from curve file
+npm run gen -- --batch levels/specs/curve_31_35.json
+
+# Inline spec (quick test)
+npm run gen -- --inline '{"id":99,"colors":["R","P","Y"],"perColor":6,"pots":4,"queueDepth":3,"difficulty":"medium"}'
+
+# Apply directly to engine/sort_blossom_data.js (replaces matching id, appends new)
+npm run gen -- --batch levels/specs/curve_31_35.json --write
+```
+
+**Layout presets** for N pots (2..9) live in `scripts/layout-pots.js`. Add new patterns there by extending `PRESETS`. Optional `jitter` field for organic feel:
+```json
+{ "id": 50, "...": "...", "jitter": 0.3 }
+```
+
+**When generating a new level batch as Claude:**
+1. Write spec to `levels/specs/<name>.json` (NEVER edit data.js directly).
+2. `npm run gen -- --batch levels/specs/<name>.json` → review output JSON.
+3. If solver shows `(heuristic)` for high-ID levels, BFS gave up — moveLimit is estimated; play-test before shipping.
+4. `npm run gen -- --batch levels/specs/<name>.json --write` → commits to data.js.
+5. `npm test` (covered by pre-commit hook anyway).
+6. Open game (`npm run dev`) → play through 2-3 of the new levels manually before commit.
+7. Commit with `git add levels/specs engine/sort_blossom_data.js` — keep spec + result together.
 
 The repo also has a Git pre-commit hook that runs `npm test` automatically — if it fails, commit blocked. Don't bypass with --no-verify.
 

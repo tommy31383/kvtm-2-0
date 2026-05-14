@@ -1,0 +1,55 @@
+{
+  "_comment": "Example: add 5 harder levels after current L30. Run: npm run gen -- --batch levels/specs/curve_31_35.json --write",
+  "levels": [
+    {
+      "id": 31,
+      "name": "Vườn Thiên Đường",
+      "colors": ["R", "P", "Y", "V", "W", "O"],
+      "perColor": 9,
+      "pots": 8,
+      "queueDepth": 5,
+      "difficulty": "hard",
+      "seed": 31
+    },
+    {
+      "id": 32,
+      "name": "Cuộc Chiến Lục Sắc",
+      "colors": ["R", "P", "Y", "V", "W", "O"],
+      "perColor": 9,
+      "pots": 8,
+      "queueDepth": 5,
+      "difficulty": "hard",
+      "seed": 32
+    },
+    {
+      "id": 33,
+      "name": "Mê Cung Hoa",
+      "colors": ["R", "P", "Y", "V", "W", "O", "B"],
+      "perColor": 6,
+      "pots": 9,
+      "queueDepth": 4,
+      "difficulty": "hard",
+      "seed": 33
+    },
+    {
+      "id": 34,
+      "name": "Đỉnh Vĩnh Hằng",
+      "colors": ["R", "P", "Y", "V", "W", "O", "B"],
+      "perColor": 9,
+      "pots": 9,
+      "queueDepth": 5,
+      "difficulty": "brutal",
+      "seed": 34
+    },
+    {
+      "id": 35,
+      "name": "Truyền Thuyết Vườn Mây",
+      "colors": ["R", "P", "Y", "V", "W", "O", "B", "C"],
+      "perColor": 6,
+      "pots": 9,
+      "queueDepth": 5,
+      "difficulty": "brutal",
+      "seed": 35
+    }
+  ]
+}
