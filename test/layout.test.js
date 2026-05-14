@@ -7,11 +7,12 @@ const {
   X_MIN, X_MAX, Y_MIN, Y_MAX, POT_W, POT_H,
 } = require('../scripts/layout-pots.js');
 
-test('layoutPots: all positions inside safe zone (N=2..9)', () => {
+test('layoutPots: all positions inside safe zone AND meet POT_GAP target (N=2..9)', () => {
   for (let n = 2; n <= 9; n++) {
     const positions = layoutPots(n);
     assert.equal(positions.length, n, `expected ${n} positions`);
-    const issues = validateLayout(positions);
+    // Without jitter, presets must hit the SOFT target gap, not just HARD no-overlap.
+    const issues = validateLayout(positions, { strict: true });
     assert.deepEqual(issues, [], `L${n} layout issues: ${issues.join(' | ')}`);
   }
 });
@@ -47,7 +48,7 @@ test('layoutPots: 2 pots placed side by side', () => {
 test('layoutPots: 3 pots form triangle (2 top, 1 below centered)', () => {
   const [a, b, c] = layoutPots(3);
   assert.equal(a.y, b.y, 'top two same row');
-  assert.ok(c.y > a.y, 'third below');
+  assert.ok(c.y > a.y + 160, 'third below first row pot bottom');
   assert.equal(c.x, 195, 'third horizontally centered');
 });
 
@@ -59,16 +60,18 @@ test('layoutPots: jitter deterministic by seed', () => {
   assert.notDeepEqual(a, c);
 });
 
-test('layoutPots: jitter respects max offset (≤ 4px)', () => {
+test('layoutPots: jitter respects max offset (≤ MAX_JITTER_PX = 3)', () => {
+  const { MAX_JITTER_PX } = require('../scripts/layout-pots.js');
   const base = layoutPots(4, { jitter: 0 });
   const jittered = layoutPots(4, { jitter: 1, seed: 1 });
   jittered.forEach((p, i) => {
-    assert.ok(Math.abs(p.x - base[i].x) <= 4, `x jitter <= 4, got ${p.x - base[i].x}`);
-    assert.ok(Math.abs(p.y - base[i].y) <= 4, `y jitter <= 4, got ${p.y - base[i].y}`);
+    assert.ok(Math.abs(p.x - base[i].x) <= MAX_JITTER_PX, `x jitter <= ${MAX_JITTER_PX}, got ${p.x - base[i].x}`);
+    assert.ok(Math.abs(p.y - base[i].y) <= MAX_JITTER_PX, `y jitter <= ${MAX_JITTER_PX}, got ${p.y - base[i].y}`);
   });
 });
 
-test('layoutPots: jitter never moves a pot out of safe zone', () => {
+test('layoutPots: jitter never causes overlap or out-of-bounds', () => {
+  // HARD check only — jitter may eat into the target POT_GAP but never overlap.
   for (let seed = 1; seed <= 10; seed++) {
     for (let n = 2; n <= 9; n++) {
       const issues = validateLayout(layoutPots(n, { jitter: 1, seed }));

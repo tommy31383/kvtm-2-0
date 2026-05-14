@@ -1,28 +1,47 @@
 # Pot Layout Standard — KVTM 2.0
 
 Định nghĩa duy nhất cho tọa độ pot trong level data (`potLayout` field).
+Source-of-truth file: [`scripts/layout-pots.js`](../scripts/layout-pots.js).
+
+Run `node scripts/layout-pots.js report` để in bảng đầy đủ.
+
+## Khoảng cách bắt buộc
+
+| Khoảng cách | Giá trị | Ý nghĩa |
+|---|---|---|
+| `EDGE_PAD_X` | **14 px** | Pot edge ↔ frame left/right edge |
+| `EDGE_PAD_TOP` | **12 px** | Pot top ↔ container top |
+| `EDGE_PAD_BOT` | **18 px** | Pot bottom ↔ container bottom |
+| `POT_GAP_X` | **8 px** | Edge-to-edge giữa 2 pot CÙNG hàng |
+| `POT_GAP_Y` | **10 px** | Edge-to-edge giữa pot hàng trên và pot hàng dưới |
+| `MAX_JITTER_PX` | **3 px** | Random offset tối đa (≤ POT_GAP/2 - 1 → không bao giờ overlap) |
+
+**Vì sao gap nhỏ cho N=9?** Frame 390×700 = 273K px². 9 pot × 114×160 = 164K px² = 60% area. Còn lại 40% chia cho 8 gaps × 2 axes + edges = không có chỗ cho gap rộng. Đây là physics, không phải design choice.
+
+Muốn gap rộng hơn? 3 lựa chọn:
+- (a) Cap level designs ≤ 6 pot → gaps ≥ 24 px tự nhiên
+- (b) Shrink pot CSS (thêm class `.sb-tighter` 90×130) cho level ≥7 pot
+- (c) Chấp nhận tight gaps cho high N (current)
 
 ## Coordinate contract
 
 ```
 ┌─────────────────────────────┐ y=0 (top of #blv2-pots container)
-│                             │
-│   Y_MIN = 10 ──────────────┐│
-│                            ││
-│   ┌────┐    ┌────┐         ││ POT_W = 114
-│   │ Pot│    │ Pot│         ││ POT_H = 160
-│   │    │    │    │         ││
-│   └────┘    └────┘         ││ Y_MAX = 540
-│                            ││ (pot bottom = 700)
-├────────────────────────────┤│
-│ X_MIN=75       X_MAX=315   ││
-└─────────────────────────────┘ y=700 (bottom)
-0      FRAME_W=390
+│  ↕ EDGE_PAD_TOP = 12        │
+│   ┌────┐ POT_GAP_X ┌────┐   │
+│ ↔ │ Pot│   = 8 px  │ Pot│ ↔ │ EDGE_PAD_X = 14 each side
+│   │    │           │    │   │ POT_W = 114, POT_H = 160
+│   └────┘           └────┘   │
+│       ↕ POT_GAP_Y = 10      │
+│   ┌────┐           ┌────┐   │
+│   │ Pot│           │ Pot│   │
+│   └────┘           └────┘   │
+│  ↕ EDGE_PAD_BOT = 18        │
+└─────────────────────────────┘
+         FRAME_W = 390 × FRAME_H = 700
 ```
 
 **Reference frame:** the `#blv2-pots` container inside `#phone-frame`.
-- Width: 390 px (% of phone frame width)
-- Height: 700 px (% of vertical play area below HUD)
 
 **Pot dimensions** (`.sb-compact`):
 - Width: 114 px (`--sb-pot-w`)
@@ -32,95 +51,96 @@
 | Field | Meaning |
 |---|---|
 | `x` | **horizontal CENTER** of pot. CSS: `left:${x/390*100}%` + `margin-left:calc(-pot_w/2)` |
-| `y` | **top EDGE** of pot. CSS: `top:${y/700*100}%` directly, no vertical offset |
+| `y` | **top EDGE** of pot. CSS: `top:${y/700*100}%` |
 
-Asymmetry is intentional — matches existing 30 levels & the CSS implementation at [kvtm_2_0_game.html:6371-6378](../kvtm_2_0_game.html#L6371).
+Asymmetry intentional — matches CSS at [kvtm_2_0_game.html:6371-6378](../kvtm_2_0_game.html#L6371).
 
-## Safe zones
+## Safe zones (derived)
 
 ```
-X_MIN = POT_W/2 + PAD_X       = 57 + 12  =  75
-X_MAX = FRAME_W - POT_W/2 - PAD_X = 390-57-12 = 315
-Y_MIN = PAD_TOP                          =  10
-Y_MAX = FRAME_H - POT_H - PAD_BOT = 700-160-0 = 540
+X_MIN = POT_W/2 + EDGE_PAD_X    = 57 + 14   =  71
+X_MAX = FRAME_W - POT_W/2 - EDGE_PAD_X = 390-57-14 = 319
+Y_MIN = EDGE_PAD_TOP                       =  12
+Y_MAX = FRAME_H - POT_H - EDGE_PAD_BOT = 700-160-18 = 522
 ```
 
-Any `{x, y}` outside these ranges = pot rendered partially off-screen.
-`validateLayout()` in [scripts/layout-pots.js](../scripts/layout-pots.js) enforces.
+Max grid khả thi: **3 cols × 4 rows = 12 pot** (giới hạn N ≤ 9 cho UX).
 
-## Non-overlap invariant
+## Khoảng cách thực tế từng preset
 
-Pots overlap when both:
-- `|Δx| < POT_W = 114`, AND
-- `|Δy| < POT_H = 160`
+(`node scripts/layout-pots.js report`)
 
-All built-in presets keep adjacent rows ≥ 170 px apart (> 160 + 2×jitter_max).
+| N | Edge L | Edge R | Edge T | Edge B | minGap X (same row) | minGap Y (row-to-row) |
+|---|---|---|---|---|---|---|
+| 2 | 77 | 77 | 270 | 270 |  8 | — |
+| 3 | 77 | 77 | 182 | 188 |  8 | 10 |
+| 4 | 77 | 77 | 182 | 188 |  8 | 10 |
+| 5 | 77 | 77 |  97 | 103 |  8 | 10 |
+| 6 | 77 | 77 |  97 | 103 |  8 | 10 |
+| 7 | 77 | 77 |  12 |  18 |  8 | 10 |
+| 8 | 77 | 77 |  12 |  18 |  8 | 10 |
+| 9 | 16 | 16 |  97 | 103 |  8 | 10 |
 
-## Preset patterns
+**Quan sát:**
+- N=2..8: chỉ 1 row hoặc 2 cột → edge X = 77 (rộng rãi)
+- N=9 (3×3): edge X chỉ 16 → pot gần biên trái/phải
+- N=7..8 (4 rows): edge top/bottom 12-18 → pot gần biên trên/dưới
+- minGap luôn = 8 hoặc 10 → đảm bảo no overlap, no overflow
 
-| N pots | Pattern | Row tops |
+## Patterns (N=2..9)
+
+| N | Pattern | Hàng |
 |---|---|---|
-| 2 | Side-by-side, mid-screen | y=270 |
-| 3 | Triangle (2 top, 1 below center) | y=50, y=300 |
-| 4 | 2×2 grid | y=80, y=300 |
-| 5 | 2-2-1 stack | y=40, y=220, y=400 |
-| 6 | 2×3 grid | y=30, y=200, y=370 |
-| 7 | 1 apex + 2-2-2 stack | y=10 (apex), y=180, y=350, y=520 |
-| 8 | 2×4 grid | y=10, y=180, y=350, y=520 |
-| 9 | 3×3 grid | y=10, y=270, y=530 |
+| 2 | Side-by-side, centered | 1 row |
+| 3 | Triangle (2 top, 1 bottom centered) | 2 rows |
+| 4 | 2×2 grid | 2 rows |
+| 5 | 2-2-1 stack | 3 rows |
+| 6 | 2×3 grid | 3 rows |
+| 7 | 1 apex + 2-2-2 stack | 4 rows |
+| 8 | 2×4 grid | 4 rows |
+| 9 | 3×3 grid | 3 rows |
 
-**Within each row:** pots distributed evenly between X_MIN and X_MAX. Single pot → x=195 (center).
+## Validation
+
+```js
+const { validateLayout } = require('./scripts/layout-pots.js');
+
+// HARD check only — fails on overlap or out-of-bounds. Jittered layouts OK.
+validateLayout(layout);
+
+// STRICT — also fails when gaps < POT_GAP_X / POT_GAP_Y (target).
+// Use this to validate presets (without jitter).
+validateLayout(layout, { strict: true });
+```
 
 ## Jitter
 
-```js
-layoutPots(n, { jitter: 0..1, seed: number })
+- `MAX_JITTER_PX = 3` (cứng) ≤ `min(POT_GAP_X, POT_GAP_Y) / 2 - 1`
+- Đảm bảo: dù jitter ±3, gap edge-to-edge vẫn ≥ POT_GAP - 6 = 2 px (vẫn tách rõ visually)
+- Deterministic per seed
+- Clamp trong safe zone
+
+## Tune lại constants
+
+Mở [`scripts/layout-pots.js`](../scripts/layout-pots.js) phần CONSTANTS đầu file. Mỗi lần đổi:
+1. `node scripts/layout-pots.js report` → xem gap mới
+2. `npm test` → đảm bảo invariants vẫn pass
+3. Reload game → verify visual
+
+Constants liên quan nhau:
 ```
-- Max offset: ±4 px (capped via `MAX_JITTER_PX`)
-- Deterministic per `seed` (LCG)
-- Stays within safe zone (clamped post-jitter)
-- Cannot break the no-overlap invariant (170 - 8 = 162 > 160 = POT_H)
+3 cols cần:  3 × POT_W + 2 × POT_GAP_X + 2 × EDGE_PAD_X ≤ FRAME_W
+              3 × 114    + 2 × POT_GAP_X + 2 × EDGE_PAD_X ≤ 390
+              POT_GAP_X + EDGE_PAD_X ≤ 24
 
-Use `jitter: 0` for clean grids, `0.3-0.7` for organic feel.
-
-## Adding a new pattern
-
-If you need a different visual (e.g. circular, asymmetric), extend `PRESETS` in [scripts/layout-pots.js](../scripts/layout-pots.js):
-
-```js
-PRESETS.flower = () => [
-  { x: 195, y: 200 },                              // center
-  { x: 195-70, y: 130 }, { x: 195+70, y: 130 },    // top petals
-  { x: 195-70, y: 270 }, { x: 195+70, y: 270 },    // bottom petals
-];
+4 rows cần:  4 × POT_H + 3 × POT_GAP_Y + EDGE_PAD_TOP + EDGE_PAD_BOT ≤ FRAME_H
+              640        + 3 × POT_GAP_Y + EDGE_PAD_TOP + EDGE_PAD_BOT ≤ 700
+              3 × POT_GAP_Y + EDGE_PAD_TOP + EDGE_PAD_BOT ≤ 60
 ```
-
-Then reference in spec:
-```json
-{ "id": 50, "pots": 5, "layout": "flower", ... }
-```
-
-`gen-level.js` will pick the named preset over the default-by-N.
-
-**Required:** new presets must pass `validateLayout()` (in-bounds + no overlap). Add to `test/layout.test.js`.
-
-## How specs become potLayout
-
-```
-levels/specs/foo.json    →   gen-level.js   →   data.js
-  { pots: 5, ... }            layoutPots(5)        potLayout: [{x,y}, ...]
-```
-
-Generator always attaches `potLayout` so every generated level has explicit coordinates. No reliance on flex/auto layout (which had clutter at high pot counts).
 
 ## Existing 30 levels
 
-Levels 1-30 in [engine/sort_blossom_data.js](../engine/sort_blossom_data.js) currently mix:
-- Levels with explicit `potLayout` (added via level_editor tool)
-- Levels without `potLayout` → game falls back to flex layout
+Tutorial L1-3 không có `potLayout` → fallback flex auto-layout.
+Mid levels có `potLayout` cũ (manually placed via editor) → vẫn render đúng vì validate là soft check, không re-generate.
 
-When migrating to the standard:
-1. Run `npm run gen -- --batch levels/specs/migrate_1_30.json --write` to regenerate (changes flower distributions; not recommended for tested levels).
-2. OR write a one-off script that **only** adds `potLayout` to existing pot data, preserving game logic.
-
-The pragmatic path: leave existing levels as-is, apply standard to **new** levels (L31+).
+Generated levels (L31+) sẽ luôn có `potLayout` từ pipeline này.
