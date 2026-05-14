@@ -6530,8 +6530,13 @@ Scenes._levelBlossomV2 = function(cfg) {
         const wasNullBefore = state.map(p => p.active.map(x => x === null));
         state.forEach(p => Engine.promote(p));
 
-        // Paint only affected cells (dest + any pot with newly-promoted flowers)
-        const affectedPots = new Set([potIdx]);
+        // Paint affected cells: source (cleared slot), dest, any pot with promote.
+        // Source must always repaint — _fadeOutSource only sets visibility:hidden
+        // on the old canvas, which lingers in DOM until paintActive wipes it. If
+        // a stray repaint fires during flight, it would resurrect a visible
+        // canvas at srcPos before applyMovePlace mutates state, producing a
+        // ghost flower in the source pot.
+        const affectedPots = new Set([srcSel.pot, potIdx]);
         state.forEach((pot, pi) => {
           pot.active.forEach((color, posi) => {
             if (color && wasNullBefore[pi][posi]) affectedPots.add(pi);
