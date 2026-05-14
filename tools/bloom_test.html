@@ -980,13 +980,11 @@ window.addEventListener('keydown',e=>{
 async function saveToServer(){
   const key=COLOR_KEY[document.getElementById('colorPicker').value];
   const rects=frames.map(f=>{const r=[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)];if(f.dx||f.dy)r.push(Math.round(f.dx||0),Math.round(f.dy||0));return r;});
-  const gameSpeed=parseInt(document.getElementById('gameSpeedIn').value)||100;
-  // Per-frame durations: scale each frame's dur by gameSpeed multiplier.
-  // Server expects an array; sending a scalar would skip the _BLOOM_DURS update.
-  const speedMul = 100 / gameSpeed;
-  const perFrameDurs = frames.map(f => Math.round((f.dur || 90) * speedMul));
-  // file:// fallback also needs the same array — written as JSON for _BLOOM_DURS,
-  // unless every frame is at the default 90ms (then write `null` for clean diff).
+  // Save raw per-frame durations. To make a frame faster/slower, edit its
+  // `.tdur` directly on the timeline card. Game slider is preview-only — does
+  // NOT scale saved data (multiplying both would force every frame to scale
+  // uniformly, defeating the point of per-frame control).
+  const perFrameDurs = frames.map(f => Math.round(f.dur || 90));
   const allDefault = perFrameDurs.every(d => d === 90);
   const durValLiteral = allDefault ? 'null' : JSON.stringify(perFrameDurs);
   st('⏳ Saving...','warn');
@@ -1004,7 +1002,8 @@ async function saveToServer(){
       src = _patchColorLine(src, '_BLOOM_RECTS', key, JSON.stringify(rects));
       src = _patchColorLine(src, '_BLOOM_DURS', key, durValLiteral);
       await _fsWrite('engine/sort_blossom_render.js', src);
-      st(`✅ Saved ${key}: ${rects.length} frames · ${gameSpeed}% speed`,'ok');
+      const _total = perFrameDurs.reduce((a,b)=>a+b,0);
+      st(`✅ Saved ${key}: ${rects.length} frames · ${_total}ms total`,'ok');
     }
   }catch(e){st('❌ '+e.message,'err');}
 }
