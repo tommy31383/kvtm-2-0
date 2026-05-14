@@ -2117,6 +2117,15 @@ const Game = (() => {
   const _history = [];
   let _currentScene = null;
   let _transitioning = false;
+  // Hooks fired when leaving the current scene — used to cancel timers/animations
+  // that would otherwise spawn DOM nodes onto a detached scene. Declared before
+  // `return` so the `let` initializes (otherwise stays in TDZ → _mount crash).
+  let _teardownHooks = [];
+  function onTeardown(fn) { _teardownHooks.push(fn); }
+  function runTeardown() {
+    const hooks = _teardownHooks; _teardownHooks = [];
+    hooks.forEach(fn => { try { fn(); } catch(e) { console.warn('[teardown]', e); } });
+  }
 
   const stage = () => document.getElementById('stage');
 
@@ -2192,15 +2201,6 @@ const Game = (() => {
 
     onTeardown(fn) { onTeardown(fn); }
   };
-
-  // Hooks fired when leaving the current scene — used to cancel timers/animations
-  // that would otherwise spawn DOM nodes onto a detached scene.
-  let _teardownHooks = [];
-  function onTeardown(fn) { _teardownHooks.push(fn); }
-  function runTeardown() {
-    const hooks = _teardownHooks; _teardownHooks = [];
-    hooks.forEach(fn => { try { fn(); } catch(e) { console.warn('[teardown]', e); } });
-  }
 
   function _mount(sceneName, params) {
     runTeardown();
