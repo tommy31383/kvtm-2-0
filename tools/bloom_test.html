@@ -246,7 +246,14 @@ select{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
 
     <!-- inline frame props -->
     <div id="frameProps">
-      <input type="number" id="fdurIn" min="10" max="5000" step="10" style="display:none">
+      <div class="nudge-group" title="Duration of selected frame (ms)">
+        <label style="color:var(--gold);">Dur (ms)</label>
+        <div class="nb" onclick="nudge('dur',-50)" title="-50">-50</div>
+        <div class="nb" onclick="nudge('dur',-10)" title="-10">-10</div>
+        <input class="nv" id="fdurIn" type="number" min="10" max="5000" step="10" oninput="applyDur()">
+        <div class="nb" onclick="nudge('dur',10)" title="+10">+10</div>
+        <div class="nb" onclick="nudge('dur',50)" title="+50">+50</div>
+      </div>
 
       <div class="nudge-group">
         <label>dX</label>
@@ -711,7 +718,16 @@ function applyOffset(){
 function nudge(k,d){
   if(selIdx<0)return;
   frames[selIdx][k]=(frames[selIdx][k]||0)+d;
+  // Clamp dur so a -nudge can't drop us below the 10ms input minimum.
+  if(k==='dur') frames[selIdx].dur=Math.max(10,frames[selIdx].dur);
   document.getElementById('f'+k+'In').value=frames[selIdx][k];
+  // dur change also needs to update the timeline card's .tdur + total label.
+  if(k==='dur'){
+    const tl=document.getElementById('tlScroll');
+    const inp=tl.children[selIdx]?.querySelector('.tdur');
+    if(inp) inp.value=frames[selIdx].dur;
+    updateTLInfo();
+  }
   refreshThumb(selIdx);syncProps();drawPrev(selIdx);
 }
 function copyOffsetToAll(){
