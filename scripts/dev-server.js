@@ -198,12 +198,14 @@ const server = http.createServer((req, res) => {
       if (err) { res.writeHead(413, { 'Content-Type': 'application/json' });
                  res.end(JSON.stringify({ ok: false, error: err.message })); return; }
       try {
-        const { color, rects, durations } = JSON.parse(body);
+        // Client now sends durationsLiteral (string) — the canonical literal form
+        // ('null' | 'NNN' | '[d1,d2,...]'). Server writes it verbatim into the
+        // _BLOOM_DURS block. Falls back to legacy `durations` array for compat.
+        const { color, rects, durationsLiteral, durations } = JSON.parse(body);
         if (!color || !Array.isArray(rects)) throw new Error('color + rects required');
         const renderFile = path.join(ROOT, 'engine', 'sort_blossom_render.js');
         let src = fs.readFileSync(renderFile, 'utf8');
 
-        // Helper: replace one color key in a named const block
         function replaceColorLine(source, blockName, colorKey, newVal) {
           const blockStart = source.indexOf(blockName);
           if (blockStart === -1) return source;
@@ -219,19 +221,24 @@ const server = http.createServer((req, res) => {
           return before + lines.join('\n') + after;
         }
 
-        // Update _BLOOM_RECTS
         src = replaceColorLine(src, '_BLOOM_RECTS', color, JSON.stringify(rects));
 
-        // Update _BLOOM_DURS if durations provided
-        if (Array.isArray(durations) && durations.length) {
-          const allDefault = durations.every(d => d === 90);
-          const durVal = allDefault ? 'null' : JSON.stringify(durations);
-          src = replaceColorLine(src, '_BLOOM_DURS', color, durVal);
+        let durLit = null;
+        if (typeof durationsLiteral === 'string' && durationsLiteral.length) {
+          durLit = durationsLiteral;
+        } else if (Array.isArray(durations) && durations.length) {
+          // Legacy fallback
+          const allSame = durations.every(d => d === durations[0]);
+          if (allSame) durLit = durations[0] === 90 ? 'null' : String(durations[0]);
+          else durLit = JSON.stringify(durations);
+        }
+        if (durLit !== null) {
+          src = replaceColorLine(src, '_BLOOM_DURS', color, durLit);
         }
 
         fs.writeFileSync(renderFile, src, 'utf8');
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, message: `Saved ${color}: ${rects.length} frames` }));
+        res.end(JSON.stringify({ ok: true, message: `Saved ${color}: ${rects.length} frames · _BLOOM_DURS=${durLit ?? '(unchanged)'}` }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: false, error: e.message }));

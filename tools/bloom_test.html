@@ -982,21 +982,28 @@ window.addEventListener('keydown',e=>{
 });
 
 // ── SAVE ─────────────────────────────────────────────────────
+// Canonical literal for _BLOOM_DURS[color] based on current frame state.
+// Game read path (_bloomSheet) handles all three forms; pick the most concise:
+//   - all 90  -> 'null'      (default, smallest diff)
+//   - all X   -> 'X'         (uniform scalar)
+//   - varied  -> '[d1,d2,…]' (per-frame array)
+function _canonicalDurLiteral(frames) {
+  const ds = frames.map(f => Math.round(f.dur || 90));
+  if (!ds.length) return 'null';
+  const allSame = ds.every(d => d === ds[0]);
+  if (allSame) return ds[0] === 90 ? 'null' : String(ds[0]);
+  return JSON.stringify(ds);
+}
+
 async function saveToServer(){
   const key=COLOR_KEY[document.getElementById('colorPicker').value];
   const rects=frames.map(f=>{const r=[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)];if(f.dx||f.dy)r.push(Math.round(f.dx||0),Math.round(f.dy||0));return r;});
-  // Save raw per-frame durations. To make a frame faster/slower, edit its
-  // `.tdur` directly on the timeline card. Game slider is preview-only — does
-  // NOT scale saved data (multiplying both would force every frame to scale
-  // uniformly, defeating the point of per-frame control).
-  const perFrameDurs = frames.map(f => Math.round(f.dur || 90));
-  const allDefault = perFrameDurs.every(d => d === 90);
-  const durValLiteral = allDefault ? 'null' : JSON.stringify(perFrameDurs);
+  const durValLiteral = _canonicalDurLiteral(frames);
   st('⏳ Saving...','warn');
   try{
     if (IS_LOCAL) {
       const token = await getDevToken();
-      const text=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json','X-Dev-Token':token},body:JSON.stringify({color:key,rects,durations:perFrameDurs})}).then(r=>r.text());
+      const text=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json','X-Dev-Token':token},body:JSON.stringify({color:key,rects,durationsLiteral:durValLiteral})}).then(r=>r.text());
       let data;try{data=JSON.parse(text);}catch(e){throw new Error(text.slice(0,80));}
       if(!data.ok)throw new Error(data.error);
       st('✅ '+data.message,'ok');
@@ -1007,8 +1014,8 @@ async function saveToServer(){
       src = _patchColorLine(src, '_BLOOM_RECTS', key, JSON.stringify(rects));
       src = _patchColorLine(src, '_BLOOM_DURS', key, durValLiteral);
       await _fsWrite('engine/sort_blossom_render.js', src);
-      const _total = perFrameDurs.reduce((a,b)=>a+b,0);
-      st(`✅ Saved ${key}: ${rects.length} frames · ${_total}ms total`,'ok');
+      const _total = frames.reduce((a,f)=>a+(f.dur||90),0);
+      st(`✅ Saved ${key}: ${rects.length} frames · ${_total}ms total · _BLOOM_DURS=${durValLiteral.slice(0,40)}`,'ok');
     }
   }catch(e){st('❌ '+e.message,'err');}
 }
