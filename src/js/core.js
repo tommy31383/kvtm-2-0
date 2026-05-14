@@ -240,6 +240,23 @@ const Lives = (() => {
 // ════ SFX ════
 // ════════════════════════════════════════════════
 
+// Tracks first real user gesture. Audio + haptic are gated on this — Chrome
+// blocks AudioContext.start and navigator.vibrate before any pointer/keyboard
+// interaction, so silently skip rather than logging warnings on auto-transitions
+// like splash → hub.
+let _userInteracted = false;
+if (typeof window !== 'undefined') {
+  const _mark = () => {
+    _userInteracted = true;
+    window.removeEventListener('pointerdown', _mark, true);
+    window.removeEventListener('keydown', _mark, true);
+    window.removeEventListener('touchstart', _mark, true);
+  };
+  window.addEventListener('pointerdown', _mark, true);
+  window.addEventListener('keydown', _mark, true);
+  window.addEventListener('touchstart', _mark, true);
+}
+
 const Sfx = (() => {
   let _ctx = null;
 
@@ -251,6 +268,7 @@ const Sfx = (() => {
   }
 
   function playTone(freq, duration, type = 'sine', gainVal = 0.3) {
+    if (!_userInteracted) return;  // browser autoplay policy
     const ctx = getCtx();
     if (!ctx) return;
     if (!Save.get().settings.sound) return;
@@ -287,7 +305,7 @@ const Sfx = (() => {
 // ════════════════════════════════════════════════
 
 const Haptic = {
-  _ok() { return Save.get().settings.haptic && 'vibrate' in navigator; },
+  _ok() { return _userInteracted && Save.get().settings.haptic && 'vibrate' in navigator; },
   tap()     { if (this._ok()) navigator.vibrate(10); },
   success() { if (this._ok()) navigator.vibrate([30, 20, 60]); },
   fail()    { if (this._ok()) navigator.vibrate([80, 30, 80]); }
