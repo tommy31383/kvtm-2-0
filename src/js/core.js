@@ -5,8 +5,10 @@
 // ════════════════════════════════════════════════
 
 const SAVE_KEY = 'kvtm2_save_v1';
+const SAVE_SCHEMA_VERSION = 2;  // bump on shape changes; migrateSave handles old data
 
 const DEFAULT_SAVE = {
+  _v: SAVE_SCHEMA_VERSION,
   player: {
     name: '',
     gender: '',
@@ -40,15 +42,31 @@ const DEFAULT_SAVE = {
   }
 };
 
-const Save = (() => {
-  let _data = null;
-
-  function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
-
+// Migrate persisted save into the current schema. Pure function — given any
+// raw input (null, partial old shape, corrupted), returns a valid save at
+// SAVE_SCHEMA_VERSION. Add a `case N:` block for each version bump.
+function migrateSave(raw) {
+  const fresh = JSON.parse(JSON.stringify(DEFAULT_SAVE));
+  if (!raw || typeof raw !== 'object') return fresh;
+  // Start from whatever version it claims (legacy data has no _v -> treat as v1)
+  let cur = raw;
+  let v = typeof cur._v === 'number' ? cur._v : 1;
+  while (v < SAVE_SCHEMA_VERSION) {
+    switch (v) {
+      case 1:
+        // v1 -> v2: stamp version; future shape changes go here.
+        cur._v = 2;
+        break;
+      default:
+        v = SAVE_SCHEMA_VERSION; // unknown intermediate, stop
+    }
+    v = cur._v;
+  }
+  // Deep-merge defaults to fill any missing keys regardless of version
   function merge(target, defaults) {
     for (const key in defaults) {
       if (!(key in target)) {
-        target[key] = clone(defaults[key]);
+        target[key] = JSON.parse(JSON.stringify(defaults[key]));
       } else if (typeof defaults[key] === 'object' && defaults[key] !== null && !Array.isArray(defaults[key])) {
         if (typeof target[key] !== 'object' || target[key] === null) target[key] = {};
         merge(target[key], defaults[key]);
@@ -56,6 +74,13 @@ const Save = (() => {
     }
     return target;
   }
+  return merge(cur, fresh);
+}
+
+const Save = (() => {
+  let _data = null;
+
+  function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
   function resolvePath(data, path) {
     const parts = path.split('.');
@@ -77,14 +102,12 @@ const Save = (() => {
     load() {
       try {
         const raw = localStorage.getItem(SAVE_KEY);
-        if (raw) {
-          _data = merge(JSON.parse(raw), clone(DEFAULT_SAVE));
-        } else {
-          _data = clone(DEFAULT_SAVE);
-        }
+        // migrateSave always returns a valid save — handles null, corrupt JSON,
+        // missing fields, and old versions transparently.
+        _data = migrateSave(raw ? JSON.parse(raw) : null);
       } catch (e) {
         console.warn('[Save] Load failed, using defaults:', e);
-        _data = clone(DEFAULT_SAVE);
+        _data = migrateSave(null);
       }
       return _data;
     },

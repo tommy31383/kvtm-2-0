@@ -110,7 +110,7 @@
   // Per-frame durations (ms) — null = use 90ms default | number = uniform ms per frame
   const _BLOOM_DURS = {
     R: null,
-    P: 474,
+    P: 87,
     Y: null,
     V: null,
     W: 474,
@@ -119,13 +119,50 @@
     C: null,
   };
 
+  // Normalize raw _BLOOM_DURS entry into a single canonical form the render
+  // code can rely on. Historical formats: null | number | array | invalid.
+  // Output:
+  //   { kind: 'default' }                        — every frame 90ms
+  //   { kind: 'uniform', ms: number }            — every frame N ms
+  //   { kind: 'perFrame', ms: number[] }         — per-frame array
+  function migrateBloomDurs(raw, frameCount) {
+    if (raw == null) return { kind: 'default' };
+    if (typeof raw === 'number' && raw > 0) return { kind: 'uniform', ms: Math.round(raw) };
+    if (Array.isArray(raw) && raw.length) {
+      const clean = raw.map(d => (typeof d === 'number' && d > 0) ? Math.round(d) : 90);
+      const allSame = clean.every(d => d === clean[0]);
+      if (allSame) return clean[0] === 90 ? { kind: 'default' } : { kind: 'uniform', ms: clean[0] };
+      // Pad/truncate to expected frame count if provided
+      if (typeof frameCount === 'number') {
+        while (clean.length < frameCount) clean.push(90);
+        if (clean.length > frameCount) clean.length = frameCount;
+      }
+      return { kind: 'perFrame', ms: clean };
+    }
+    console.warn('[bloom] unrecognized _BLOOM_DURS entry, falling back to default:', raw);
+    return { kind: 'default' };
+  }
+
   // Cache: sheet Image per color
   const _bloomCache = {};   // color → { sheet: Image, rects: [[x,y,w,h],...] } | false
   function _probeBloom(color, assetPath, cb) {
     if (color in _bloomCache) return cb(_bloomCache[color]);
     const c = COLORS[color];
     const sheet = new Image();
-    sheet.onload  = () => { _bloomCache[color] = { sheet, rects: _BLOOM_RECTS[color] || null, durations: (_BLOOM_DURS && _BLOOM_DURS[color]) || null }; cb(_bloomCache[color]); };
+    sheet.onload  = () => {
+      const rects = _BLOOM_RECTS[color] || null;
+      const durRaw = _BLOOM_DURS && _BLOOM_DURS[color];
+      const dur = migrateBloomDurs(durRaw, rects ? rects.length : undefined);
+      // `durations` shape downstream code expects:
+      //   - number → uniform ms per frame
+      //   - array  → per-frame ms
+      //   - null   → use 90ms default
+      let durations = null;
+      if (dur.kind === 'uniform') durations = dur.ms;
+      else if (dur.kind === 'perFrame') durations = dur.ms;
+      _bloomCache[color] = { sheet, rects, durations };
+      cb(_bloomCache[color]);
+    };
     sheet.onerror = () => { _bloomCache[color] = false; cb(false); };
     sheet.src = assetPath + c.bloom;
   }
@@ -1102,6 +1139,7 @@
     renderQueueStrip,
     eventToPos, eventToNearestFlowerPos, eventToFlowerHitPos,
     nearestOccupiedPos, nearestEmptyPos, nearestBoardFlower,
+    migrateBloomDurs,
   };
 
   if (typeof module !== 'undefined' && module.exports) {
