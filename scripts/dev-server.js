@@ -79,6 +79,11 @@ const server = http.createServer((req, res) => {
   }
   Object.entries(CORS).forEach(([k,v]) => res.setHeader(k, v));
 
+  // Silence auto-requested favicon — no file, no noise.
+  if (req.method === 'GET' && req.url === '/favicon.ico') {
+    res.writeHead(204); res.end(); return;
+  }
+
   // GET /api/token — return the per-run token (same-origin only).
   // Editor fetches this once on load, then includes X-Dev-Token on writes.
   if (req.method === 'GET' && req.url === '/api/token') {
