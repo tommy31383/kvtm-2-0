@@ -202,6 +202,7 @@ const server = http.createServer((req, res) => {
         // ('null' | 'NNN' | '[d1,d2,...]'). Server writes it verbatim into the
         // _BLOOM_DURS block. Falls back to legacy `durations` array for compat.
         const { color, rects, durationsLiteral, durations } = JSON.parse(body);
+        console.log(`[save-bloom-rects] color=${color} rects=${rects?.length} durationsLiteral=${JSON.stringify(durationsLiteral)} durations=${JSON.stringify(durations)?.slice(0,60)}`);
         if (!color || !Array.isArray(rects)) throw new Error('color + rects required');
         const renderFile = path.join(ROOT, 'engine', 'sort_blossom_render.js');
         let src = fs.readFileSync(renderFile, 'utf8');
