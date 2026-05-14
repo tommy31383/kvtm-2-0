@@ -5,10 +5,10 @@
 <title>KVTM 2.0 — Sort Blossom Level Editor v2</title>
 
 <!-- Shared engine modules (single source of truth) -->
-<link rel="stylesheet" href="../engine/sort_blossom.css">
-<script src="../engine/sort_blossom_engine.js?v=3"></script>
-<script src="../engine/sort_blossom_render.js?v=31"></script>
-<script src="../engine/sort_blossom_data.js?v=3"></script>
+<link rel="stylesheet" href="../engine/sort_blossom.css?v=11">
+<script src="../engine/sort_blossom_engine.js?v=4"></script>
+<script src="../engine/sort_blossom_render.js?v=36"></script>
+<script src="../engine/sort_blossom_data.js?v=4"></script>
 
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -622,26 +622,37 @@ function doCopyCurrent() {
   log('📋 Copied current level to clipboard');
 }
 
+// Per-run token from dev-server. Fetched lazily; same-origin only.
+let _devToken = null;
+async function getDevToken() {
+  if (_devToken) return _devToken;
+  const r = await fetch('/api/token');
+  if (!r.ok) throw new Error('token fetch failed: ' + r.status);
+  _devToken = (await r.json()).token;
+  return _devToken;
+}
+
 async function doSaveAndPush() {
   syncFromForm();
   const btn = document.getElementById('btn-save-push');
   const orig = btn.textContent;
-  btn.textContent = '⏳ Pushing...'; btn.disabled = true;
+  btn.textContent = '⏳ Saving...'; btn.disabled = true;
   try {
-    const res = await fetch('http://localhost:3456/api/save-levels', {
+    const token = await getDevToken();
+    const res = await fetch('/api/save-levels', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ levels, autoPush: true }),
+      headers: { 'Content-Type': 'application/json', 'X-Dev-Token': token },
+      body: JSON.stringify({ levels }),
     });
     const data = await res.json();
     if (data.ok) {
-      log('🚀 ' + data.message);
-      btn.textContent = '✅ Done!'; btn.style.background = '#27ae60';
+      log('💾 ' + data.message + ' (run git commit + push manually)');
+      btn.textContent = '✅ Saved'; btn.style.background = '#27ae60';
     } else {
       throw new Error(data.error || JSON.stringify(data));
     }
   } catch (e) {
-    log('✗ Save & Push failed: ' + e.message);
+    log('✗ Save failed: ' + e.message);
     log('  levels count: ' + (Array.isArray(levels) ? levels.length : 'NOT ARRAY: ' + typeof levels));
     btn.textContent = '✗ Failed'; btn.style.background = '#e53935';
   }

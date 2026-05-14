@@ -11,6 +11,11 @@ const { execSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const PORT = 3456;
+const HOST = '127.0.0.1';  // localhost-only — prevents drive-by writes from LAN
+// Shared token for write endpoints — generated per-run, printed at startup.
+// Editor reads it via GET /api/token (same-origin only).
+const TOKEN = require('crypto').randomBytes(16).toString('hex');
+const MAX_BODY = 2 * 1024 * 1024;  // 2 MB cap
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -24,25 +29,75 @@ const MIME = {
   '.ico':  'image/x-icon',
 };
 
-const server = http.createServer((req, res) => {
-  // CORS for local dev (origin:null from file:// needs explicit header on every response)
-  const CORS = {
-    'Access-Control-Allow-Origin': '*',
+// Same-origin CORS — only allow requests from this server's own pages.
+// `*` would let any website on the open internet POST to our write endpoints.
+const ALLOWED_ORIGINS = new Set([
+  `http://${HOST}:${PORT}`,
+  `http://localhost:${PORT}`,
+]);
+
+function corsHeaders(origin) {
+  const allow = origin && ALLOWED_ORIGINS.has(origin) ? origin : '';
+  return {
+    'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Dev-Token',
+    'Vary': 'Origin',
   };
+}
+
+function readBody(req, cb) {
+  let body = '';
+  let aborted = false;
+  req.on('data', c => {
+    if (aborted) return;
+    body += c;
+    if (body.length > MAX_BODY) {
+      aborted = true;
+      req.destroy();
+      cb(new Error('body too large'));
+    }
+  });
+  req.on('end', () => { if (!aborted) cb(null, body); });
+}
+
+function requireToken(req, res) {
+  const t = req.headers['x-dev-token'];
+  if (t !== TOKEN) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: false, error: 'invalid or missing X-Dev-Token' }));
+    return false;
+  }
+  return true;
+}
+
+const server = http.createServer((req, res) => {
+  const origin = req.headers.origin;
+  const CORS = corsHeaders(origin);
   if (req.method === 'OPTIONS') {
     res.writeHead(204, CORS); res.end(); return;
   }
   Object.entries(CORS).forEach(([k,v]) => res.setHeader(k, v));
 
+  // GET /api/token — return the per-run token (same-origin only).
+  // Editor fetches this once on load, then includes X-Dev-Token on writes.
+  if (req.method === 'GET' && req.url === '/api/token') {
+    if (origin && !ALLOWED_ORIGINS.has(origin)) {
+      res.writeHead(403); res.end('forbidden'); return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ token: TOKEN }));
+    return;
+  }
+
   // ── API: save levels ───────────────────────────────────────────
   if (req.method === 'POST' && req.url === '/api/save-levels') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
+    if (!requireToken(req, res)) return;
+    readBody(req, (err, body) => {
+      if (err) { res.writeHead(413, { 'Content-Type': 'application/json' });
+                 res.end(JSON.stringify({ ok: false, error: err.message })); return; }
       try {
-        const { levels, autoPush } = JSON.parse(body);
+        const { levels } = JSON.parse(body);
         if (!Array.isArray(levels)) throw new Error('levels must be array');
 
         // Generate sort_blossom_data.js
@@ -71,20 +126,9 @@ const server = http.createServer((req, res) => {
           + existing.slice(tail);
         fs.writeFileSync(dataFile, newContent, 'utf8');
 
-        let gitMsg = '';
-        if (autoPush) {
-          try {
-            execSync('git add engine/sort_blossom_data.js', { cwd: ROOT });
-            execSync('git commit -m "Editor: update level data + potLayout"', { cwd: ROOT });
-            execSync('git push origin master', { cwd: ROOT });
-            gitMsg = ' — git pushed ✓';
-          } catch (ge) {
-            gitMsg = ' — git push failed: ' + ge.message.split('\n')[0];
-          }
-        }
-
+        // autoPush removed — run git manually so credentials/branch are intentional.
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, message: `Saved ${levels.length} levels${gitMsg}` }));
+        res.end(JSON.stringify({ ok: true, message: `Saved ${levels.length} levels` }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: false, error: e.message }));
@@ -112,9 +156,10 @@ const server = http.createServer((req, res) => {
 
   // ── API: save CSS vars → engine/sort_blossom.css ──────────────
   if (req.method === 'POST' && req.url === '/api/save-css-vars') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
+    if (!requireToken(req, res)) return;
+    readBody(req, (err, body) => {
+      if (err) { res.writeHead(413, { 'Content-Type': 'application/json' });
+                 res.end(JSON.stringify({ ok: false, error: err.message })); return; }
       try {
         const { vars } = JSON.parse(body); // {vars: {"--sb-stem-x":"4px", ...}}
         if (!vars || typeof vars !== 'object') throw new Error('vars object required');
@@ -143,9 +188,10 @@ const server = http.createServer((req, res) => {
 
   // ── API: save bloom rects ─────────────────────────────────────
   if (req.method === 'POST' && req.url === '/api/save-bloom-rects') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
+    if (!requireToken(req, res)) return;
+    readBody(req, (err, body) => {
+      if (err) { res.writeHead(413, { 'Content-Type': 'application/json' });
+                 res.end(JSON.stringify({ ok: false, error: err.message })); return; }
       try {
         const { color, rects, durations } = JSON.parse(body);
         if (!color || !Array.isArray(rects)) throw new Error('color + rects required');
@@ -221,14 +267,11 @@ const server = http.createServer((req, res) => {
   tryNext(tryPaths);
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🌹 KVTM Dev Server running`);
+server.listen(PORT, HOST, () => {
+  console.log(`\n🌹 KVTM Dev Server running (localhost-only)`);
   console.log(`   Local:   http://localhost:${PORT}/kvtm_2_0_game.html`);
   console.log(`   Editor:  http://localhost:${PORT}/tools/level_editor.html`);
-  try {
-    const { execSync } = require('child_process');
-    const ip = execSync('ipconfig').toString().match(/IPv4.*?:\s*([\d.]+)/);
-    if (ip) console.log(`   Mobile:  http://${ip[1]}:${PORT}/kvtm_2_0_game.html`);
-  } catch {}
-  console.log(`\n   POST /api/save-levels  — write engine/sort_blossom_data.js + git push\n`);
+  console.log(`\n   Write endpoints require X-Dev-Token (fetched from /api/token).`);
+  console.log(`   Token (this run): ${TOKEN}`);
+  console.log(`   autoPush removed — commit & push manually after saving.\n`);
 });

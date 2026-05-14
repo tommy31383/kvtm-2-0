@@ -79,8 +79,11 @@
     state[b].active[posB] = flower;
     state[a].active[posA] = null;
 
+    // Returns { ok, vanished:number[], promoted:number[] } — `vanished` is the
+    // list of pot indices that vanished (possibly multiple from cascade).
+    // Callers check `vanished.length > 0` for boolean intent.
     const settled = settle(state);
-    return { ok: true, vanished: settled.vanished.length > 0, ...settled };
+    return { ok: true, ...settled };
   }
 
   /**

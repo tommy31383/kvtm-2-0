@@ -367,7 +367,15 @@
       for (let i = 0; i < rects.length; i++) { frameTimes.push(t); t += (durations[i] || FRAME_DUR); }
       const totalDur = t;
 
+      let rafId = 0;
       function tick(ts) {
+        // Bail if scene torn down or overlay removed — prevents orphan rAF
+        // drawing into a detached canvas for up to BLOOM_DURATION_MS.
+        if (!cv.isConnected || !imgEl.isConnected) {
+          try { cv.remove(); } catch(e) {}
+          try { imgEl.style.opacity = origOpacity; } catch(e) {}
+          return;
+        }
         if (!startTs) startTs = ts;
         const elapsed = ts - startTs;
         let fi = rects.length - 1;
@@ -375,7 +383,7 @@
         if (fi !== lastFrame) { lastFrame = fi; drawFrame(fi); }
 
         if (elapsed < totalDur) {
-          requestAnimationFrame(tick);
+          rafId = requestAnimationFrame(tick);
         } else {
           // Animation done: transition imgEl from bud (frame 0) to flower (frame 9).
           // Resize imgEl canvas to frame-9 dimensions and draw it, then clear bud flag.
@@ -395,7 +403,7 @@
       }
 
       drawFrame(0);
-      requestAnimationFrame(tick);
+      rafId = requestAnimationFrame(tick);
     });
   }
 
@@ -938,10 +946,31 @@
     const STAGGER = 180; // ms between each pot
     const POT_DUR = 520; // ring + petals duration
 
+    // ── Teardown bookkeeping ─────────────────────────────────────
+    // Track every spawned node + every pending setTimeout so a scene change
+    // can cancel orchestration before it appends more nodes to document.body.
+    const _timers = new Set();
+    const _nodes = new Set();
+    let _cancelled = false;
+    function _t(fn, ms) {
+      const id = setTimeout(() => { _timers.delete(id); if (!_cancelled) fn(); }, ms);
+      _timers.add(id);
+      return id;
+    }
+    function _spawn(el) { _nodes.add(el); document.body.appendChild(el); return el; }
+    function cancel() {
+      if (_cancelled) return;
+      _cancelled = true;
+      _timers.forEach(clearTimeout); _timers.clear();
+      _nodes.forEach(n => { try { n.remove(); } catch(e) {} });
+      _nodes.clear();
+    }
+
     // ── Phase 1: per-pot effect ──────────────────────────────────
     cells.forEach((cell, idx) => {
       if (!cell) return;
-      setTimeout(() => {
+      _t(() => {
+        if (_cancelled) return;
         const rect = cell.isConnected ? cell.getBoundingClientRect() : null;
         if (rect && rect.width === 0 && rect.height === 0) return;
         const cx = rect ? rect.left + rect.width / 2  : window.innerWidth  / 2;
@@ -954,11 +983,11 @@
           width:16px;height:16px;border-radius:50%;
           border:2.5px solid ${ringColor};
           pointer-events:none;z-index:9990;`;
-        document.body.appendChild(ring);
+        _spawn(ring);
         ring.animate([
           { transform:'translate(-50%,-50%) scale(0)', opacity:0.9 },
           { transform:'translate(-50%,-50%) scale(5)', opacity:0   },
-        ], { duration: POT_DUR, easing:'ease-out' }).onfinish = () => ring.remove();
+        ], { duration: POT_DUR, easing:'ease-out' }).onfinish = () => { _nodes.delete(ring); ring.remove(); };
 
         // c. 6 petal dots burst outward
         for (let i = 0; i < 6; i++) {
@@ -971,11 +1000,11 @@
           dot.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;
             width:7px;height:7px;border-radius:50%;background:${col};
             pointer-events:none;z-index:9990;`;
-          document.body.appendChild(dot);
+          _spawn(dot);
           dot.animate([
             { transform:`translate(-50%,-50%) translate(0,0) scale(1)`, opacity:1 },
             { transform:`translate(-50%,-50%) translate(${dx}px,${dy}px) scale(0)`, opacity:0 },
-          ], { duration: 480 + Math.random()*120, easing:'ease-out' }).onfinish = () => dot.remove();
+          ], { duration: 480 + Math.random()*120, easing:'ease-out' }).onfinish = () => { _nodes.delete(dot); dot.remove(); };
         }
       }, idx * STAGGER);
     });
@@ -987,7 +1016,8 @@
     const CONG_POOL = ['Hoàn Hảo! 🌟','Tuyệt Vời! 🌸','Xuất Sắc! ✨','Đỉnh Quá! 💐','Ngon Lành! 🎉','Hoàn Thành! 🌿','Đẹp Ghê! 🌼','Chuẩn Luôn! ⭐'];
     const congText = CONG_POOL[Math.floor(Math.random() * CONG_POOL.length)];
 
-    setTimeout(() => {
+    _t(() => {
+      if (_cancelled) return;
       // Confetti: 28 pieces fall from random X at top
       const frameEl = document.getElementById('phone-frame') || document.body;
       const frameRect = frameEl.getBoundingClientRect();
@@ -997,7 +1027,7 @@
       const fH     = frameRect.height || window.innerHeight;
 
       for (let i = 0; i < 28; i++) {
-        setTimeout(() => {
+        _t(() => {
           const piece = document.createElement('div');
           const x = fLeft + Math.random() * fWidth;
           const col = PETAL_COLORS[Math.floor(Math.random() * PETAL_COLORS.length)];
@@ -1008,11 +1038,11 @@
             width:${size}px;height:${size * 1.6}px;border-radius:2px;
             background:${col};pointer-events:none;z-index:9990;
             transform:rotate(${rot}deg);`;
-          document.body.appendChild(piece);
+          _spawn(piece);
           piece.animate([
             { transform:`rotate(${rot}deg) translate(0,0)`,              opacity:1 },
             { transform:`rotate(${rot+180}deg) translate(${swayX}px,${frameRect.height||500}px)`, opacity:0 },
-          ], { duration: 1000 + Math.random()*600, easing:'ease-in' }).onfinish = () => piece.remove();
+          ], { duration: 1000 + Math.random()*600, easing:'ease-in' }).onfinish = () => { _nodes.delete(piece); piece.remove(); };
         }, i * 40);
       }
 
@@ -1027,17 +1057,17 @@
         color:#fff;text-shadow:0 2px 12px rgba(0,0,0,0.5),0 0 24px #FFD700;
         pointer-events:none;z-index:9995;white-space:nowrap;
         font-family:sans-serif;letter-spacing:1px;`;
-      document.body.appendChild(txt);
+      _spawn(txt);
       txt.animate([
         { transform:'translate(-50%,-50%) scale(0)',   opacity:0 },
         { transform:'translate(-50%,-50%) scale(1.15)',opacity:1, offset:0.3 },
         { transform:'translate(-50%,-50%) scale(1)',   opacity:1, offset:0.6 },
         { transform:'translate(-50%,-50%) scale(0.9)', opacity:0 },
-      ], { duration: 1400, easing:'ease-out' }).onfinish = () => txt.remove();
+      ], { duration: 1400, easing:'ease-out' }).onfinish = () => { _nodes.delete(txt); txt.remove(); };
 
       // Big emoji burst from screen center
       for (let e = 0; e < emojis.length; e++) {
-        setTimeout(() => {
+        _t(() => {
           const angle = (e / emojis.length) * Math.PI * 2;
           const dist  = 60 + Math.random() * 30;
           const em = document.createElement('div');
@@ -1045,18 +1075,20 @@
           em.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;
             font-size:26px;pointer-events:none;z-index:9991;
             transform:translate(-50%,-50%);user-select:none;`;
-          document.body.appendChild(em);
+          _spawn(em);
           em.animate([
             { transform:`translate(-50%,-50%) scale(0)`, opacity:0 },
             { transform:`translate(-50%,-50%) scale(1.3) translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist - 30}px)`, opacity:1, offset:0.5 },
             { transform:`translate(-50%,-50%) scale(0.8) translate(${Math.cos(angle)*dist*1.4}px,${Math.sin(angle)*dist*1.4 - 60}px)`, opacity:0 },
-          ], { duration: 900, easing:'ease-out' }).onfinish = () => em.remove();
+          ], { duration: 900, easing:'ease-out' }).onfinish = () => { _nodes.delete(em); em.remove(); };
         }, e * 60);
       }
       // onDone fires after all phase2 effects finish (last emoji: emojis.length*60 + 900ms)
       const phase2Total = emojis.length * 60 + 900 + 100;
-      setTimeout(() => { onDone && onDone(); }, phase2Total);
+      _t(() => { if (!_cancelled) onDone && onDone(); }, phase2Total);
     }, phase2Delay);
+
+    return { cancel };
   }
 
   // ─── EXPORT ─────────────────────────────────────────
