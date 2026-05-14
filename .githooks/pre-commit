@@ -1,0 +1,16 @@
+#!/bin/sh
+# Pre-commit hook — block commit if tests fail.
+# Enabled by running: git config core.hooksPath .githooks
+# (Once per clone; persisted in .git/config.)
+
+set -e
+
+echo "[pre-commit] Running npm test..."
+if ! npm test --silent 2>&1 | tail -8; then
+  echo ""
+  echo "✗ Tests failed — commit blocked."
+  echo "  Fix tests, or skip explicitly with: git commit --no-verify"
+  exit 1
+fi
+
+echo "[pre-commit] ✓ Tests passed"

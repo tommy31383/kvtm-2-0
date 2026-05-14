@@ -1,0 +1,22 @@
+name: test
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Skip `npm ci` — only dep is `sharp` which isn't needed for unit tests
+      # and triggers a slow native build on CI. Tests are pure Node, no deps.
+      - run: node --test test/*.test.js
