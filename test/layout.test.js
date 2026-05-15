@@ -3,12 +3,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  layoutPots, validateLayout,
+  layoutPots, validateLayout, describeBloomOverlap,
   X_MIN, X_MAX, Y_MIN, Y_MAX, POT_W, POT_H,
+  EFFECTIVE_POT_W, BLOOM_PAD_LEFT, BLOOM_PAD_RIGHT,
 } = require('../scripts/layout-pots.js');
 
-test('layoutPots: all positions inside safe zone AND meet POT_GAP target (N=2..9)', () => {
-  for (let n = 2; n <= 9; n++) {
+const N_MIN = 2;
+const N_MAX = 12;
+
+test('layoutPots: all positions inside safe zone AND meet POT_GAP target (N=2..12)', () => {
+  for (let n = N_MIN; n <= N_MAX; n++) {
     const positions = layoutPots(n);
     assert.equal(positions.length, n, `expected ${n} positions`);
     // Without jitter, presets must hit the SOFT target gap, not just HARD no-overlap.
@@ -18,7 +22,7 @@ test('layoutPots: all positions inside safe zone AND meet POT_GAP target (N=2..9
 });
 
 test('layoutPots: x is center (in safe range), y is top edge', () => {
-  for (let n = 2; n <= 9; n++) {
+  for (let n = N_MIN; n <= N_MAX; n++) {
     layoutPots(n).forEach((p, i) => {
       assert.ok(p.x >= X_MIN && p.x <= X_MAX, `N=${n} pot${i}.x=${p.x} out of [${X_MIN},${X_MAX}]`);
       assert.ok(p.y >= Y_MIN && p.y <= Y_MAX, `N=${n} pot${i}.y=${p.y} out of [${Y_MIN},${Y_MAX}]`);
@@ -27,7 +31,7 @@ test('layoutPots: x is center (in safe range), y is top edge', () => {
 });
 
 test('layoutPots: no overlapping pots in any preset', () => {
-  for (let n = 2; n <= 9; n++) {
+  for (let n = N_MIN; n <= N_MAX; n++) {
     const positions = layoutPots(n);
     for (let i = 0; i < positions.length; i++) {
       for (let j = i + 1; j < positions.length; j++) {
@@ -73,7 +77,7 @@ test('layoutPots: jitter respects max offset (≤ MAX_JITTER_PX = 3)', () => {
 test('layoutPots: jitter never causes overlap or out-of-bounds', () => {
   // HARD check only — jitter may eat into the target POT_GAP but never overlap.
   for (let seed = 1; seed <= 10; seed++) {
-    for (let n = 2; n <= 9; n++) {
+    for (let n = N_MIN; n <= N_MAX; n++) {
       const issues = validateLayout(layoutPots(n, { jitter: 1, seed }));
       assert.deepEqual(issues, [], `N=${n} seed=${seed}: ${issues.join(' | ')}`);
     }
@@ -82,7 +86,40 @@ test('layoutPots: jitter never causes overlap or out-of-bounds', () => {
 
 test('layoutPots: invalid count throws', () => {
   assert.throws(() => layoutPots(0));
-  assert.throws(() => layoutPots(10));
+  assert.throws(() => layoutPots(1));
+  assert.throws(() => layoutPots(13));
+});
+
+test('layoutPots: N=10,11,12 use 3-col packing with 4 rows', () => {
+  for (const n of [10, 11, 12]) {
+    const positions = layoutPots(n);
+    assert.equal(positions.length, n);
+    // top row should be 3 pots in a row (same y)
+    const topY = positions[0].y;
+    const topRowCount = positions.filter(p => p.y === topY).length;
+    assert.equal(topRowCount, 3, `N=${n} top row has 3 pots`);
+    // 4 distinct y values (4 rows)
+    const ys = [...new Set(positions.map(p => p.y))].sort((a, b) => a - b);
+    assert.equal(ys.length, 4, `N=${n} uses 4 rows`);
+  }
+});
+
+test('describeBloomOverlap: returns notes (informational, never throws)', () => {
+  // N=2: pots side-by-side → bloom fans intentionally overlap
+  const notes2 = describeBloomOverlap(layoutPots(2));
+  assert.ok(notes2.length >= 1, 'N=2 has at least 1 bloom-fan overlap pair');
+  // N=12: many adjacent pots → many overlaps
+  const notes12 = describeBloomOverlap(layoutPots(12));
+  assert.ok(notes12.length >= 8, `N=12 has >=8 bloom-fan overlap pairs, got ${notes12.length}`);
+  // Empty layout: no notes
+  assert.deepEqual(describeBloomOverlap([]), []);
+});
+
+test('EFFECTIVE_POT_W reflects measured bloom envelope', () => {
+  // The envelope is asymmetric (blooms lean right). EFFECTIVE_POT_W must
+  // be at least POT_W (no negative pads).
+  assert.ok(EFFECTIVE_POT_W >= POT_W, `EFFECTIVE_POT_W=${EFFECTIVE_POT_W} >= POT_W=${POT_W}`);
+  assert.ok(BLOOM_PAD_LEFT >= 0 && BLOOM_PAD_RIGHT >= 0);
 });
 
 test('validateLayout: detects out-of-bounds + overlap', () => {
@@ -106,6 +143,7 @@ test('generate: simple 2-color level produces solvable layout', () => {
     pots: 3,
     queueDepth: 1,
     difficulty: 'medium',
+    layout: true,
   });
   assert.equal(level.id, 999);
   assert.equal(level.pots.length, 3);
@@ -142,6 +180,13 @@ test('generate: solver-verified levels have meta.solverConverged=true (small lev
     id: 996, colors: ['R','Y'], perColor: 3, pots: 3, queueDepth: 0, difficulty: 'easy'
   });
   assert.equal(meta.solverConverged, true);
+});
+
+test('generate: omits potLayout by default (designer adds via editor)', () => {
+  const { level } = generate({
+    id: 994, colors: ['R','Y'], perColor: 3, pots: 3, queueDepth: 1, difficulty: 'easy',
+  });
+  assert.ok(!('potLayout' in level), 'potLayout should be absent without layout:true');
 });
 
 test('generate: 1-color × 3 flowers in 2 pots is non-trivial (no win at init)', () => {
