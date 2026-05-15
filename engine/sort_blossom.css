@@ -35,11 +35,25 @@
   --sb-pot-h:         160px;  /* was 123 — needs ≥ flower-bottom(40)+active-h(110)+max-oy(7) = 157 */
   --sb-pot-img-w:     82px;
   --sb-active-h:      110px;
-  /* per-slot flower offsets (chỉnh bằng Layout tool) */
+  /* per-slot offsets — split per ROLE (Nụ/Bloom/Bông). Chỉnh bằng Layout tool.
+     Each role has its own ox/oy/sc/anim-ox/anim-oy so bud/bloom/flower can
+     align independently — fixes jitter caused by frames having different sizes. */
+  /* 🌱 Nụ (queue-bud) */
+  --sb-s0-bud-ox: 4px;  --sb-s0-bud-oy: -12px; --sb-s0-bud-sc: 0.85; --sb-s0-bud-anim-ox: 0px; --sb-s0-bud-anim-oy: 0px;
+  --sb-s1-bud-ox: 1px;  --sb-s1-bud-oy: -3px;  --sb-s1-bud-sc: 1;    --sb-s1-bud-anim-ox: 0px; --sb-s1-bud-anim-oy: 0px;
+  --sb-s2-bud-ox: -9px; --sb-s2-bud-oy: -5px;  --sb-s2-bud-sc: 0.85; --sb-s2-bud-anim-ox: 0px; --sb-s2-bud-anim-oy: 0px;
+  /* 🌸 Bloom (animation overlay canvas) */
+  --sb-s0-bloom-ox: 4px;  --sb-s0-bloom-oy: -12px; --sb-s0-bloom-sc: 0.85; --sb-s0-bloom-anim-ox: 0px; --sb-s0-bloom-anim-oy: 0px;
+  --sb-s1-bloom-ox: 1px;  --sb-s1-bloom-oy: -3px;  --sb-s1-bloom-sc: 1;    --sb-s1-bloom-anim-ox: 0px; --sb-s1-bloom-anim-oy: 0px;
+  --sb-s2-bloom-ox: -9px; --sb-s2-bloom-oy: -5px;  --sb-s2-bloom-sc: 0.85; --sb-s2-bloom-anim-ox: 1px; --sb-s2-bloom-anim-oy: 0px;
+  /* 🌺 Bông (active flower fully bloomed) */
+  --sb-s0-flower-ox: 4px;  --sb-s0-flower-oy: -12px; --sb-s0-flower-sc: 0.85; --sb-s0-flower-anim-ox: 0px; --sb-s0-flower-anim-oy: 0px;
+  --sb-s1-flower-ox: 1px;  --sb-s1-flower-oy: -3px;  --sb-s1-flower-sc: 1;    --sb-s1-flower-anim-ox: 0px; --sb-s1-flower-anim-oy: 0px;
+  --sb-s2-flower-ox: -9px; --sb-s2-flower-oy: -5px;  --sb-s2-flower-sc: 0.85; --sb-s2-flower-anim-ox: 1px; --sb-s2-flower-anim-oy: 0px;
+  /* Legacy unprefixed vars — kept for back-compat; equal to flower role */
   --sb-s0-ox: 4px;  --sb-s0-oy: -12px; --sb-s0-sc: 0.85; --sb-s0-anim-ox: 0px; --sb-s0-anim-oy: 0px;
-  --sb-s1-ox: 1px;  --sb-s1-oy: -3px; --sb-s1-sc: 1;    --sb-s1-anim-ox: 0px; --sb-s1-anim-oy: 0px;
+  --sb-s1-ox: 1px;  --sb-s1-oy: -3px;  --sb-s1-sc: 1;    --sb-s1-anim-ox: 0px; --sb-s1-anim-oy: 0px;
   --sb-s2-ox: -9px; --sb-s2-oy: -5px;  --sb-s2-sc: 0.85; --sb-s2-anim-ox: 1px; --sb-s2-anim-oy: 0px;
-  /* bud uses same positioning as flower slots — no separate offsets needed */
 }
 
 /* ─── POT CELL ────────────────────────────────────────────── */
@@ -92,21 +106,21 @@
   transition: transform .18s cubic-bezier(.34,1.56,.64,1);
 }
 .sb-active-flowers :is(img, canvas)[data-pos="0"] {
-  left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread) + var(--sb-s0-ox, 0px));
+  left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread) + var(--sb-s0-flower-ox, var(--sb-s0-ox, 0px)));
   width: var(--sb-flower-w-side);
-  transform: translateX(-50%) translateY(var(--sb-s0-oy, 0px)) rotate(calc(-1 * var(--sb-flower-angle))) scale(var(--sb-s0-sc, 1));
+  transform: translateX(-50%) translateY(var(--sb-s0-flower-oy, var(--sb-s0-oy, 0px))) rotate(calc(-1 * var(--sb-flower-angle))) scale(var(--sb-s0-flower-sc, var(--sb-s0-sc, 1)));
   z-index: 1;
 }
 .sb-active-flowers :is(img, canvas)[data-pos="1"] {
-  left: calc(50% + var(--sb-stem-x) + var(--sb-s1-ox, 0px));
+  left: calc(50% + var(--sb-stem-x) + var(--sb-s1-flower-ox, var(--sb-s1-ox, 0px)));
   width: var(--sb-flower-w-mid);
-  transform: translateX(-50%) translateY(var(--sb-s1-oy, 0px)) rotate(0deg) scale(var(--sb-s1-sc, 1));
+  transform: translateX(-50%) translateY(var(--sb-s1-flower-oy, var(--sb-s1-oy, 0px))) rotate(0deg) scale(var(--sb-s1-flower-sc, var(--sb-s1-sc, 1)));
   z-index: 3;
 }
 .sb-active-flowers :is(img, canvas)[data-pos="2"] {
-  left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread) + var(--sb-s2-ox, 0px));
+  left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread) + var(--sb-s2-flower-ox, var(--sb-s2-ox, 0px)));
   width: var(--sb-flower-w-side);
-  transform: translateX(-50%) translateY(var(--sb-s2-oy, 0px)) rotate(var(--sb-flower-angle)) scale(var(--sb-s2-sc, 1));
+  transform: translateX(-50%) translateY(var(--sb-s2-flower-oy, var(--sb-s2-oy, 0px))) rotate(var(--sb-flower-angle)) scale(var(--sb-s2-flower-sc, var(--sb-s2-sc, 1)));
   z-index: 2;
 }
 
@@ -128,19 +142,19 @@
   transform-origin: 50% 95%;
 }
 .sb-queue-preview canvas[data-pos="0"] {
-  left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread) + var(--sb-s0-ox, 0px));
+  left: calc(50% + var(--sb-stem-x) - var(--sb-stem-spread) + var(--sb-s0-bud-ox, var(--sb-s0-ox, 0px)));
   width: var(--sb-flower-w-side);
-  transform: translateX(-50%) rotate(calc(-1 * var(--sb-flower-angle))) scale(var(--sb-s0-sc, 1));
+  transform: translateX(-50%) translateY(var(--sb-s0-bud-oy, 0px)) rotate(calc(-1 * var(--sb-flower-angle))) scale(var(--sb-s0-bud-sc, var(--sb-s0-sc, 1)));
 }
 .sb-queue-preview canvas[data-pos="1"] {
-  left: calc(50% + var(--sb-stem-x) + var(--sb-s1-ox, 0px));
+  left: calc(50% + var(--sb-stem-x) + var(--sb-s1-bud-ox, var(--sb-s1-ox, 0px)));
   width: var(--sb-flower-w-mid);
-  transform: translateX(-50%) rotate(0deg) scale(var(--sb-s1-sc, 1));
+  transform: translateX(-50%) translateY(var(--sb-s1-bud-oy, 0px)) rotate(0deg) scale(var(--sb-s1-bud-sc, var(--sb-s1-sc, 1)));
 }
 .sb-queue-preview canvas[data-pos="2"] {
-  left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread) + var(--sb-s2-ox, 0px));
+  left: calc(50% + var(--sb-stem-x) + var(--sb-stem-spread) + var(--sb-s2-bud-ox, var(--sb-s2-ox, 0px)));
   width: var(--sb-flower-w-side);
-  transform: translateX(-50%) rotate(var(--sb-flower-angle)) scale(var(--sb-s2-sc, 1));
+  transform: translateX(-50%) translateY(var(--sb-s2-bud-oy, 0px)) rotate(var(--sb-flower-angle)) scale(var(--sb-s2-bud-sc, var(--sb-s2-sc, 1)));
 }
 /* Selected flower: scale +15%, lift up, z-index above siblings, glow */
 .sb-active-flowers :is(img, canvas).sb-lifted {
@@ -149,13 +163,13 @@
   transition: transform .12s ease-out;
 }
 .sb-active-flowers :is(img, canvas).sb-lifted[data-pos="0"] {
-  transform: translateX(-50%) translateY(-12px) rotate(calc(-1 * var(--sb-flower-angle))) scale(calc(var(--sb-s0-sc, 1) * 1.15));
+  transform: translateX(-50%) translateY(-12px) rotate(calc(-1 * var(--sb-flower-angle))) scale(calc(var(--sb-s0-flower-sc, var(--sb-s0-sc, 1)) * 1.15));
 }
 .sb-active-flowers :is(img, canvas).sb-lifted[data-pos="1"] {
-  transform: translateX(-50%) translateY(-12px) rotate(0deg) scale(calc(var(--sb-s1-sc, 1) * 1.15));
+  transform: translateX(-50%) translateY(-12px) rotate(0deg) scale(calc(var(--sb-s1-flower-sc, var(--sb-s1-sc, 1)) * 1.15));
 }
 .sb-active-flowers :is(img, canvas).sb-lifted[data-pos="2"] {
-  transform: translateX(-50%) translateY(-12px) rotate(var(--sb-flower-angle)) scale(calc(var(--sb-s2-sc, 1) * 1.15));
+  transform: translateX(-50%) translateY(-12px) rotate(var(--sb-flower-angle)) scale(calc(var(--sb-s2-flower-sc, var(--sb-s2-sc, 1)) * 1.15));
 }
 
 /* ─── FLIGHT clone is positioned/animated by JS (rAF) ───── */

@@ -1877,11 +1877,28 @@ const POT_VARS = [
   { id:'lv_pot_img_w',   label:'Pot img W',     css:'--sb-pot-img-w',     val:82,  min:40,  max:180, step:1,  unit:'px' },
 ];
 // Per-slot flower offset controls — L / C / R independent fine-tuning
-const SLOT_VARS = [
-  { slot:0, label:'L', ox:8,  oy:-5, sc:0.85, animOx:0, animOy:0 },
-  { slot:1, label:'C', ox:2,  oy:17, sc:1,    animOx:0, animOy:0 },
-  { slot:2, label:'R', ox:-9, oy:0,  sc:0.85, animOx:0, animOy:0 },
+// Per-role slot vars: bud (🌱 Nụ), bloom (🌸 anim), flower (🌺 Bông).
+// Each role has 3 slots (L/C/R) × 5 fields (ox/oy/sc/animOx/animOy).
+// `SLOT_VARS` is a LIVE reference to the currently-selected role's array.
+const LAYOUT_ROLES = ['bud', 'bloom', 'flower'];
+const LAYOUT_ROLE_LABELS = { bud: '🌱 Nụ', bloom: '🌸 Bloom', flower: '🌺 Bông' };
+const _DEFAULT_SLOT_VARS = () => [
+  { slot:0, label:'L', ox:0, oy:0, sc:1, animOx:0, animOy:0 },
+  { slot:1, label:'C', ox:0, oy:0, sc:1, animOx:0, animOy:0 },
+  { slot:2, label:'R', ox:0, oy:0, sc:1, animOx:0, animOy:0 },
 ];
+let SLOT_VARS_BY_ROLE = {
+  bud:    _DEFAULT_SLOT_VARS(),
+  bloom:  _DEFAULT_SLOT_VARS(),
+  // Flower defaults preserve legacy single-role values
+  flower: [
+    { slot:0, label:'L', ox:8,  oy:-5, sc:0.85, animOx:0, animOy:0 },
+    { slot:1, label:'C', ox:2,  oy:17, sc:1,    animOx:0, animOy:0 },
+    { slot:2, label:'R', ox:-9, oy:0,  sc:0.85, animOx:0, animOy:0 },
+  ],
+};
+let currentLayoutRole = 'flower';
+let SLOT_VARS = SLOT_VARS_BY_ROLE[currentLayoutRole];
 
 // ── INIT (sequential — no race conditions) ───────────────────
 (async function init() {
@@ -2233,33 +2250,25 @@ function buildLayoutPanel() {
     left.appendChild(row);
   });
 
-  // Per-slot offsets — L / C / R independent
-  const SLOT_CFG = [
-    {k:'ox',     label:'dX', color:'#60a5fa', min:-60, max:60,  step:1   },
-    {k:'oy',     label:'dY', color:'#60a5fa', min:-60, max:60,  step:1   },
-    {k:'sc',     label:'Sc', color:'#60a5fa', min:0.1, max:2,   step:0.05},
-    {k:'animOx', label:'aX', color:'#f59e0b', min:-80, max:80,  step:1   },
-    {k:'animOy', label:'aY', color:'#f59e0b', min:-80, max:80,  step:1   },
-  ];
-  const SLOT_LABELS = ['L','C','R'];
-  SLOT_VARS.forEach((sv, si) => {
-    const hSlot = document.createElement('div');
-    hSlot.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.9px;color:#6b7280;margin:10px 0 4px;';
-    hSlot.textContent=`Flower ${SLOT_LABELS[si]} offset`; left.appendChild(hSlot);
+  // Role picker — Nụ / Bloom / Bông. Switches WHICH role's slot vars the
+  // sliders below are bound to. POT_VARS (chậu structure) are SHARED across
+  // roles. Slot offsets (dX/dY/Sc/aX/aY) are PER-ROLE → fixes jitter when
+  // bud/bloom/flower need different positioning.
+  const roleRow = document.createElement('div');
+  roleRow.style.cssText='display:flex;align-items:center;gap:6px;margin:14px 0 6px;padding:6px 8px;background:#161b23;border:1px solid #2a3040;border-radius:4px;';
+  roleRow.innerHTML = `
+    <label style="font-size:10px;color:#FFD700;font-weight:700;flex-shrink:0;">State:</label>
+    <select id="layoutRoleSel" style="flex:1;height:24px;background:#1a1f2e;color:#e8e4d8;border:1px solid #2a3040;border-radius:3px;font-size:11px;padding:0 6px;" onchange="setLayoutRole(this.value)">
+      ${LAYOUT_ROLES.map(r => `<option value="${r}"${r===currentLayoutRole?' selected':''}>${LAYOUT_ROLE_LABELS[r]}</option>`).join('')}
+    </select>
+  `;
+  left.appendChild(roleRow);
 
-    SLOT_CFG.forEach(({k, label, color, min, max, step}) => {
-      const row = document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:3px;';
-      const val = sv[k] !== undefined ? sv[k] : 0;
-      row.innerHTML = `
-        <label style="font-size:10px;color:${color};width:42px;flex-shrink:0;">${label}</label>
-        <input type="range" id="sv_${si}_${k}" min="${min}" max="${max}" step="${step}" value="${val}"
-          style="flex:1;accent-color:${color};" oninput="onSlotVar(${si},'${k}',this.value)">
-        <span id="sv_${si}_${k}_v" style="font-size:10px;color:${color};width:36px;text-align:right;">${val}</span>
-      `;
-      left.appendChild(row);
-    });
-  });
+  // Per-slot offsets container — re-rendered when role changes
+  const slotWrap = document.createElement('div');
+  slotWrap.id = 'slotVarsWrap';
+  left.appendChild(slotWrap);
+  renderSlotVarsPanel();
 
   // Buttons
   const btnRow = document.createElement('div');
@@ -2351,6 +2360,52 @@ function onSlotVar(i, k, val) {
   document.getElementById(`sv_${i}_${k}_v`).textContent = val;
   applyPotPreviewVars();
 }
+
+// Render the L/C/R offset sliders for the CURRENT role only.
+// Called once on init + again whenever user switches role via dropdown.
+const _SLOT_CFG = [
+  {k:'ox',     label:'dX', color:'#60a5fa', min:-60, max:60,  step:1   },
+  {k:'oy',     label:'dY', color:'#60a5fa', min:-60, max:60,  step:1   },
+  {k:'sc',     label:'Sc', color:'#60a5fa', min:0.1, max:2,   step:0.05},
+  {k:'animOx', label:'aX', color:'#f59e0b', min:-80, max:80,  step:1   },
+  {k:'animOy', label:'aY', color:'#f59e0b', min:-80, max:80,  step:1   },
+];
+const _SLOT_LABELS = ['L', 'C', 'R'];
+function renderSlotVarsPanel() {
+  const wrap = document.getElementById('slotVarsWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  SLOT_VARS.forEach((sv, si) => {
+    const hSlot = document.createElement('div');
+    hSlot.style.cssText='font-size:9px;text-transform:uppercase;letter-spacing:.9px;color:#6b7280;margin:10px 0 4px;';
+    hSlot.textContent = `${LAYOUT_ROLE_LABELS[currentLayoutRole]} · ${_SLOT_LABELS[si]} offset`;
+    wrap.appendChild(hSlot);
+    _SLOT_CFG.forEach(({k, label, color, min, max, step}) => {
+      const row = document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:3px;';
+      const val = sv[k] !== undefined ? sv[k] : 0;
+      row.innerHTML = `
+        <label style="font-size:10px;color:${color};width:42px;flex-shrink:0;">${label}</label>
+        <input type="range" id="sv_${si}_${k}" min="${min}" max="${max}" step="${step}" value="${val}"
+          style="flex:1;accent-color:${color};" oninput="onSlotVar(${si},'${k}',this.value)">
+        <span id="sv_${si}_${k}_v" style="font-size:10px;color:${color};width:36px;text-align:right;">${val}</span>
+      `;
+      wrap.appendChild(row);
+    });
+  });
+}
+
+// Switch which role's vars the slot sliders edit. POT_VARS unchanged.
+// Also re-renders pot preview so only the role's visual is shown
+// (bud → queue buds, bloom → queue buds, flower → active flowers).
+function setLayoutRole(role) {
+  if (!LAYOUT_ROLES.includes(role)) return;
+  currentLayoutRole = role;
+  SLOT_VARS = SLOT_VARS_BY_ROLE[role];
+  renderSlotVarsPanel();
+  renderPotPreview();    // rebuild visible elements (active vs queue) per role
+  applyPotPreviewVars(); // re-push vars after DOM rebuild
+}
 /** Update ONLY CSS custom-props — NO DOM rebuild. */
 function applyPotPreviewVars() {
   const compact = document.getElementById('potPreviewWrap')?.closest('.sb-compact')
@@ -2360,8 +2415,22 @@ function applyPotPreviewVars() {
     const el = document.getElementById(v.id);
     if (el) compact.style.setProperty(v.css, el.value + v.unit);
   });
-  // Per-slot: each L/C/R flower has independent offsets
-  SLOT_VARS.forEach((sv, i) => {
+  // Per-role × per-slot offsets: 3 roles × 3 slots × 5 fields = 45 vars.
+  // CSS rules + render.js read --sb-s{i}-{role}-{ox|oy|sc|anim-ox|anim-oy}
+  // based on which element they're positioning (queue-bud / bloom-canvas /
+  // active-flower).
+  LAYOUT_ROLES.forEach(role => {
+    SLOT_VARS_BY_ROLE[role].forEach((sv, i) => {
+      compact.style.setProperty(`--sb-s${i}-${role}-ox`, sv.ox + 'px');
+      compact.style.setProperty(`--sb-s${i}-${role}-oy`, sv.oy + 'px');
+      compact.style.setProperty(`--sb-s${i}-${role}-sc`, sv.sc != null ? sv.sc : 1);
+      compact.style.setProperty(`--sb-s${i}-${role}-anim-ox`, (sv.animOx || 0) + 'px');
+      compact.style.setProperty(`--sb-s${i}-${role}-anim-oy`, (sv.animOy || 0) + 'px');
+    });
+  });
+  // Back-compat: also write legacy unprefixed vars (= flower role's values)
+  // so old CSS rules that haven't been migrated still work.
+  SLOT_VARS_BY_ROLE.flower.forEach((sv, i) => {
     compact.style.setProperty(`--sb-s${i}-ox`, sv.ox + 'px');
     compact.style.setProperty(`--sb-s${i}-oy`, sv.oy + 'px');
     compact.style.setProperty(`--sb-s${i}-sc`, sv.sc != null ? sv.sc : 1);
@@ -2471,17 +2540,28 @@ function renderPotPreview() {
   // Update hint
   const hint = document.getElementById('layoutHint');
   if (hint) {
-    const hasBudAnim = v1.length > 0;
-    const hasFlowerAnim = v2.length > 0;
-    const tags = [
-      hasBudAnim    ? '🌱 Nụ:anim2' : '🌱 Nụ:fallback(Bloom f0)',
-      hasFlowerAnim ? '🌸 Bông:anim3' : '🌸 Bông:fallback(Bloom flast)',
-    ].join(' · ');
-    hint.textContent = !img.naturalWidth ? '⚠️ Load Sheet trước để xem hoa thật' : tags;
+    const roleHints = {
+      bud:    '🌱 Nụ — chỉnh vị trí queue bud (chưa nở)',
+      bloom:  '🌸 Bloom — chỉnh vị trí lúc anim chạy · bấm ▶ Bloom ở tab Anim để xem chuyển động',
+      flower: '🌺 Bông — chỉnh vị trí hoa đã nở hoàn toàn',
+    };
+    hint.textContent = !img.naturalWidth
+      ? '⚠️ Load Sheet trước để xem hoa thật'
+      : (roleHints[currentLayoutRole] || '');
   }
 
-  // Single pot: full bloom + buds visible — all slots for complete calibration
-  const potCell = buildPotPreviewCell([0,1,2], [0,1,2], budFrame, flowerFrame, sizingFrame);
+  // Filter visible elements by current layout role so anh canh chỉnh từng
+  // trạng thái riêng biệt:
+  //   🌱 Nụ    → chỉ hiện queue buds
+  //   🌸 Bloom → chỉ hiện queue buds (canvas dùng để play bloom anim — bấm ▶ Bloom ở tab Anim)
+  //   🌺 Bông  → chỉ hiện active flowers (fully bloomed)
+  const showActive = currentLayoutRole === 'flower';
+  const showQueue  = currentLayoutRole === 'bud' || currentLayoutRole === 'bloom';
+  const potCell = buildPotPreviewCell(
+    showActive ? [0,1,2] : [],
+    showQueue  ? [0,1,2] : [],
+    budFrame, flowerFrame, sizingFrame
+  );
   wrap.appendChild(potCell);
 
   // Apply CSS vars AFTER DOM is built (so .sb-compact exists and closest() works)
@@ -2495,6 +2575,31 @@ function renderPotPreview() {
       right.dispatchEvent(new Event('_centerPots'));
     }
   });
+}
+
+// Map current layout role → variant index for pivot lookup.
+//   bud (Nụ)    → variant 1, fallback to 0
+//   bloom       → variant 0
+//   flower (Bông) → variant 2, fallback to 0
+function _pivotForCurrentRole() {
+  const map = { bud: 1, bloom: 0, flower: 2 };
+  const vi = map[currentLayoutRole] ?? 0;
+  return variantPivots[vi] || variantPivots[0] || { x:0, y:0 };
+}
+
+// Draw the orange ⊕ pivot marker at (cx, cy) on a 2D context.
+function _drawPivotMarkerOn(ctx, cx, cy) {
+  ctx.save();
+  ctx.strokeStyle = '#ff8a3d';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 9, cy); ctx.lineTo(cx + 9, cy);
+  ctx.moveTo(cx, cy - 9); ctx.lineTo(cx, cy + 9);
+  ctx.stroke();
+  ctx.restore();
 }
 
 // Build pot preview using EXACT game CSS classes — guaranteed to match game visually.
@@ -2543,23 +2648,29 @@ function buildPotPreviewCell(activeSlots, queueSlots, budFrame, flowerFrame, siz
     // Draw after layout — canvas sized from f9 (same as flower) so transform-origin 95% aligns
     requestAnimationFrame(() => {
       const cssW = cv.offsetWidth || 76;
+      const ctx = cv.getContext('2d');
+      const piv = _pivotForCurrentRole();
       if (f0 && f9 && img.naturalWidth) {
-        // Canvas height = max(f9, bud) so bud head is never clipped (matches engine fix).
         const hLast = Math.round(cssW * f9.h / f9.w);
         const dh0 = Math.round(cssW * f0.h / f0.w);
         const cssH = Math.max(hLast, dh0);
         const yOff0 = cssH - dh0;  // ≥ 0 — bud head always visible
         cv.width = cssW; cv.height = cssH;
-        cv.getContext('2d').drawImage(img, f0.x, f0.y, f0.w, f0.h, 0, yOff0, cssW, dh0);
+        ctx.drawImage(img, f0.x, f0.y, f0.w, f0.h, 0, yOff0, cssW, dh0);
+        // Pivot marker — anchor at frame f0's CENTER + pivot offset (source-px scaled to canvas)
+        const sc = cssW / f0.w;
+        _drawPivotMarkerOn(ctx, cssW/2 + piv.x * sc, yOff0 + dh0/2 + piv.y * sc);
       } else if (f0 && img.naturalWidth) {
         const cssH = Math.round(cssW * f0.h / f0.w);
         cv.width = cssW; cv.height = cssH;
-        cv.getContext('2d').drawImage(img, f0.x, f0.y, f0.w, f0.h, 0, 0, cssW, cssH);
+        ctx.drawImage(img, f0.x, f0.y, f0.w, f0.h, 0, 0, cssW, cssH);
+        const sc = cssW / f0.w;
+        _drawPivotMarkerOn(ctx, cssW/2 + piv.x * sc, cssH/2 + piv.y * sc);
       } else {
         cv.width = cssW; cv.height = cssW;
-        const ctx = cv.getContext('2d');
         ctx.fillStyle='rgba(100,160,255,0.5)'; ctx.beginPath();
         ctx.arc(cssW/2,cssW/2,cssW/2-1,0,Math.PI*2); ctx.fill();
+        _drawPivotMarkerOn(ctx, cssW/2 + piv.x, cssW/2 + piv.y);
       }
     });
     // buds: same ox/scale/rotation as flower slot, but NO oy (bud stays at natural stem base)
@@ -2577,7 +2688,7 @@ function buildPotPreviewCell(activeSlots, queueSlots, budFrame, flowerFrame, siz
     el.dataset.pos = pos;
     el.dataset.color = COLOR_KEY[color] || 'R';
     el.style.cssText = 'cursor:move;pointer-events:auto;';
-    el.title = `Slot ${['L','C','R'][pos]} · drag để chỉnh`;
+    el.title = `Slot ${['L','C','R'][pos]} · drag → chỉnh offset của role "${LAYOUT_ROLE_LABELS[currentLayoutRole]}"`;
     flowerLayer.appendChild(el);
     // Draw Bông (anim 3 frame 0, else Bloom last) — matches game's upgradeActiveFlowers
     requestAnimationFrame(() => {
@@ -2586,7 +2697,12 @@ function buildPotPreviewCell(activeSlots, queueSlots, budFrame, flowerFrame, siz
         const w = el.offsetWidth || 76;
         const h = Math.round(w * fT.h / fT.w);
         el.width = w; el.height = h;
-        el.getContext('2d').drawImage(img, fT.x, fT.y, fT.w, fT.h, 0, 0, w, h);
+        const ctx = el.getContext('2d');
+        ctx.drawImage(img, fT.x, fT.y, fT.w, fT.h, 0, 0, w, h);
+        // Pivot marker — anchor at frame center + pivot offset (source-px scaled)
+        const piv = _pivotForCurrentRole();
+        const sc = w / fT.w;
+        _drawPivotMarkerOn(ctx, w/2 + piv.x * sc, h/2 + piv.y * sc);
       }
     });
     const _pos = pos;
@@ -2644,26 +2760,27 @@ async function loadCSSVars() {
       if (vl) vl.textContent = raw;
     });
 
-    // Sync each SLOT_VARS entry from its own CSS vars (per-slot L/C/R)
-    SLOT_VARS.forEach((sv, si) => {
-      [
-        {k:'ox',     css:`--sb-s${si}-ox`},
-        {k:'oy',     css:`--sb-s${si}-oy`},
-        {k:'sc',     css:`--sb-s${si}-sc`},
-        {k:'animOx', css:`--sb-s${si}-anim-ox`},
-        {k:'animOy', css:`--sb-s${si}-anim-oy`},
-      ].forEach(({k, css}) => {
-        const raw = parseVar(css); if (!raw) return;
-        const num = parseFloat(raw);
-        sv[k] = num;
-        const el = document.getElementById(`sv_${si}_${k}`);
-        const vl = document.getElementById(`sv_${si}_${k}_v`);
-        if (el) el.value = num;
-        if (vl) vl.textContent = num;
+    // Sync per-role × per-slot vars. Fall back to legacy unprefixed vars
+    // when per-role not yet present in CSS (one-time migration on first save).
+    LAYOUT_ROLES.forEach(role => {
+      SLOT_VARS_BY_ROLE[role].forEach((sv, si) => {
+        [
+          {k:'ox',     css:`--sb-s${si}-${role}-ox`,      fallback:`--sb-s${si}-ox`     },
+          {k:'oy',     css:`--sb-s${si}-${role}-oy`,      fallback:`--sb-s${si}-oy`     },
+          {k:'sc',     css:`--sb-s${si}-${role}-sc`,      fallback:`--sb-s${si}-sc`     },
+          {k:'animOx', css:`--sb-s${si}-${role}-anim-ox`, fallback:`--sb-s${si}-anim-ox`},
+          {k:'animOy', css:`--sb-s${si}-${role}-anim-oy`, fallback:`--sb-s${si}-anim-oy`},
+        ].forEach(({k, css, fallback}) => {
+          let raw = parseVar(css);
+          if (!raw) raw = parseVar(fallback);
+          if (!raw) return;
+          sv[k] = parseFloat(raw);
+        });
       });
     });
-    applyPotPreviewVars();   // chỉ update CSS vars — KHÔNG rebuild pot DOM
-    st('✅ Loaded CSS vars','ok');
+    renderSlotVarsPanel();   // refresh slider DOM with loaded values
+    applyPotPreviewVars();   // push values to live CSS — no DOM rebuild
+    st('✅ Loaded CSS vars (3 roles)','ok');
   } catch(e) { st('❌ '+e.message,'err'); }
 }
 
@@ -2673,8 +2790,18 @@ async function saveCSSVars(silent = false) {
     const el = document.getElementById(v.id);
     if (el) vars[v.css] = el.value + v.unit;
   });
-  // Per-slot L/C/R — each flower has its own offset calibration
-  SLOT_VARS.forEach((sv, i) => {
+  // Per-role × per-slot: 45 vars (3 roles × 3 slots × 5 fields).
+  LAYOUT_ROLES.forEach(role => {
+    SLOT_VARS_BY_ROLE[role].forEach((sv, i) => {
+      vars[`--sb-s${i}-${role}-ox`] = sv.ox + 'px';
+      vars[`--sb-s${i}-${role}-oy`] = sv.oy + 'px';
+      vars[`--sb-s${i}-${role}-sc`] = sv.sc != null ? String(sv.sc) : '1';
+      vars[`--sb-s${i}-${role}-anim-ox`] = (sv.animOx || 0) + 'px';
+      vars[`--sb-s${i}-${role}-anim-oy`] = (sv.animOy || 0) + 'px';
+    });
+  });
+  // Back-compat unprefixed vars (= flower role values)
+  SLOT_VARS_BY_ROLE.flower.forEach((sv, i) => {
     vars[`--sb-s${i}-ox`] = sv.ox + 'px';
     vars[`--sb-s${i}-oy`] = sv.oy + 'px';
     vars[`--sb-s${i}-sc`] = sv.sc != null ? String(sv.sc) : '1';
@@ -2728,9 +2855,12 @@ function copyCSSVars() {
     const el = document.getElementById(v.id);
     return `  ${v.css}: ${el ? el.value+v.unit : v.val+v.unit};`;
   });
-  // Also include unified slot vars (same value for all 3 slots)
-  SLOT_VARS.forEach((sv, i) => {
-    lines.push(`  --sb-s${i}-ox: ${sv.ox}px; --sb-s${i}-oy: ${sv.oy}px; --sb-s${i}-sc: ${sv.sc ?? 1}; --sb-s${i}-anim-ox: ${sv.animOx||0}px; --sb-s${i}-anim-oy: ${sv.animOy||0}px;`);
+  // Per-role × per-slot vars (3 roles × 3 slots).
+  LAYOUT_ROLES.forEach(role => {
+    lines.push(`  /* ${LAYOUT_ROLE_LABELS[role]} */`);
+    SLOT_VARS_BY_ROLE[role].forEach((sv, i) => {
+      lines.push(`  --sb-s${i}-${role}-ox: ${sv.ox}px; --sb-s${i}-${role}-oy: ${sv.oy}px; --sb-s${i}-${role}-sc: ${sv.sc ?? 1}; --sb-s${i}-${role}-anim-ox: ${sv.animOx||0}px; --sb-s${i}-${role}-anim-oy: ${sv.animOy||0}px;`);
+    });
   });
   const txt = '.sb-compact {\n' + lines.join('\n') + '\n}';
   navigator.clipboard.writeText(txt).then(() => st('✅ Copied CSS vars (incl. slot offsets)','ok'));

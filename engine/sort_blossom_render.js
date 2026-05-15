@@ -97,7 +97,7 @@
 
   // Embedded bloom rects — no fetch needed, works on file:// and localhost
   const _BLOOM_RECTS = {
-    R: [[[44,59,75,114,1,3],[139,58,82,115,0,3],[240,48,88,125,0,-3],[340,53,98,119,0,-4],[470,54,93,119,0,-8],[28,249,92,120,-1,-9],[128,246,100,122,3,-10],[230,246,106,123,3,-10],[340,243,101,125,2,-12],[474,243,103,126,3,-12]],[[44,59,75,114,1,3]],[[139,58,82,115,0,3]]],
+    R: [[[44,59,75,114,1,3],[139,58,82,115,0,3],[240,48,88,125,0,-3],[340,53,98,119,0,-4],[470,54,93,119,0,-8],[28,249,92,120,-1,-9],[128,246,100,122,3,-10],[230,246,106,123,3,-10],[340,243,101,125,2,-12],[474,243,103,126,3,-12]],[[44,59,75,114,1,3]],[[340,243,101,125,2,-12]]],
     P: [[[44,62,75,107,-1,1],[141,61,77,108,-1,0],[241,57,79,112,-2,-5],[36,248,84,119,2,2],[134,245,92,120,5,0],[234,243,98,126,5,1],[343,49,95,121,0,-9],[471,56,102,114,5,-7],[340,235,112,132,7,-7],[469,238,110,129,9,-4]],[[44,62,75,107,-1,1]],[[469,238,110,129,9,-4]]],
     Y: [[[45,37,74,127,-1,-3],[140,56,78,107,1,5],[241,51,77,112,-1,-1],[29,241,91,130,1,2],[125,242,95,130,0,3],[232,240,96,132,5,4],[336,239,104,133,4,4],[461,234,113,138,2,1],[339,51,96,113,3,-3],[466,50,100,114,2,-5]],[[45,37,74,127,-1,-3]],[[466,50,100,114,2,-5]]],
     V: [[[45,55,68,119,-4,4],[138,55,82,118,2,0],[241,49,74,125,-2,-4],[42,238,70,128,1,5],[138,237,75,129,2,4],[226,239,96,129,0,6],[338,237,86,129,6,4],[474,237,87,129,4,4],[339,50,88,124,6,-6],[469,53,88,122,3,-5]],[[45,55,68,119,-4,4]],[[469,53,88,122,3,-5]]],
@@ -144,7 +144,7 @@
   // ──────────────────────────────────────────────────────────────
   const _BLOOM_DATA = {
     // Populated per-color by the tool. Empty = legacy _BLOOM_RECTS fallback.
-    R: {"modules":{"bloom_0_0":{"x":44,"y":59,"w":75,"h":114,"dx":1,"dy":3},"bloom_1_1":{"x":139,"y":58,"w":82,"h":115,"dy":3},"bloom_2_2":{"x":240,"y":48,"w":88,"h":125,"dy":-3},"bloom_3_3":{"x":340,"y":53,"w":98,"h":119,"dy":-4},"bloom_12":{"x":470,"y":54,"w":93,"h":119,"dy":-8},"bloom_13":{"x":28,"y":249,"w":92,"h":120,"dx":-1,"dy":-9},"bloom_14":{"x":128,"y":246,"w":100,"h":122,"dx":3,"dy":-10},"bloom_15":{"x":230,"y":246,"w":106,"h":123,"dx":3,"dy":-10},"bloom_8_8":{"x":340,"y":243,"w":101,"h":125,"dx":2,"dy":-12},"bloom_16":{"x":474,"y":243,"w":103,"h":126,"dx":3,"dy":-12}},"anims":{"bloom":[{"m":"bloom_0_0","d":90},{"m":"bloom_1_1","d":90},{"m":"bloom_2_2","d":90},{"m":"bloom_3_3","d":90},{"m":"bloom_12","d":90},{"m":"bloom_13","d":90},{"m":"bloom_14","d":90},{"m":"bloom_15","d":90},{"m":"bloom_8_8","d":90},{"m":"bloom_16","d":90}],"bud":[{"m":"bloom_0_0","d":90}],"flower":[{"m":"bloom_1_1","d":90}]}},
+    R: {"modules":{"bloom_0_0":{"x":44,"y":59,"w":75,"h":114,"dx":1,"dy":3},"bloom_1_1":{"x":139,"y":58,"w":82,"h":115,"dy":3},"bloom_2_2":{"x":240,"y":48,"w":88,"h":125,"dy":-3},"bloom_3_3":{"x":340,"y":53,"w":98,"h":119,"dy":-4},"bloom_12":{"x":470,"y":54,"w":93,"h":119,"dy":-8},"bloom_13":{"x":28,"y":249,"w":92,"h":120,"dx":-1,"dy":-9},"bloom_14":{"x":128,"y":246,"w":100,"h":122,"dx":3,"dy":-10},"bloom_15":{"x":230,"y":246,"w":106,"h":123,"dx":3,"dy":-10},"bloom_8_8":{"x":340,"y":243,"w":101,"h":125,"dx":2,"dy":-12},"bloom_16":{"x":474,"y":243,"w":103,"h":126,"dx":3,"dy":-12}},"anims":{"bloom":[{"m":"bloom_0_0","d":90},{"m":"bloom_1_1","d":90},{"m":"bloom_2_2","d":90},{"m":"bloom_3_3","d":90},{"m":"bloom_12","d":90},{"m":"bloom_13","d":90},{"m":"bloom_14","d":90},{"m":"bloom_15","d":90},{"m":"bloom_8_8","d":90},{"m":"bloom_16","d":90}],"bud":[{"m":"bloom_0_0","d":90}],"flower":[{"m":"bloom_8_8","d":90}]}},
     C: {"modules":{"bloom_70":{"x":40,"y":58,"w":77,"h":110,"dx":-4,"dy":5},"bloom_71":{"x":134,"y":56,"w":84,"h":112,"dx":2,"dy":1},"bloom_72":{"x":29,"y":240,"w":90,"h":122,"dx":1,"dy":10},"bloom_73":{"x":237,"y":47,"w":82,"h":123,"dx":2,"dy":-6},"bloom_74":{"x":123,"y":235,"w":92,"h":125,"dx":1,"dy":2},"bloom_75":{"x":225,"y":231,"w":98,"h":129,"dx":4},"bloom_76":{"x":459,"y":35,"w":120,"h":142,"dx":2,"dy":-13},"bloom_77":{"x":331,"y":45,"w":110,"h":127,"dx":5,"dy":-9},"bloom_78":{"x":331,"y":235,"w":98,"h":121,"dx":5,"dy":-2},"bloom_79":{"x":460,"y":238,"w":107,"h":118,"dx":1,"dy":-4}},"anims":{"bloom":[{"m":"bloom_70","d":90},{"m":"bloom_71","d":90},{"m":"bloom_72","d":90},{"m":"bloom_73","d":90},{"m":"bloom_74","d":90},{"m":"bloom_75","d":90},{"m":"bloom_76","d":90},{"m":"bloom_77","d":90},{"m":"bloom_78","d":90},{"m":"bloom_79","d":90}],"bud":[{"m":"bloom_70","d":90}],"flower":[{"m":"bloom_79","d":90}]}},
     P: {"modules":{"bloom_10":{"x":44,"y":62,"w":75,"h":107,"dx":-1,"dy":1},"bloom_11":{"x":141,"y":61,"w":77,"h":108,"dx":-1},"bloom_12":{"x":241,"y":57,"w":79,"h":112,"dx":-2,"dy":-5},"bloom_13":{"x":36,"y":248,"w":84,"h":119,"dx":2,"dy":2},"bloom_14":{"x":134,"y":245,"w":92,"h":120,"dx":5},"bloom_15":{"x":234,"y":243,"w":98,"h":126,"dx":5,"dy":1},"bloom_16":{"x":343,"y":49,"w":95,"h":121,"dy":-9},"bloom_17":{"x":471,"y":56,"w":102,"h":114,"dx":5,"dy":-7},"bloom_18":{"x":340,"y":235,"w":112,"h":132,"dx":7,"dy":-7},"bloom_19":{"x":469,"y":238,"w":110,"h":129,"dx":9,"dy":-4}},"anims":{"bloom":[{"m":"bloom_10","d":87},{"m":"bloom_11","d":87},{"m":"bloom_12","d":87},{"m":"bloom_13","d":87},{"m":"bloom_14","d":87},{"m":"bloom_15","d":87},{"m":"bloom_16","d":87},{"m":"bloom_17","d":87},{"m":"bloom_18","d":87},{"m":"bloom_19","d":87}],"bud":[{"m":"bloom_10","d":87}],"flower":[{"m":"bloom_19","d":87}]}},
     V: {"modules":{"bloom_30":{"x":45,"y":55,"w":68,"h":119,"dx":-4,"dy":4},"bloom_31":{"x":138,"y":55,"w":82,"h":118,"dx":2},"bloom_32":{"x":241,"y":49,"w":74,"h":125,"dx":-2,"dy":-4},"bloom_33":{"x":42,"y":238,"w":70,"h":128,"dx":1,"dy":5},"bloom_34":{"x":138,"y":237,"w":75,"h":129,"dx":2,"dy":4},"bloom_35":{"x":226,"y":239,"w":96,"h":129,"dy":6},"bloom_36":{"x":338,"y":237,"w":86,"h":129,"dx":6,"dy":4},"bloom_37":{"x":474,"y":237,"w":87,"h":129,"dx":4,"dy":4},"bloom_38":{"x":339,"y":50,"w":88,"h":124,"dx":6,"dy":-6},"bloom_39":{"x":469,"y":53,"w":88,"h":122,"dx":3,"dy":-5}},"anims":{"bloom":[{"m":"bloom_30","d":90},{"m":"bloom_31","d":90},{"m":"bloom_32","d":90},{"m":"bloom_33","d":90},{"m":"bloom_34","d":90},{"m":"bloom_35","d":90},{"m":"bloom_36","d":90},{"m":"bloom_37","d":90},{"m":"bloom_38","d":90},{"m":"bloom_39","d":90}],"bud":[{"m":"bloom_30","d":90}],"flower":[{"m":"bloom_39","d":90}]}},
@@ -659,11 +659,15 @@
       const spreadOff    = posNum === 0 ? -stemSpread : posNum === 2 ? stemSpread : 0;
       const angle        = parseFloat(cs.getPropertyValue('--sb-flower-angle'))  || 22;
       const rot          = posNum === 0 ? -angle : posNum === 2 ? angle : 0;
-      const ox_css       = parseFloat(cs.getPropertyValue(`--sb-s${pos}-ox`)      || '0') || 0;
-      const oy_css       = parseFloat(cs.getPropertyValue(`--sb-s${pos}-oy`)      || '0') || 0;
-      const sc_css       = parseFloat(cs.getPropertyValue(`--sb-s${pos}-sc`)      || '1') || 1;
-      const animOx       = parseFloat(cs.getPropertyValue(`--sb-s${pos}-anim-ox`) || '0') || 0;
-      const animOy       = parseFloat(cs.getPropertyValue(`--sb-s${pos}-anim-oy`) || '0') || 0;
+      // Bloom anim overlay canvas → reads --sb-s{pos}-bloom-* (per-role).
+      // Falls back to legacy unprefixed vars when bloom-* not defined.
+      const _cssNum = (name, fb) => parseFloat(cs.getPropertyValue(name) || cs.getPropertyValue(fb) || '0') || 0;
+      const _cssNum1 = (name, fb) => parseFloat(cs.getPropertyValue(name) || cs.getPropertyValue(fb) || '1') || 1;
+      const ox_css       = _cssNum(`--sb-s${pos}-bloom-ox`,      `--sb-s${pos}-ox`);
+      const oy_css       = _cssNum(`--sb-s${pos}-bloom-oy`,      `--sb-s${pos}-oy`);
+      const sc_css       = _cssNum1(`--sb-s${pos}-bloom-sc`,     `--sb-s${pos}-sc`);
+      const animOx       = _cssNum(`--sb-s${pos}-bloom-anim-ox`, `--sb-s${pos}-anim-ox`);
+      const animOy       = _cssNum(`--sb-s${pos}-bloom-anim-oy`, `--sb-s${pos}-anim-oy`);
       const varName      = posNum === 1 ? '--sb-flower-w-mid' : '--sb-flower-w-side';
       const cssW         = parseFloat(cs.getPropertyValue(varName)) || 76;
 
@@ -1196,8 +1200,9 @@
     const compact = imgEl.closest('.sb-compact') || document.documentElement;
     const cs = getComputedStyle(compact);
     const angle = parseFloat(cs.getPropertyValue('--sb-flower-angle') || '22') || 22;
-    const oy = parseFloat(cs.getPropertyValue(`--sb-s${pos}-oy`) || '0') || 0;
-    const sc = parseFloat(cs.getPropertyValue(`--sb-s${pos}-sc`) || '1') || 1;
+    // Fully bloomed flower (BÔNG) → reads --sb-s{pos}-flower-* (per-role).
+    const oy = parseFloat(cs.getPropertyValue(`--sb-s${pos}-flower-oy`) || cs.getPropertyValue(`--sb-s${pos}-oy`) || '0') || 0;
+    const sc = parseFloat(cs.getPropertyValue(`--sb-s${pos}-flower-sc`) || cs.getPropertyValue(`--sb-s${pos}-sc`) || '1') || 1;
     const rot = pos === 0 ? -angle : pos === 2 ? angle : 0;
     return { base: `translateX(-50%) translateY(${oy}px) rotate(${rot}deg)`, sc };
   }
