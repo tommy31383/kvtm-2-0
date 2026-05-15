@@ -15,6 +15,19 @@ const FRAME_H = 700;
 const POT_W = 114;
 const POT_H = 160;
 
+// ─── Bloom envelope (visual extent of 3 full blooms beyond pot bbox) ─────
+// MEASURED — see scripts/measure-bloom-envelope.js. Re-run to refresh.
+// File data/bloom_envelope.json is the source of truth. Values below mirror
+// it for sync purposes; build-time check enforces equality.
+const BLOOM_ENVELOPE = require('../data/bloom_envelope.json');
+const BLOOM_PAD_LEFT  = BLOOM_ENVELOPE.compact.pad_left;
+const BLOOM_PAD_RIGHT = BLOOM_ENVELOPE.compact.pad_right;
+const BLOOM_PAD_TOP   = BLOOM_ENVELOPE.compact.pad_top;
+const BLOOM_PAD_BOT   = BLOOM_ENVELOPE.compact.pad_bot;
+
+const EFFECTIVE_POT_W = POT_W + BLOOM_PAD_LEFT + BLOOM_PAD_RIGHT;
+const EFFECTIVE_POT_H = POT_H + BLOOM_PAD_TOP + BLOOM_PAD_BOT;
+
 // ─── Spacing rules ────────────────────────────────────────────
 // These are the knobs you tune. Every preset below respects them.
 
@@ -195,6 +208,39 @@ const PRESETS = {
     const ys = rowsYs(3);
     return ys.flatMap(y => row(3, y));
   },
+
+  // N=10: 3-3-3-1 (3 rows of 3 + 1 apex centered at bottom)
+  // Visual density: same as N=12 minus 2 pots — used for hard levels.
+  10: () => {
+    if (maxPotsPerRow() < 3) throw new Error('N=10 needs 3 cols');
+    const ys = rowsYs(4);
+    return [
+      ...row(3, ys[0]),
+      ...row(3, ys[1]),
+      ...row(3, ys[2]),
+      { x: Math.round(FRAME_W / 2), y: ys[3] },
+    ];
+  },
+
+  // N=11: 3-3-3-2 (3 rows of 3 + 2 at bottom)
+  11: () => {
+    if (maxPotsPerRow() < 3) throw new Error('N=11 needs 3 cols');
+    const ys = rowsYs(4);
+    return [
+      ...row(3, ys[0]),
+      ...row(3, ys[1]),
+      ...row(3, ys[2]),
+      ...row(2, ys[3]),
+    ];
+  },
+
+  // N=12: 3×4 grid (3 cols × 4 rows) — maximum density.
+  // Exactly fills the frame vertically: 4×160 + 3×10 + 12 + 18 = 700.
+  12: () => {
+    if (maxPotsPerRow() < 3) throw new Error('N=12 needs 3 cols');
+    const ys = rowsYs(4);
+    return ys.flatMap(y => row(3, y));
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -202,7 +248,7 @@ const PRESETS = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Generate pot layout for N pots (2..9).
+ * Generate pot layout for N pots (2..12).
  *
  * @param {number} n
  * @param {object} [opts]
@@ -269,12 +315,47 @@ function validateLayout(layout, opts = {}) {
 }
 
 /**
+ * Informational: where would the visual bloom envelopes of adjacent pots
+ * overlap, given the measured BLOOM_PAD_* values? Returns issues as
+ * descriptive strings. NEVER fails — this is design intent, not a bug.
+ * Pots are placed so the geometric BBOX doesn't overlap (see validateLayout);
+ * the bloom fan above each pot intentionally extends beyond pot edges.
+ *
+ * Use this to understand visual density when tuning new patterns or CSS.
+ * @param {{x,y}[]} layout
+ * @returns {string[]} informational notes (always returned, never throws)
+ */
+function describeBloomOverlap(layout) {
+  const notes = [];
+  for (let i = 0; i < layout.length; i++) {
+    for (let j = i + 1; j < layout.length; j++) {
+      const a = layout[i], b = layout[j];
+      // Visual envelope (asymmetric: blooms lean right more than left)
+      const aL = a.x - POT_W/2 - BLOOM_PAD_LEFT;
+      const aR = a.x + POT_W/2 + BLOOM_PAD_RIGHT;
+      const aT = a.y - BLOOM_PAD_TOP;
+      const aB = a.y + POT_H + BLOOM_PAD_BOT;
+      const bL = b.x - POT_W/2 - BLOOM_PAD_LEFT;
+      const bR = b.x + POT_W/2 + BLOOM_PAD_RIGHT;
+      const bT = b.y - BLOOM_PAD_TOP;
+      const bB = b.y + POT_H + BLOOM_PAD_BOT;
+      const ox = Math.min(aR, bR) - Math.max(aL, bL);
+      const oy = Math.min(aB, bB) - Math.max(aT, bT);
+      if (ox > 0 && oy > 0) {
+        notes.push(`Pots #${i}&#${j}: bloom envelopes overlap by ${ox.toFixed(0)}×${oy.toFixed(0)} px (intentional fan)`);
+      }
+    }
+  }
+  return notes;
+}
+
+/**
  * Diagnostic report: spacing of every preset, useful for tuning constants.
  * @returns {object} { perN: { gaps_x, gaps_y, edge_x, edge_y } }
  */
 function spacingReport() {
   const out = {};
-  for (let n = 2; n <= 9; n++) {
+  for (let n = 2; n <= 12; n++) {
     const layout = layoutPots(n);
     // Edge distances
     const xs = layout.map(p => p.x);
@@ -310,12 +391,14 @@ function spacingReport() {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    layoutPots, validateLayout, spacingReport, PRESETS,
+    layoutPots, validateLayout, describeBloomOverlap, spacingReport, PRESETS,
     // constants exposed for tuning + tests
     FRAME_W, FRAME_H, POT_W, POT_H,
     EDGE_PAD_X, EDGE_PAD_TOP, EDGE_PAD_BOT,
     POT_GAP_X, POT_GAP_Y, MAX_JITTER_PX,
     X_MIN, X_MAX, Y_MIN, Y_MAX,
+    BLOOM_PAD_LEFT, BLOOM_PAD_RIGHT, BLOOM_PAD_TOP, BLOOM_PAD_BOT,
+    EFFECTIVE_POT_W, EFFECTIVE_POT_H,
     maxPotsPerRow, maxRows,
   };
 }
@@ -329,14 +412,18 @@ if (require.main === module) {
     console.log(`  EDGE_PAD   x=${EDGE_PAD_X}  top=${EDGE_PAD_TOP}  bot=${EDGE_PAD_BOT}`);
     console.log(`  POT_GAP    x=${POT_GAP_X}  y=${POT_GAP_Y}`);
     console.log(`  Safe zone  x∈[${X_MIN},${X_MAX}]  y∈[${Y_MIN},${Y_MAX}]`);
-    console.log(`  Max grid   ${maxPotsPerRow()} cols × ${maxRows()} rows\n`);
+    console.log(`  Max grid   ${maxPotsPerRow()} cols × ${maxRows()} rows`);
+    console.log(`  BLOOM_PAD  L=${BLOOM_PAD_LEFT} R=${BLOOM_PAD_RIGHT} T=${BLOOM_PAD_TOP} B=${BLOOM_PAD_BOT}  (measured — see data/bloom_envelope.json)`);
+    console.log(`  EFFECTIVE  ${EFFECTIVE_POT_W} × ${EFFECTIVE_POT_H}  (visual bloom envelope)\n`);
     console.log('Per N:');
     const rep = spacingReport();
-    console.log('  N | edge L  R  T  B   | minGapX  minGapY');
-    console.log('  ──┼──────────────────┼──────────────────');
-    for (let n = 2; n <= 9; n++) {
+    console.log('  N  | edge L  R  T  B  | minGapX  minGapY | bloomFans');
+    console.log('  ───┼──────────────────┼─────────────────┼──────────');
+    for (let n = 2; n <= 12; n++) {
       const r = rep[n];
-      console.log(`   ${n} | ${String(r.edge.left).padStart(4)} ${String(r.edge.right).padStart(3)} ${String(r.edge.top).padStart(3)} ${String(r.edge.bottom).padStart(3)}   | ${String(r.minSameRowGap_x ?? '—').padStart(5)}    ${String(r.minSameColGap_y ?? '—').padStart(5)}`);
+      const fans = describeBloomOverlap(layoutPots(n)).length;
+      console.log(`   ${String(n).padStart(2)} | ${String(r.edge.left).padStart(4)} ${String(r.edge.right).padStart(3)} ${String(r.edge.top).padStart(3)} ${String(r.edge.bottom).padStart(3)}  | ${String(r.minSameRowGap_x ?? '—').padStart(5)}    ${String(r.minSameColGap_y ?? '—').padStart(5)} | ${fans} pair${fans===1?'':'s'} overlap`);
     }
+    console.log('\n(bloomFans = adjacent pot bloom-envelope overlap count; this is intentional visual fan, not a bug)');
   }
 }

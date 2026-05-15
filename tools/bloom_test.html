@@ -169,6 +169,12 @@ select{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
     <option value="blue">Blue (B)</option>
     <option value="camellia">Camellia (C)</option>
   </select>
+  <label style="font-size:10px;color:var(--muted);margin-left:4px;">Anim</label>
+  <select id="animPicker" style="width:58px;" onchange="onAnimChange()" title="Variant của bloom anim cho màu hiện tại">
+    <option value="0">1</option>
+  </select>
+  <button class="btn green" id="addAnimBtn" onclick="addAnim()" title="Tạo variant mới (clone variant hiện tại)">+</button>
+  <button class="btn red" id="delAnimBtn" onclick="delAnim()" title="Xoá variant hiện tại (giữ tối thiểu 1)">✕</button>
   <button class="btn" onclick="loadSheet()" title="Load từ assets/ (localhost)">↺ Auto</button>
   <button class="btn blue" onclick="loadSheetFile()" title="Load file từ máy">🖼 Sheet…</button>
   <input type="file" id="sheetFileIn" accept=".webp,.png,.jpg" style="display:none" onchange="onSheetFile(this)">
@@ -188,9 +194,36 @@ select{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
   <div class="sep"></div>
   <button class="btn" id="rootBtn" onclick="pickRootDir()" title="Chọn thư mục gốc KVTM 2.0 (dùng khi mở file://)">📂 Root</button>
   <div class="sep"></div>
-  <button class="btn active" id="tabAnim" onclick="switchTab('anim')">🌸 Anim</button>
+  <button class="btn active" id="tabAnim" onclick="switchTab('anim')">🎬 Anim</button>
+  <button class="btn" id="tabModules" onclick="switchTab('modules')">📦 Modules</button>
   <button class="btn" id="tabLayout" onclick="switchTab('layout')">🪴 Layout</button>
   <div id="tbStatus">Chọn màu → Load Sheet</div>
+</div>
+
+<!-- MODULES PANEL (tab 3) — atlas region library + sheet view -->
+<div id="modulesPanel" style="display:none;flex:1;min-height:0;background:#0e131b;">
+  <div style="display:flex;height:100%;">
+    <!-- Sheet view (shared with Anim tab — reuses same sheetCanvas via portal) -->
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+      <div style="padding:8px 12px;background:#161b23;border-bottom:1px solid #2a3040;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:11px;color:#FFD700;font-weight:700;">📦 Module Library</span>
+        <span style="font-size:10px;color:#6b7280;">Click rect trên sheet để chọn module · Rect change auto-propagate cho mọi anim frame dùng module này</span>
+        <div style="flex:1;"></div>
+        <button class="btn" onclick="autoDedupModules()" title="Gộp các rect trùng signature thành 1 module shared">🔄 Auto-dedup</button>
+        <button class="btn red" onclick="cleanOrphanModules()" title="Xoá hết module 0 refs (không được anim frame nào dùng)">🧹 Clean orphans</button>
+        <span id="modulesStat" style="font-size:10px;color:#8090b0;"></span>
+      </div>
+      <div id="modulesSheetWrap" style="flex:1;overflow:auto;padding:10px;display:flex;justify-content:center;align-items:flex-start;">
+        <canvas id="modulesSheetCanvas" style="cursor:crosshair;image-rendering:pixelated;"></canvas>
+      </div>
+    </div>
+    <!-- Right: module list -->
+    <div style="width:280px;flex-shrink:0;background:#161b23;border-left:1px solid #2a3040;display:flex;flex-direction:column;">
+      <div style="padding:8px 12px;background:#1a1f2e;border-bottom:1px solid #2a3040;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.9px;">Modules</div>
+      <div id="modulesList" style="flex:1;overflow-y:auto;padding:6px;"></div>
+      <div id="modulesEdit" style="display:none;padding:8px 10px;border-top:1px solid #2a3040;background:#0e131b;"></div>
+    </div>
+  </div>
 </div>
 
 <!-- LAYOUT PANEL (tab 2) -->
@@ -199,9 +232,17 @@ select{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
 <!-- MAIN -->
 <div id="main">
 
-<!-- LEFT: sheet canvas -->
+<!-- LEFT: sheet canvas + module picker hint -->
 <div id="panLeft">
+  <div id="animHintLine" style="padding:6px 10px;background:#161b23;border-bottom:1px solid #2a3040;font-size:10px;color:#8090b0;">
+    🖱 Click module trên sheet → <span style="color:#FFD700;">+frame mới</span> (chưa chọn frame nào)
+  </div>
   <div id="sheetWrap"><canvas id="sheetCanvas"></canvas></div>
+  <!-- Module picker strip — quick add by clicking thumbnail -->
+  <div style="padding:6px 8px;background:#0e131b;border-top:1px solid #2a3040;max-height:140px;overflow-y:auto;">
+    <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.9px;margin-bottom:4px;">📦 Modules library — click để thêm frame</div>
+    <div id="animModulePicker" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+  </div>
 </div>
 
 <!-- CENTER: large preview -->
@@ -211,7 +252,7 @@ select{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
     <canvas id="prevCross" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
     <div id="fcOverlay">—</div>
     <div id="offsetOverlay">dX: 0  dY: 0</div>
-    <div id="arrowHint">← → ↑ ↓ dịch frame<br>Shift+← → step frame<br>Space play/pause</div>
+    <div id="arrowHint">← → ↑ ↓ dịch frame (dX/dY)<br>Shift+← → step frame<br>Shift+Click: set anim pivot<br>Space play/pause</div>
   </div>
 
   <!-- PLAYBACK BAR -->
@@ -364,8 +405,147 @@ const COLOR_KEY = {red:'R',pink:'P',yellow:'Y',purple:'V',white:'W',orange:'O',b
 let img    = new Image();
 let zoom   = 0.5;
 let prevScale = 1;      // zoom inside the preview
-let frames = [];        // [{x,y,w,h,dur,dx,dy}]
+// Multi-variant state:
+//   variants[i] = array of frames [{x,y,w,h,dur,dx,dy}]
+//   `frames` is a LIVE reference to variants[currentVariantIdx] — edits flow
+//   directly to the variant. Switching variants reassigns `frames`.
+let variants = [[]];
+// Per-variant anim pivot (anchor of coord system). One pivot per ANIM.
+// Stored in source-pixel units relative to preview canvas center (0,0).
+// Frame center is drawn at pivot + (frame.dx, frame.dy) on canvas.
+// Exported to game as animPivots[role] = [x, y].
+let variantPivots = [{x:0, y:0}];
+let currentVariantIdx = 0;
+let frames = variants[0];
 let selIdx = 0;
+
+// Stable scale for preview within a variant — uses largest frame as reference
+// so switching frames doesn't reflow the pivot marker / coord grid.
+function _animScale(vIdx) {
+  const v = variants[vIdx] || variants[currentVariantIdx] || [];
+  let ref = null, maxA = 0;
+  for (const f of v) { const a = f.w * f.h; if (a > maxA) { maxA = a; ref = f; } }
+  if (!ref) return 1;
+  return Math.min(PW/ref.w, PH/ref.h) * prevScale * .85;
+}
+function _currentPivot() {
+  return variantPivots[currentVariantIdx] || {x:0, y:0};
+}
+
+// ── Phase 2: Module library + anim refs ──────────────────────
+// `modules` is the source-of-truth registry of rects on the sheet.
+//   modules[id] = { x, y, w, h, [dx, dy], name }
+// `variants[].modIds[i]` (if present) = module ID that frame i references.
+// When modIds absent or null, frame uses its own embedded x/y/w/h (back-compat
+// path during transition). On save, _buildBloomDataObject() will synthesize
+// IDs for any frames missing one.
+let modules = {};
+let _moduleSeq = 0;                    // monotonic counter for synth IDs
+function _newModuleId(prefix) {
+  // Skip IDs already in use — defensive against _moduleSeq reset during
+  // rebuild + concurrent preserved IDs from file load.
+  let id;
+  do { id = `${prefix || 'mod'}_${_moduleSeq++}`; } while (id in modules);
+  return id;
+}
+// Stable signature of a rect — used for dedup. Lowercase + comma-joined so
+// identical rects with different float noise collapse together.
+function _rectSig(f) {
+  return [
+    Math.round(f.x), Math.round(f.y), Math.round(f.w), Math.round(f.h),
+    Math.round(f.dx || 0), Math.round(f.dy || 0),
+  ].join(',');
+}
+let selectedModuleId = null;           // module selected in Modules tab
+
+// Rebuild modules from variants — auto-dedup by rect signature.
+// Side effect: each frame in variants gets `frame.modId` assigned. Existing
+// modIds are honored if their target still matches sig (idempotent).
+// PRESERVES user-drawn modules that have no frame ref (manual library entries).
+function _rebuildModulesFromVariants() {
+  const oldModules = modules;
+  modules = {};
+  // Bump _moduleSeq past the highest existing numeric tail so newly synthed
+  // IDs don't collide with preserved ones (defensive even with retry loop).
+  _moduleSeq = 0;
+  Object.keys(oldModules).forEach(id => {
+    const tail = id.match(/_(\d+)$/);
+    if (tail) _moduleSeq = Math.max(_moduleSeq, parseInt(tail[1], 10) + 1);
+  });
+  const sigToId = {};
+  variants.forEach((vFrames, vi) => {
+    const roleName = vi < _ROLE_NAMES.length ? _ROLE_NAMES[vi] : `anim${vi}`;
+    vFrames.forEach((f, fi) => {
+      const sig = _rectSig(f);
+      let id = sigToId[sig];
+      if (!id) {
+        // First time we see this sig — assign stable ID.
+        // Prefer reusing the existing modId if it still matches.
+        if (f.modId && oldModules[f.modId] && _rectSig(oldModules[f.modId]) === sig) {
+          id = f.modId;
+        } else {
+          // Use role name as prefix only — _newModuleId appends counter,
+          // so result is `bloom_0`, `bloom_1`, ... (not `bloom_0_0`).
+          id = _newModuleId(roleName);
+        }
+        sigToId[sig] = id;
+        modules[id] = {
+          x: Math.round(f.x), y: Math.round(f.y),
+          w: Math.round(f.w), h: Math.round(f.h),
+          dx: Math.round(f.dx || 0), dy: Math.round(f.dy || 0),
+        };
+      }
+      f.modId = id;
+    });
+  });
+  // Preserve unreferenced modules — but ONLY if they were manually drawn by
+  // the user in the Modules tab (m._manual === true). File-loaded modules
+  // that become orphan via module-swap in Anim tab are dropped, otherwise
+  // the library accumulates dozens of dupes over a session.
+  Object.entries(oldModules).forEach(([id, m]) => {
+    if (id in modules) return;
+    if (m && m._manual) modules[id] = m;
+  });
+}
+
+// One-shot cleanup — drop every module with 0 frame refs. Bound to the
+// 🧹 Clean orphans button.
+function cleanOrphanModules() {
+  const before = Object.keys(modules).length;
+  const kept = {};
+  Object.entries(modules).forEach(([id, m]) => {
+    if (_moduleRefCount(id) > 0) kept[id] = m;
+  });
+  modules = kept;
+  const after = Object.keys(modules).length;
+  if (selectedModuleId && !(selectedModuleId in modules)) selectedModuleId = null;
+  renderModulesPanel();
+  if (typeof renderAnimModulePicker === 'function') renderAnimModulePicker();
+  st(`🧹 Cleaned ${before - after} orphan module(s) → ${after} remain`, 'ok');
+}
+
+// Apply a module's rect back to every frame that references it.
+// Called when user edits a module in the Modules tab — all anim frames
+// using it auto-update without per-frame editing.
+function _propagateModuleToFrames(modId) {
+  const m = modules[modId];
+  if (!m) return;
+  variants.forEach(vFrames => {
+    vFrames.forEach(f => {
+      if (f.modId === modId) {
+        f.x = m.x; f.y = m.y; f.w = m.w; f.h = m.h;
+        f.dx = m.dx || 0; f.dy = m.dy || 0;
+      }
+    });
+  });
+}
+
+// Count how many anim frames reference a given module ID.
+function _moduleRefCount(modId) {
+  let n = 0;
+  variants.forEach(vFrames => vFrames.forEach(f => { if (f.modId === modId) n++; }));
+  return n;
+}
 let playing  = false;
 let animTimer = null;
 let animCursor = 0;
@@ -377,6 +557,106 @@ let _slotDrag = null;  // {pos, startX, startY, startOx, startOy}
 let _rootDir  = null;  // FileSystemDirectoryHandle (File System Access API)
 
 const IS_LOCAL = location.protocol !== 'file:';  // true = localhost server available
+
+// ── VARIANT MANAGEMENT ───────────────────────────────────────
+// `variants` is the source of truth. `frames` is a reference into it.
+// Mutating frames in place (push/splice/index assign) is OK — it writes through
+// to variants[currentVariantIdx]. Reassigning `frames = ...` requires also
+// updating variants[currentVariantIdx] = newArr.
+// Role labels (per convention with engine):
+//   variants[0] = Bloom (anim nở), variants[1] = Nụ, variants[2] = Bông.
+//   variants[3+] reserved (engine ignores) — labeled by number only.
+const ANIM_ROLE_LABEL = ['1 - Bloom', '2 - Nụ', '3 - Bông'];
+function _animLabel(i) {
+  return i < ANIM_ROLE_LABEL.length ? ANIM_ROLE_LABEL[i] : String(i + 1);
+}
+function _refreshAnimPicker() {
+  const sel = document.getElementById('animPicker');
+  if (!sel) return;
+  const prev = currentVariantIdx;
+  sel.innerHTML = variants.map((_, i) => `<option value="${i}">${_animLabel(i)}</option>`).join('');
+  sel.value = String(Math.min(prev, variants.length - 1));
+  // Disable delete when only 1 variant left
+  const del = document.getElementById('delAnimBtn');
+  if (del) del.disabled = variants.length <= 1;
+}
+function _setVariant(idx) {
+  if (idx < 0 || idx >= variants.length) return;
+  currentVariantIdx = idx;
+  frames = variants[idx];
+  selIdx = frames.length ? 0 : -1;
+  animCursor = 0;
+  _refreshAnimPicker();
+  syncProps(); buildTL(); renderSheet(); drawPrev(selIdx);
+  st(`Anim ${idx+1}/${variants.length}`, 'ok');
+}
+function onAnimChange() {
+  const sel = document.getElementById('animPicker');
+  const idx = parseInt(sel.value, 10) || 0;
+  stopPlay();
+  _setVariant(idx);
+}
+function addAnim() {
+  // Role-based defaults — match the engine's convention so what user sees
+  // matches what game will render right away:
+  //   variants[1] = Nụ   → 1 frame seeded from Bloom frame 0
+  //   variants[2] = Bông → 1 frame seeded from Bloom last frame
+  //   variants[3+]       → empty (user picks frames manually)
+  const bloom = variants[0] || [];
+  const newIdx = variants.length;
+  let seeded;
+  if (newIdx === 1 && bloom.length) {
+    // Nụ — seed with Bloom's first frame
+    seeded = [{...bloom[0]}];
+  } else if (newIdx === 2 && bloom.length) {
+    // Bông — seed with Bloom's last frame
+    seeded = [{...bloom[bloom.length - 1]}];
+  } else {
+    // Reserved slots — start empty
+    seeded = [];
+  }
+  variants.push(seeded);
+  // Inherit pivot from Bloom (variant 0) so role anims start aligned to same origin
+  variantPivots.push({...(variantPivots[0] || {x:0, y:0})});
+  stopPlay();
+  _setVariant(newIdx);
+  const roleLabel = _animLabel(newIdx);
+  st(`✅ Tạo "${roleLabel}" — ${seeded.length} frame seed (chỉnh trong sheet bên trái)`, 'ok');
+}
+function delAnim() {
+  if (variants.length <= 1) { st('❌ Phải giữ tối thiểu 1 anim', 'err'); return; }
+  if (!confirm(`Xoá Anim ${currentVariantIdx+1}?`)) return;
+  variants.splice(currentVariantIdx, 1);
+  variantPivots.splice(currentVariantIdx, 1);
+  stopPlay();
+  _setVariant(Math.min(currentVariantIdx, variants.length - 1));
+  st(`✅ Đã xoá. Còn ${variants.length} variant(s)`, 'ok');
+}
+// Replace entire variants array (used by JSON/server load). Resets to variant 0.
+function _setVariants(newVariants, newPivots) {
+  if (!Array.isArray(newVariants) || newVariants.length === 0) {
+    variants = [[]];
+  } else {
+    variants = newVariants;
+  }
+  // Sync pivot array length to variants length. Use newPivots when provided
+  // (load path), else default each to {0,0}.
+  if (Array.isArray(newPivots) && newPivots.length) {
+    variantPivots = variants.map((_, i) => {
+      const p = newPivots[i];
+      return p && typeof p.x === 'number' ? {x: p.x, y: p.y} : {x:0, y:0};
+    });
+  } else {
+    variantPivots = variants.map(() => ({x:0, y:0}));
+  }
+  currentVariantIdx = 0;
+  frames = variants[0];
+  _refreshAnimPicker();
+  // Phase 2: rebuild module library — dedups identical rects so the UI
+  // shows the true count of unique sprite regions used.
+  _rebuildModulesFromVariants();
+  if (typeof renderModulesPanel === 'function') renderModulesPanel();
+}
 
 // Per-run token from dev-server. Required on POST /api/save-* writes.
 let _devToken = null;
@@ -449,12 +729,20 @@ function afterSheetLoad(tmp) {
   // (Avoid race with loadFromServer which sets real frames.)
   if (frames.length) { renderSheet(); buildTL(); drawPrev(selIdx); }
   renderPotPreview();
+  // Phase 2: rebuild + render modules tab using the newly available sheet image
+  _rebuildModulesFromVariants();
+  if (typeof renderAnimModulePicker === 'function') renderAnimModulePicker();
+  if (document.getElementById('modulesPanel') &&
+      document.getElementById('modulesPanel').style.display !== 'none') {
+    renderModulesPanel();
+  }
 }
 
 function initDefaultFrames() {
   if(!img.naturalWidth) return;
   const cols=5,rows=2,fw=img.naturalWidth/cols,fh=img.naturalHeight/rows;
-  frames=[];
+  // Mutate in place — keeps `frames` and `variants[currentVariantIdx]` in sync
+  frames.length = 0;
   for(let r=0;r<rows;r++) for(let c=0;c<cols;c++)
     frames.push({x:c*fw,y:r*fh,w:fw,h:fh,dur:90,dx:0,dy:0});
   selIdx=0; animCursor=0; syncProps(); buildTL(); renderSheet(); drawPrev(0);
@@ -468,23 +756,47 @@ function onJSONFile(inp) {
   r.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
-      const rects = data.rects || data;
-      if(!Array.isArray(rects)) throw new Error('rects not array');
-      const durs = data.durations || [];
-      frames = rects.map((r,i)=>({x:r[0],y:r[1],w:r[2],h:r[3],dur:durs[i]||90,dx:r[4]||0,dy:r[5]||0}));
+      // NEW format: { anims: [{rects, durations}, ...] }
+      // OLD format: { rects, durations } — wrapped as single variant
+      let parsed;
+      if (Array.isArray(data.anims) && data.anims.length) {
+        parsed = data.anims.map(a => _framesFromRectsDurs(a.rects, a.durations));
+      } else {
+        const rects = data.rects || data;
+        if (!Array.isArray(rects)) throw new Error('rects not array');
+        parsed = [_framesFromRectsDurs(rects, data.durations || [])];
+      }
+      _setVariants(parsed);
       if(data.gameSpeed){document.getElementById('gameSpeedIn').value=data.gameSpeed;document.getElementById('gameSpeedV').textContent=data.gameSpeed+'%';}
       selIdx=0; animCursor=0; syncProps(); buildTL(); renderSheet(); drawPrev(0);
-      st(`✅ ${frames.length} frames từ ${file.name}`,'ok');
+      const total = variants.reduce((a,v) => a + v.length, 0);
+      st(`✅ ${variants.length} anim(s), ${total} frame(s) từ ${file.name}`,'ok');
     } catch(err){ st('❌ '+err.message,'err'); }
   };
   r.readAsText(file);
   inp.value='';
 }
+
+// Convert rects/durs raw arrays into frame objects.
+// Module-scope helper used by both JSON load + server load paths.
+function _framesFromRectsDurs(rects, durs) {
+  if (!Array.isArray(rects)) return [];
+  // durs can be: null | number | array
+  const durFor = (i) => {
+    if (Array.isArray(durs)) return durs[i] || 90;
+    if (typeof durs === 'number' && durs > 0) return durs;
+    return 90;
+  };
+  return rects.map((r, i) => ({
+    x: r[0], y: r[1], w: r[2], h: r[3],
+    dur: durFor(i),
+    dx: r[4] || 0, dy: r[5] || 0,
+  }));
+}
 async function loadFromServer() {
   st('⏳ Loading...','warn');
   try {
     const key = COLOR_KEY[document.getElementById('colorPicker').value];
-    let rects, durs = null;
 
     // Always read render.js directly to get both rects and durations
     let src;
@@ -498,38 +810,116 @@ async function loadFromServer() {
       src = await _fsRead('engine/sort_blossom_render.js');
     }
 
-    // Extract _BLOOM_RECTS
+    // Preferred path — _BLOOM_DATA (Phase 1+ format).
+    // Falls back to legacy _BLOOM_RECTS+_BLOOM_DURS when the new block has
+    // no entry for this color.
+    const matchData = src.match(/_BLOOM_DATA\s*=\s*\{([\s\S]*?)\n\s*\};/);
+    let dataEntry = null;
+    if (matchData) {
+      try { dataEntry = Function('return ({' + matchData[1] + '})')()[key]; } catch(e) {}
+    }
+    if (dataEntry && dataEntry.modules && dataEntry.anims) {
+      // Convert modules+anims → variants[] for the UI.
+      // Preserve original module IDs from file so subsequent saves don't churn.
+      const ROLE_NAMES = ['bloom', 'bud', 'flower'];
+      const parsedVariants = [];
+      const _toFrame = (fr) => {
+        const m = dataEntry.modules[fr.m] || {};
+        return {
+          x: m.x||0, y: m.y||0, w: m.w||0, h: m.h||0,
+          dur: fr.d||90, dx: m.dx||0, dy: m.dy||0,
+          modId: fr.m,  // preserve original ID — dedup logic respects it
+        };
+      };
+      for (const role of ROLE_NAMES) {
+        parsedVariants.push((dataEntry.anims[role] || []).map(_toFrame));
+      }
+      Object.keys(dataEntry.anims).forEach(name => {
+        if (ROLE_NAMES.includes(name)) return;
+        parsedVariants.push(dataEntry.anims[name].map(_toFrame));
+      });
+      // Pre-populate modules library from file's modules (preserves IDs).
+      // Phase 3: also load optional pivot (px, py) — module-local coords for
+      // explicit anchor point. Undefined → default bottom-center at render time.
+      modules = {};
+      _moduleSeq = 0;
+      Object.entries(dataEntry.modules).forEach(([id, m]) => {
+        // Pivot lives at anim level now — strip legacy module px/py
+        modules[id] = {
+          x: m.x||0, y: m.y||0, w: m.w||0, h: m.h||0,
+          dx: m.dx||0, dy: m.dy||0,
+        };
+        const tail = id.match(/_(\d+)$/);
+        if (tail) _moduleSeq = Math.max(_moduleSeq, parseInt(tail[1], 10) + 1);
+      });
+      // Trim trailing empties but keep ≥1 slot
+      while (parsedVariants.length > 1 && !parsedVariants[parsedVariants.length-1].length) {
+        parsedVariants.pop();
+      }
+      // Load anim-level pivots — { bloom:[x,y], bud:[x,y], flower:[x,y] }
+      let loadedPivots = null;
+      if (dataEntry.animPivots && typeof dataEntry.animPivots === 'object') {
+        const orderedNames = ['bloom', 'bud', 'flower'];
+        Object.keys(dataEntry.anims).forEach(n => {
+          if (!orderedNames.includes(n)) orderedNames.push(n);
+        });
+        loadedPivots = orderedNames.slice(0, parsedVariants.length).map(name => {
+          const p = dataEntry.animPivots[name];
+          return Array.isArray(p) ? {x: p[0]||0, y: p[1]||0} : {x:0, y:0};
+        });
+      }
+      _setVariants(parsedVariants, loadedPivots);
+      // gameSpeed reset to 100 (durations come per-frame from _BLOOM_DATA)
+      document.getElementById('gameSpeedIn').value = 100;
+      document.getElementById('gameSpeedV').textContent = '100%';
+      selIdx = 0; animCursor = 0; syncProps(); buildTL(); renderSheet(); drawPrev(0);
+      const totalFrames = variants.reduce((a, v) => a + v.length, 0);
+      st(`✅ [${key}] ${variants.length} anim(s) · ${totalFrames} frame(s) · _BLOOM_DATA format`,'ok');
+      return;
+    }
+
+    // Legacy path — _BLOOM_RECTS + _BLOOM_DURS
     const matchR = src.match(/_BLOOM_RECTS\s*=\s*\{([\s\S]*?)\};/);
     if (!matchR) throw new Error('_BLOOM_RECTS not found in render.js');
-    rects = Function('return ({' + matchR[1] + '})')()[key];
+    const rectsEntry = Function('return ({' + matchR[1] + '})')()[key];
 
     // Extract _BLOOM_DURS
+    let dursEntry = null;
     const matchD = src.match(/_BLOOM_DURS\s*=\s*\{([\s\S]*?)\};/);
     if (matchD) {
-      try { durs = Function('return ({' + matchD[1] + '})')()[key]; } catch(e) {}
+      try { dursEntry = Function('return ({' + matchD[1] + '})')()[key]; } catch(e) {}
     }
 
-    if (!rects || !rects.length) throw new Error('No rects for ' + key);
+    if (!rectsEntry || !rectsEntry.length) throw new Error('No rects for ' + key);
 
-    // Per-frame dur resolver: handle scalar (uniform), array (per-frame), or null/missing.
-    // Scalar form (e.g. P: 474) means every frame plays at that ms — back-compat with
-    // the old save format. Array form (new) carries individual per-frame timing.
-    function _durFor(i) {
-      if (Array.isArray(durs)) return durs[i] || 90;
-      if (typeof durs === 'number' && durs > 0) return durs;
-      return 90;
+    // Detect: OLD (rectsEntry[0] is number array [x,y,w,h,...])
+    //         NEW (rectsEntry[0] is itself an array of arrays — variant 0's rects)
+    const isNew = Array.isArray(rectsEntry[0]) && Array.isArray(rectsEntry[0][0]);
+    let variantsRaw;
+    if (isNew) {
+      const dursArr = Array.isArray(dursEntry) ? dursEntry : [];
+      variantsRaw = rectsEntry.map((vRects, i) => ({
+        rects: vRects,
+        durs: i < dursArr.length ? dursArr[i] : null,
+      }));
+    } else {
+      // Single variant
+      variantsRaw = [{ rects: rectsEntry, durs: dursEntry }];
     }
-    // Game slider mirrors the loaded uniform dur (if any). Scalar `474` -> 19%,
-    // null -> 100%, array -> 100% (mixed dur can't map to single slider value).
+
+    const parsed = variantsRaw.map(v => _framesFromRectsDurs(v.rects, v.durs));
+    _setVariants(parsed);
+
+    // gameSpeed slider mirrors variant 0's uniform dur (if any)
+    const v0Durs = variantsRaw[0].durs;
     let sliderPct = 100;
-    if (typeof durs === 'number' && durs > 0) sliderPct = Math.round(90 * 100 / durs);
+    if (typeof v0Durs === 'number' && v0Durs > 0) sliderPct = Math.round(90 * 100 / v0Durs);
     document.getElementById('gameSpeedIn').value = sliderPct;
     document.getElementById('gameSpeedV').textContent = sliderPct + '%';
 
-    frames = rects.map((r, i) => ({ x: r[0], y: r[1], w: r[2], h: r[3], dur: _durFor(i), dx: r[4] || 0, dy: r[5] || 0 }));
     selIdx = 0; animCursor = 0; syncProps(); buildTL(); renderSheet(); drawPrev(0);
-    const _total = frames.reduce((a, f) => a + (f.dur || 90), 0);
-    st(`✅ ${frames.length} frames [${key}] · ${_total}ms total`,'ok');
+    const totalFrames = variants.reduce((a, v) => a + v.length, 0);
+    st(`✅ [${key}] ${variants.length} anim(s) · ${totalFrames} frame(s)${isNew?' · NEW format':''}`,'ok');
   } catch(e){ st('❌ '+e.message,'err'); }
 }
 
@@ -559,19 +949,29 @@ function renderSheet() {
     sheetCtx.strokeRect(f.x*zoom+.5,f.y*zoom+.5,f.w*zoom-1,f.h*zoom-1);
   }
 
-  frames.forEach((f,i)=>{
-    const x=f.x*zoom,y=f.y*zoom,w=f.w*zoom,h=f.h*zoom,sel=(i===selIdx);
-    sheetCtx.strokeStyle=sel?'#FFD700':'rgba(255,255,255,.2)';
-    sheetCtx.lineWidth=sel?2:1;
-    sheetCtx.strokeRect(x+.5,y+.5,w-1,h-1);
-    if(sel){ sheetCtx.fillStyle='rgba(255,215,0,.07)'; sheetCtx.fillRect(x,y,w,h); }
-    sheetCtx.fillStyle=sel?'#FFD700':'rgba(255,255,255,.5)';
-    sheetCtx.font=`bold ${Math.max(8,10*zoom|0)}px monospace`;
-    sheetCtx.fillText('F'+i,x+3,y+Math.max(11,13*zoom));
-    if(sel) [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([hx,hy])=>{
-      sheetCtx.fillStyle='#FFD700';sheetCtx.fillRect(hx-5,hy-5,10,10);
-    });
+  // Phase 2 UX flip: Anim tab sheet no longer outlines every frame as a rect.
+  // Instead, draw:
+  //   - ALL modules as very faint hints (so user knows where pickable regions are)
+  //   - the SELECTED frame's module as a bright highlight (visual feedback for
+  //     "this is what plays in the preview right now")
+  Object.values(modules).forEach(m => {
+    const x = m.x * zoom, y = m.y * zoom, w = m.w * zoom, h = m.h * zoom;
+    sheetCtx.strokeStyle = 'rgba(96,165,250,.18)';
+    sheetCtx.lineWidth = 1;
+    sheetCtx.strokeRect(x + .5, y + .5, w - 1, h - 1);
   });
+  if (selIdx >= 0 && selIdx < frames.length) {
+    const f = frames[selIdx];
+    const x = f.x*zoom, y = f.y*zoom, w = f.w*zoom, h = f.h*zoom;
+    sheetCtx.strokeStyle = '#FFD700';
+    sheetCtx.lineWidth = 2;
+    sheetCtx.strokeRect(x + .5, y + .5, w - 1, h - 1);
+    sheetCtx.fillStyle = 'rgba(255,215,0,.07)';
+    sheetCtx.fillRect(x, y, w, h);
+    sheetCtx.fillStyle = '#FFD700';
+    sheetCtx.font = `bold ${Math.max(8, 10 * zoom | 0)}px monospace`;
+    sheetCtx.fillText(`F${selIdx}${f.modId ? '·'+f.modId : ''}`, x + 3, y + Math.max(11, 13 * zoom));
+  }
 }
 
 // ── PREVIEW RENDER ────────────────────────────────────────────
@@ -593,28 +993,42 @@ function drawPrev(fi) {
   pctx.beginPath();pctx.moveTo(PW/2,0);pctx.lineTo(PW/2,PH);
   pctx.moveTo(0,PH/2);pctx.lineTo(PW,PH/2);pctx.stroke();
 
-  // Draw frame with offset
-  const sc = Math.min(PW/f.w,PH/f.h)*prevScale*.85;
-  const dw = f.w*sc, dh = f.h*sc;
-  const ox = (f.dx||0)*sc, oy = (f.dy||0)*sc;
-  const bx = (PW-dw)/2+ox, by = (PH-dh)/2+oy;
-  pctx.drawImage(img, f.x,f.y,f.w,f.h, bx,by,dw,dh);
+  // Anim-level pivot (1 per variant) = coord origin. Frame CENTER drawn at
+  // pivot + (frame.dx, frame.dy). Stable per-variant scale keeps pivot marker
+  // fixed when switching frames so user can canh chỉnh từng frame về pivot.
+  const pivot = _currentPivot();
+  const sc = _animScale(currentVariantIdx) || (Math.min(PW/f.w, PH/f.h) * prevScale * .85);
+  const dw = f.w * sc, dh = f.h * sc;
+  const pivotX = PW/2 + pivot.x * sc;
+  const pivotY = PH/2 + pivot.y * sc;
+  const ccX = pivotX + (f.dx || 0) * sc;
+  const ccY = pivotY + (f.dy || 0) * sc;
+  const bx = ccX - dw/2;
+  const by = ccY - dh/2;
+  pctx.drawImage(img, f.x, f.y, f.w, f.h, bx, by, dw, dh);
 
-  // Bounding box guide when offset != 0
-  if(f.dx||f.dy){
-    pctx.strokeStyle='rgba(96,165,250,.35)';pctx.lineWidth=1;
-    pctx.setLineDash([4,4]);
-    pctx.strokeRect(bx+.5,by+.5,dw-1,dh-1);
-    pctx.setLineDash([]);
-    // Origin dot
-    pctx.fillStyle='rgba(96,165,250,.6)';
-    pctx.beginPath();pctx.arc(PW/2,PH/2,3,0,Math.PI*2);pctx.fill();
-  }
+  // Frame bounding box (dashed cyan)
+  pctx.strokeStyle = 'rgba(96,165,250,.35)';
+  pctx.lineWidth = 1;
+  pctx.setLineDash([4, 4]);
+  pctx.strokeRect(bx + .5, by + .5, dw - 1, dh - 1);
+  pctx.setLineDash([]);
 
-  // Frame counter + offset overlay
-  document.getElementById('fcOverlay').textContent = `F${fi}`;
+  // Anim pivot marker — FIXED across all frames in this variant.
+  // Shift+click on canvas to move it (set anim origin).
+  pctx.strokeStyle = '#ff8a3d';
+  pctx.lineWidth = 2;
+  pctx.beginPath();
+  pctx.arc(pivotX, pivotY, 7, 0, Math.PI * 2);
+  pctx.stroke();
+  pctx.beginPath();
+  pctx.moveTo(pivotX - 10, pivotY); pctx.lineTo(pivotX + 10, pivotY);
+  pctx.moveTo(pivotX, pivotY - 10); pctx.lineTo(pivotX, pivotY + 10);
+  pctx.stroke();
+
+  document.getElementById('fcOverlay').textContent = `F${fi}${f.modId ? '·' + f.modId : ''}`;
   document.getElementById('offsetOverlay').textContent =
-    `dX: ${f.dx||0}  dY: ${f.dy||0}`;
+    `Anim pivot: (${Math.round(pivot.x)}, ${Math.round(pivot.y)}) · dX:${f.dx||0} dY:${f.dy||0}`;
 }
 
 // ── TIMELINE ─────────────────────────────────────────────────
@@ -633,7 +1047,11 @@ function buildTL() {
     w.appendChild(tc);
 
     const bot=document.createElement('div');bot.className='tbot';
-    const idx=document.createElement('span');idx.className='tidx';idx.textContent='F'+i;
+    const idx=document.createElement('span');idx.className='tidx';
+    // Phase 2: show module ID when available (Fn → modId) — anh thấy frame
+    // nào đang reference module nào trong library.
+    idx.textContent = f.modId ? `F${i}·${f.modId.slice(-8)}` : ('F'+i);
+    if (f.modId) idx.title = `Module: ${f.modId}`;
     const dur=document.createElement('input');dur.type='number';dur.className='tdur';
     dur.min=10;dur.max=5000;dur.step=10;dur.value=f.dur||90;
     dur.onclick=e=>e.stopPropagation();
@@ -687,6 +1105,7 @@ function selectFrame(i){
     if(!playing) w.classList.remove('playing');
   });
   syncProps();renderSheet();drawPrev(i);scrollTL(i);
+  if (typeof renderAnimModulePicker === 'function') renderAnimModulePicker();
 }
 function syncProps(){
   if(selIdx<0||selIdx>=frames.length)return;
@@ -702,9 +1121,19 @@ function syncProps(){
 }
 function applyProp(k){
   if(selIdx<0)return;
-  frames[selIdx][k]=parseFloat(document.getElementById('f'+k+'In').value)||0;
-  if('xywh'.includes(k)) refreshThumb(selIdx);
-  renderSheet();syncProps();drawPrev(selIdx);
+  const f = frames[selIdx];
+  f[k] = parseFloat(document.getElementById('f'+k+'In').value) || 0;
+  // Phase 2: if frame is linked to a module, propagate edit BACK to the
+  // module so Modules tab + Anim tab stay consistent. dx/dy edits skip
+  // module sync (frame-local micro-offset, not part of atlas region).
+  if (f.modId && modules[f.modId] && 'xywh'.includes(k)) {
+    modules[f.modId][k] = Math.round(f[k]);
+    // Other frames referencing the same module pick up the change
+    _propagateModuleToFrames(f.modId);
+    if (typeof renderAnimModulePicker === 'function') renderAnimModulePicker();
+  }
+  if ('xywh'.includes(k)) refreshThumb(selIdx);
+  renderSheet(); syncProps(); drawPrev(selIdx);
 }
 function applyDur(){
   if(selIdx<0)return;
@@ -769,7 +1198,8 @@ function delFrame(){delFrameAt(selIdx);}
 function clearAll(){
   if(!confirm('Xóa tất cả?'))return;
   stopPlay();
-  frames=[];selIdx=-1;animCursor=0;buildTL();renderSheet();
+  // Mutate in place — preserve variants[currentVariantIdx] reference
+  frames.length=0;selIdx=-1;animCursor=0;buildTL();renderSheet();
   pctx.clearRect(0,0,PW,PH);document.getElementById('fcOverlay').textContent='—';
 }
 function moveFrame(d){
@@ -899,45 +1329,222 @@ function applyWHtoAll(){
 }
 
 // ── SHEET CANVAS DRAG ────────────────────────────────────────
-const HS=7;
-function hitTest(mx,my){
-  if(selIdx>=0){
-    const f=frames[selIdx],x=f.x*zoom,y=f.y*zoom,w=f.w*zoom,h=f.h*zoom;
-    const corners=[{cx:x,cy:y,dx:-1,dy:-1},{cx:x+w,cy:y,dx:1,dy:-1},
-                   {cx:x,cy:y+h,dx:-1,dy:1},{cx:x+w,cy:y+h,dx:1,dy:1}];
-    for(const c of corners)if(Math.abs(mx-c.cx)<HS&&Math.abs(my-c.cy)<HS)return{type:'resize',fi:selIdx,...c};
+// Phase 2 UX flip: Anim tab sheet = MODULE PICKER, not frame editor.
+// Click on a module rect → assign that module to selected frame (or to new
+// frame if none selected). All rect editing now happens in Modules tab.
+function _animSheetHitModule(mx, my) {
+  // mx/my in image coords. Pick smallest-area module under cursor.
+  let pick = null, pickArea = Infinity;
+  for (const [id, m] of Object.entries(modules)) {
+    if (mx >= m.x && mx <= m.x + m.w && my >= m.y && my <= m.y + m.h) {
+      const a = m.w * m.h;
+      if (a < pickArea) { pickArea = a; pick = id; }
+    }
   }
-  for(let i=frames.length-1;i>=0;i--){const f=frames[i];
-    if(mx>=f.x*zoom&&mx<=(f.x+f.w)*zoom&&my>=f.y*zoom&&my<=(f.y+f.h)*zoom)return{type:'move',fi:i};}
+  return pick;
+}
+function _assignModuleToFrame(frameIdx, modId) {
+  const m = modules[modId];
+  if (!m || frameIdx < 0 || frameIdx >= frames.length) return;
+  const f = frames[frameIdx];
+  f.modId = modId;
+  f.x = m.x; f.y = m.y; f.w = m.w; f.h = m.h;
+  f.dx = m.dx || 0; f.dy = m.dy || 0;
+  refreshThumb(frameIdx); renderSheet(); syncProps(); drawPrev(frameIdx);
+}
+function _addFrameFromModule(modId) {
+  const m = modules[modId];
+  if (!m) return;
+  const insertAt = (selIdx >= 0 ? selIdx + 1 : frames.length);
+  frames.splice(insertAt, 0, {
+    x: m.x, y: m.y, w: m.w, h: m.h, dx: m.dx||0, dy: m.dy||0,
+    dur: 90, modId,
+  });
+  selIdx = insertAt;
+  buildTL(); renderSheet(); syncProps(); drawPrev(selIdx);
+  renderAnimModulePicker();
+}
+
+// Render module thumbnails in the Anim tab picker strip. Click a thumbnail to
+// append a new frame referencing that module (or swap if a frame is selected).
+function renderAnimModulePicker() {
+  const wrap = document.getElementById('animModulePicker');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  // Sync the hint label — different wording depending on selection state.
+  const hintLine = document.getElementById('animHintLine');
+  if (hintLine) {
+    hintLine.innerHTML = selIdx >= 0
+      ? `🖱 Click module trên sheet → <span style="color:#FFD700;">đổi module của F${selIdx}</span> · Shift+click → +frame mới`
+      : `🖱 Click module trên sheet → <span style="color:#FFD700;">+frame mới</span> (chưa chọn frame nào)`;
+  }
+  const ids = Object.keys(modules).sort();
+  if (!ids.length) {
+    wrap.innerHTML = `<div style="font-size:10px;color:#6b7280;padding:6px;">Chưa có module — tab 📦 Modules để vẽ.</div>`;
+    return;
+  }
+  ids.forEach(id => {
+    const m = modules[id];
+    const isCur = (selIdx >= 0 && frames[selIdx]?.modId === id);
+    const btn = document.createElement('div');
+    btn.title = `${id} (${m.w}×${m.h}) · click swap · shift+click thêm`;
+    btn.style.cssText = `position:relative;cursor:pointer;border:1.5px solid ${isCur?'#FFD700':'#2a3040'};border-radius:4px;padding:2px;background:#111520;`;
+    const c = document.createElement('canvas');
+    c.width = 44; c.height = 44;
+    if (img.naturalWidth) {
+      const ctx = c.getContext('2d');
+      const sc = Math.min(44/m.w, 44/m.h);
+      const dw = m.w * sc, dh = m.h * sc;
+      ctx.drawImage(img, m.x, m.y, m.w, m.h, (44-dw)/2, (44-dh)/2, dw, dh);
+    }
+    btn.appendChild(c);
+    const lbl = document.createElement('div');
+    lbl.textContent = id;
+    lbl.style.cssText = 'position:absolute;bottom:1px;left:1px;right:1px;font-size:8px;color:#FFD700;background:rgba(0,0,0,.6);padding:1px 2px;border-radius:2px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;text-align:center;';
+    btn.appendChild(lbl);
+    btn.onclick = (ev) => {
+      stopPlay();
+      if (ev.shiftKey || selIdx < 0 || selIdx >= frames.length) {
+        _addFrameFromModule(id);
+        st(`+ Frame F${selIdx} → ${id}`, 'ok');
+      } else {
+        _assignModuleToFrame(selIdx, id);
+        st(`F${selIdx} → ${id}`, 'ok');
+        renderAnimModulePicker();
+      }
+    };
+    wrap.appendChild(btn);
+  });
+}
+
+// Anim sheet drag — edit the SELECTED frame's module rect directly without
+// switching to Modules tab. Behaviors (mousedown):
+//   shift+click on any module           → ADD new frame referencing it
+//   click on selected-frame's module    → check corner→RESIZE, else MOVE
+//   click on other module               → SWAP selected frame's module
+//   click on empty area                 → deselect
+// During drag → propagate module rect to every frame using it (live preview).
+const _ANIM_HS = 7;   // corner handle hit radius (screen px)
+let _animSheetDrag = null;   // {type:'resize'|'move', modId, ...startState}
+
+function _animSheetHitCorner(mx, my, m) {
+  const hsImg = _ANIM_HS / zoom;
+  const corners = [
+    { cx: m.x,       cy: m.y,       dx:-1, dy:-1 },
+    { cx: m.x + m.w, cy: m.y,       dx: 1, dy:-1 },
+    { cx: m.x,       cy: m.y + m.h, dx:-1, dy: 1 },
+    { cx: m.x + m.w, cy: m.y + m.h, dx: 1, dy: 1 },
+  ];
+  for (const c of corners) {
+    if (Math.abs(mx - c.cx) < hsImg && Math.abs(my - c.cy) < hsImg) return c;
+  }
   return null;
 }
-sheetCv.addEventListener('mousedown',e=>{
-  const r=sheetCv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
-  const h=hitTest(mx,my);
-  if(!h){selectFrame(-1);renderSheet();return;}
-  stopPlay();selectFrame(h.fi);
-  const f=frames[h.fi];
-  drag={...h,smx:mx,smy:my,sfx:f.x,sfy:f.y,sfw:f.w,sfh:f.h};
+
+sheetCv.addEventListener('mousedown', e => {
+  const r = sheetCv.getBoundingClientRect();
+  const mx = (e.clientX - r.left) / zoom;
+  const my = (e.clientY - r.top)  / zoom;
   e.preventDefault();
-});
-window.addEventListener('mousemove',e=>{
-  if(!img.naturalWidth)return;
-  const r=sheetCv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
-  if(sheetCv===document.elementFromPoint(e.clientX,e.clientY)){
-    const h=hitTest(mx,my);
-    sheetCv.style.cursor=h?(h.type==='resize'?'nwse-resize':'move'):'crosshair';
+  const hitModId = _animSheetHitModule(mx, my);
+  // Shift+click → add new frame (existing behavior)
+  if (e.shiftKey) {
+    if (hitModId) {
+      stopPlay();
+      _addFrameFromModule(hitModId);
+      st(`+ Frame F${selIdx} → ${hitModId}`, 'ok');
+    }
+    return;
   }
-  if(!drag)return;
-  const dx=(mx-drag.smx)/zoom,dy=(my-drag.smy)/zoom;
-  const f=frames[drag.fi];
-  if(drag.type==='move'){f.x=drag.sfx+dx;f.y=drag.sfy+dy;}
-  else{
-    if(drag.dx<0){f.x=drag.sfx+dx;f.w=Math.max(10,drag.sfw-dx);}else{f.w=Math.max(10,drag.sfw+dx);}
-    if(drag.dy<0){f.y=drag.sfy+dy;f.h=Math.max(10,drag.sfh-dy);}else{f.h=Math.max(10,drag.sfh+dy);}
+  // If clicking on the SELECTED frame's module → start drag to edit module rect
+  const curFrame = (selIdx >= 0 && selIdx < frames.length) ? frames[selIdx] : null;
+  if (curFrame && curFrame.modId && modules[curFrame.modId]) {
+    const m = modules[curFrame.modId];
+    // Corner first → resize
+    const corner = _animSheetHitCorner(mx, my, m);
+    if (corner) {
+      stopPlay();
+      _animSheetDrag = { type:'resize', modId: curFrame.modId, corner,
+                         smx:mx, smy:my, sx:m.x, sy:m.y, sw:m.w, sh:m.h };
+      return;
+    }
+    // Inside selected frame's body → move
+    if (mx >= m.x && mx <= m.x + m.w && my >= m.y && my <= m.y + m.h) {
+      stopPlay();
+      _animSheetDrag = { type:'move', modId: curFrame.modId,
+                         smx:mx, smy:my, sx:m.x, sy:m.y };
+      return;
+    }
   }
-  refreshThumb(drag.fi);renderSheet();syncProps();drawPrev(drag.fi);
+  // Click on other module → swap selected frame's module
+  if (hitModId && curFrame) {
+    stopPlay();
+    _assignModuleToFrame(selIdx, hitModId);
+    st(`F${selIdx} → ${hitModId}`, 'ok');
+    return;
+  }
+  // Click on module with no frame selected → add new
+  if (hitModId) {
+    stopPlay();
+    _addFrameFromModule(hitModId);
+    st(`+ Frame F${selIdx} → ${hitModId}`, 'ok');
+    return;
+  }
+  // Empty area → deselect
+  selectFrame(-1);
+  renderSheet();
 });
-window.addEventListener('mouseup',()=>{drag=null;});
+
+window.addEventListener('mousemove', e => {
+  if (!img.naturalWidth) return;
+  // Active drag — update module rect live
+  if (_animSheetDrag) {
+    const r = sheetCv.getBoundingClientRect();
+    const mx = (e.clientX - r.left) / zoom;
+    const my = (e.clientY - r.top)  / zoom;
+    const m = modules[_animSheetDrag.modId];
+    if (!m) { _animSheetDrag = null; return; }
+    if (_animSheetDrag.type === 'move') {
+      m.x = Math.round(_animSheetDrag.sx + (mx - _animSheetDrag.smx));
+      m.y = Math.round(_animSheetDrag.sy + (my - _animSheetDrag.smy));
+    } else {
+      const { corner, sx, sy, sw, sh, smx, smy } = _animSheetDrag;
+      const ddx = mx - smx, ddy = my - smy;
+      let nx = sx, ny = sy, nw = sw, nh = sh;
+      if (corner.dx < 0) { nx = sx + ddx; nw = sw - ddx; } else { nw = sw + ddx; }
+      if (corner.dy < 0) { ny = sy + ddy; nh = sh - ddy; } else { nh = sh + ddy; }
+      if (nw < 10) nw = 10;
+      if (nh < 10) nh = 10;
+      m.x = Math.round(nx); m.y = Math.round(ny);
+      m.w = Math.round(nw); m.h = Math.round(nh);
+    }
+    _propagateModuleToFrames(_animSheetDrag.modId);
+    refreshThumb(selIdx);
+    renderSheet();
+    syncProps();
+    drawPrev(selIdx);
+    return;
+  }
+  // Cursor hint when hovering
+  if (sheetCv === document.elementFromPoint(e.clientX, e.clientY)) {
+    const r = sheetCv.getBoundingClientRect();
+    const mx = (e.clientX - r.left) / zoom;
+    const my = (e.clientY - r.top)  / zoom;
+    const curFrame = (selIdx >= 0 && selIdx < frames.length) ? frames[selIdx] : null;
+    if (curFrame && curFrame.modId && modules[curFrame.modId]) {
+      const m = modules[curFrame.modId];
+      const corner = _animSheetHitCorner(mx, my, m);
+      if (corner) { sheetCv.style.cursor = 'nwse-resize'; return; }
+      if (mx >= m.x && mx <= m.x + m.w && my >= m.y && my <= m.y + m.h) {
+        sheetCv.style.cursor = 'move'; return;
+      }
+    }
+    const hitModId = _animSheetHitModule(mx, my);
+    sheetCv.style.cursor = hitModId ? 'pointer' : 'crosshair';
+  }
+});
+
+window.addEventListener('mouseup', () => { _animSheetDrag = null; });
 
 // sheet zoom
 document.getElementById('sheetWrap').addEventListener('wheel',e=>{
@@ -953,6 +1560,25 @@ document.getElementById('prevArea').addEventListener('wheel',e=>{
   prevScale=Math.max(.3,Math.min(4,prevScale+(e.deltaY<0?.1:-.1)));
   drawPrev(selIdx>=0?selIdx:animCursor);
 },{passive:false});
+
+// Shift+click on preview canvas → set anim pivot for current variant.
+// Pivot stored in source-pixel units relative to canvas-center origin.
+pcv.addEventListener('mousedown', ev => {
+  if (!ev.shiftKey) return;
+  ev.preventDefault();
+  const r = pcv.getBoundingClientRect();
+  const cx = (ev.clientX - r.left) * (PW / r.width);
+  const cy = (ev.clientY - r.top)  * (PH / r.height);
+  const sc = _animScale(currentVariantIdx);
+  if (!sc) return;
+  variantPivots[currentVariantIdx] = {
+    x: Math.round((cx - PW/2) / sc),
+    y: Math.round((cy - PH/2) / sc),
+  };
+  drawPrev(selIdx>=0?selIdx:animCursor);
+  const p = variantPivots[currentVariantIdx];
+  st(`⊕ Anim ${currentVariantIdx+1} pivot → (${p.x}, ${p.y})`, 'ok');
+});
 
 // ── KEYBOARD ─────────────────────────────────────────────────
 window.addEventListener('keydown',e=>{
@@ -1045,29 +1671,120 @@ function _canonicalDurLiteral(frames) {
   return JSON.stringify(ds);
 }
 
+// Serialize a single variant (array of frames) → [rect, ...] minimal form.
+// rect = [x,y,w,h] or [x,y,w,h,dx,dy] (dx/dy appended only if non-zero).
+function _rectsLiteralFromFrames(framesArr) {
+  return framesArr.map(f => {
+    const r = [Math.round(f.x), Math.round(f.y), Math.round(f.w), Math.round(f.h)];
+    if (f.dx || f.dy) r.push(Math.round(f.dx||0), Math.round(f.dy||0));
+    return r;
+  });
+}
+
+// Produce the JS literal string that goes after `R:` (or any color key) in
+// the _BLOOM_RECTS block, and similarly for _BLOOM_DURS. When there is a
+// single variant we emit the OLD flat form (no churn vs existing data); when
+// multiple variants exist we emit the NEW nested form.
+function _buildLiterals() {
+  const nV = variants.length;
+  if (nV === 1) {
+    // OLD format — flat
+    return {
+      rectsLiteral: JSON.stringify(_rectsLiteralFromFrames(variants[0])),
+      dursLiteral: _canonicalDurLiteral(variants[0]),
+    };
+  }
+  // NEW format — nested
+  const allRects = variants.map(v => _rectsLiteralFromFrames(v));
+  const allDurs  = variants.map(v => _canonicalDurLiteral(v));
+  // _canonicalDurLiteral returns a JS expression string ('null' | '87' | '[..]').
+  // Wrap into outer array literal manually so we preserve scalar/null form per variant.
+  return {
+    rectsLiteral: JSON.stringify(allRects),
+    dursLiteral: `[${allDurs.join(',')}]`,
+  };
+}
+
+// ── _BLOOM_DATA builder (Phase 1) ────────────────────────────
+// Build the modules+anims structure for the current color from `variants`.
+// Phase 1: each frame becomes its own module — no dedup. Phase 2 UI will
+// let the user define + reuse modules across anims.
+//
+// Returns:
+//   { modules: { "<role>_<i>": {x,y,w,h[,dx,dy]} },
+//     anims:   { bloom: [{m,d}], bud: [{m,d}], flower: [{m,d}], ... } }
+// And the corresponding JS literal string for direct embedding in render.js.
+const _ROLE_NAMES = ['bloom', 'bud', 'flower'];
+function _buildBloomDataObject() {
+  // Phase 2: use shared module library when available — modules dedupe across
+  // anims so identical rects become single shared module IDs.
+  // Refresh library first so any pending frame edits flow into modules.
+  _rebuildModulesFromVariants();
+  const outModules = {};
+  const anims = {};
+  const animPivots = {};
+  // Only include modules actually referenced by some anim frame
+  const usedIds = new Set();
+  variants.forEach((vFrames, idx) => {
+    const animName = idx < _ROLE_NAMES.length ? _ROLE_NAMES[idx] : `anim${idx}`;
+    anims[animName] = vFrames.map(f => {
+      usedIds.add(f.modId);
+      return { m: f.modId, d: Math.round(f.dur || 90) };
+    });
+    // Emit anim pivot when non-zero (default {0,0} is implicit)
+    const p = variantPivots[idx] || {x:0, y:0};
+    if (p.x || p.y) animPivots[animName] = [Math.round(p.x), Math.round(p.y)];
+  });
+  usedIds.forEach(id => {
+    const m = modules[id];
+    if (!m) return;
+    const o = { x: m.x, y: m.y, w: m.w, h: m.h };
+    if (m.dx) o.dx = m.dx;
+    if (m.dy) o.dy = m.dy;
+    outModules[id] = o;
+  });
+  const out = { modules: outModules, anims };
+  if (Object.keys(animPivots).length) out.animPivots = animPivots;
+  return out;
+}
+function _buildBloomDataLiteral() {
+  const obj = _buildBloomDataObject();
+  return JSON.stringify(obj);
+}
+
 async function saveToServer(){
   const key=COLOR_KEY[document.getElementById('colorPicker').value];
-  const rects=frames.map(f=>{const r=[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)];if(f.dx||f.dy)r.push(Math.round(f.dx||0),Math.round(f.dy||0));return r;});
-  const durValLiteral = _canonicalDurLiteral(frames);
-  // Diagnostic log — visible in DevTools Console for verifying client state.
-  console.log('[bloom_test save]', { color: key, frameDurs: frames.map(f=>f.dur), durValLiteral, rectsCount: rects.length });
-  st(`⏳ Saving... _BLOOM_DURS=${durValLiteral.slice(0,50)}`,'warn');
+  const { rectsLiteral, dursLiteral } = _buildLiterals();
+  // Phase 1: also build _BLOOM_DATA literal so engine reads the new path.
+  // Legacy _BLOOM_RECTS / _BLOOM_DURS stays as backup (engine ignores when
+  // _BLOOM_DATA[color] exists).
+  const bloomDataLiteral = _buildBloomDataLiteral();
+  console.log('[bloom_test save]', { color: key, variants: variants.length, dursLiteral: dursLiteral.slice(0,80), rectsLiteralLen: rectsLiteral.length, bloomDataLiteralLen: bloomDataLiteral.length });
+  st(`⏳ Saving ${variants.length} variant(s)...`,'warn');
   try{
     if (IS_LOCAL) {
       const token = await getDevToken();
-      const text=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json','X-Dev-Token':token},body:JSON.stringify({color:key,rects,durationsLiteral:durValLiteral})}).then(r=>r.text());
+      const body = {
+        color: key,
+        rectsLiteral,
+        durationsLiteral: dursLiteral,
+        bloomDataLiteral,  // NEW format payload (Phase 1)
+        rects: variants.length === 1 ? _rectsLiteralFromFrames(variants[0]) : null,
+      };
+      const text=await fetch('/api/save-bloom-rects',{method:'POST',headers:{'Content-Type':'application/json','X-Dev-Token':token},body:JSON.stringify(body)}).then(r=>r.text());
       let data;try{data=JSON.parse(text);}catch(e){throw new Error(text.slice(0,80));}
       if(!data.ok)throw new Error(data.error);
-      st('✅ '+data.message,'ok');
+      st(`✅ ${variants.length} variant(s) saved — ${data.message}`,'ok');
     } else {
       // file:// mode: read + patch render.js directly via File System Access API
       if (!_rootDir) { await pickRootDir(); if (!_rootDir) return; }
       let src = await _fsRead('engine/sort_blossom_render.js');
-      src = _patchColorLine(src, '_BLOOM_RECTS', key, JSON.stringify(rects));
-      src = _patchColorLine(src, '_BLOOM_DURS', key, durValLiteral);
+      src = _patchColorLine(src, '_BLOOM_RECTS', key, rectsLiteral);
+      src = _patchColorLine(src, '_BLOOM_DURS', key, dursLiteral);
+      src = _patchColorLine(src, '_BLOOM_DATA',  key, bloomDataLiteral);
       await _fsWrite('engine/sort_blossom_render.js', src);
-      const _total = frames.reduce((a,f)=>a+(f.dur||90),0);
-      st(`✅ Saved ${key}: ${rects.length} frames · ${_total}ms total · _BLOOM_DURS=${durValLiteral.slice(0,40)}`,'ok');
+      const totalFrames = variants.reduce((a,v)=>a+v.length,0);
+      st(`✅ Saved ${key}: ${variants.length} variant(s) · ${totalFrames} frame(s)`,'ok');
     }
   }catch(e){st('❌ '+e.message,'err');}
 }
@@ -1096,25 +1813,48 @@ function _patchColorLine(src, blockName, colorKey, newVal) {
 function downloadJSON(){
   const color=document.getElementById('colorPicker').value;
   const key=COLOR_KEY[color];
-  const out={color:key,frames:frames.length,
-    rects:frames.map(f=>{const r=[Math.round(f.x),Math.round(f.y),Math.round(f.w),Math.round(f.h)];if(f.dx||f.dy)r.push(Math.round(f.dx||0),Math.round(f.dy||0));return r;}),
-    durations:frames.map(f=>f.dur||90), // raw durations (editor values)
-    gameSpeed:parseInt(document.getElementById('gameSpeedIn').value)||100};
+  const gameSpeed = parseInt(document.getElementById('gameSpeedIn').value) || 100;
+  let out;
+  if (variants.length === 1) {
+    // OLD format — single variant. Keep flat for back-compat with existing pipelines.
+    out = {
+      color: key,
+      frames: variants[0].length,
+      rects: _rectsLiteralFromFrames(variants[0]),
+      durations: variants[0].map(f => f.dur || 90),
+      gameSpeed,
+    };
+  } else {
+    // NEW format — multi-variant. `anims` is an array of {rects, durations}.
+    out = {
+      color: key,
+      animCount: variants.length,
+      anims: variants.map(v => ({
+        frames: v.length,
+        rects: _rectsLiteralFromFrames(v),
+        durations: v.map(f => f.dur || 90),
+      })),
+      gameSpeed,
+    };
+  }
   const a=document.createElement('a');
   a.href='data:application/json,'+encodeURIComponent(JSON.stringify(out,null,2));
   a.download='bloom_rects_'+color+'.json';a.click();
-  st(`✅ bloom_rects_${color}.json`,'ok');
+  st(`✅ bloom_rects_${color}.json (${variants.length} variant${variants.length>1?'s':''})`,'ok');
 }
 
 // ── UTIL ─────────────────────────────────────────────────────
 function st(msg,type){const e=document.getElementById('tbStatus');e.textContent=msg;e.className=type||'';}
 function onZoomChange(){zoom=(parseInt(document.getElementById('zoomIn').value)||50)/100;renderSheet();}
 async function onColorChange(){
-  // Wipe state
+  // Wipe state — reset variants to single empty so anim picker shows "1"
   stopPlay();
-  frames = [];
+  variants = [[]];
+  currentVariantIdx = 0;
+  frames = variants[0];
   selIdx = -1;
   animCursor = 0;
+  _refreshAnimPicker();
   pctx.clearRect(0, 0, PW, PH);
   document.getElementById('fcOverlay').textContent = '—';
   // Sequential: rects FIRST, then sheet (so afterSheetLoad sees real frames).
@@ -1149,16 +1889,323 @@ const SLOT_VARS = [
   await loadCSSVars().catch(() => {});  // 2. real CSS vars → sliders (per-slot L/C/R)
   await loadFromServer().catch(() => {});   // 4. real frames from render.js
   loadSheet();                              // 5. load image — afterSheetLoad sees real frames
+  // Phase 2: bind modules sheet drag handlers (create/resize/move)
+  const mcv = document.getElementById('modulesSheetCanvas');
+  if (mcv) {
+    mcv.addEventListener('mousedown', _onModulesSheetMouseDown);
+    window.addEventListener('mousemove', _onModulesSheetMouseMove);
+    window.addEventListener('mouseup',   _onModulesSheetMouseUp);
+    // Cursor hint based on what's under the pointer
+    mcv.addEventListener('mousemove', ev => {
+      if (_modDrag) return;
+      const r = mcv.getBoundingClientRect();
+      const mx = (ev.clientX - r.left) / zoom;
+      const my = (ev.clientY - r.top)  / zoom;
+      const h = _modulesHitTest(mx, my);
+      mcv.style.cursor = h.type === 'resize' ? 'nwse-resize'
+                       : h.type === 'move'   ? 'move'
+                       : 'crosshair';
+    });
+    // Delete key removes selected module
+    window.addEventListener('keydown', ev => {
+      const modulesPanel = document.getElementById('modulesPanel');
+      if (!modulesPanel || modulesPanel.style.display === 'none') return;
+      if (ev.key === 'Delete' && selectedModuleId) {
+        if (_moduleRefCount(selectedModuleId) > 0) {
+          if (!confirm(`Module ${selectedModuleId} đang được ${_moduleRefCount(selectedModuleId)} frame ref. Xoá vẫn?`)) return;
+        }
+        delete modules[selectedModuleId];
+        // Strip orphan modId from frames
+        variants.forEach(v => v.forEach(f => {
+          if (f.modId === selectedModuleId) f.modId = null;
+        }));
+        selectedModuleId = null;
+        renderModulesPanel();
+      }
+    });
+  }
 })();
 
 // ── TAB SWITCH (no auto-reload — load only happens once at init) ─
 function switchTab(tab) {
-  const isAnim = tab === 'anim';
-  document.getElementById('main').style.display = isAnim ? 'flex' : 'none';
-  document.getElementById('tl').style.display   = isAnim ? 'flex' : 'none';
-  document.getElementById('layoutPanel').style.display = isAnim ? 'none' : 'flex';
-  document.getElementById('tabAnim').classList.toggle('active', isAnim);
-  document.getElementById('tabLayout').classList.toggle('active', !isAnim);
+  const showAnim    = tab === 'anim';
+  const showModules = tab === 'modules';
+  const showLayout  = tab === 'layout';
+  document.getElementById('main').style.display          = showAnim    ? 'flex' : 'none';
+  document.getElementById('tl').style.display            = showAnim    ? 'flex' : 'none';
+  document.getElementById('modulesPanel').style.display  = showModules ? 'block': 'none';
+  document.getElementById('layoutPanel').style.display   = showLayout  ? 'flex' : 'none';
+  document.getElementById('tabAnim').classList.toggle('active',    showAnim);
+  document.getElementById('tabModules').classList.toggle('active', showModules);
+  document.getElementById('tabLayout').classList.toggle('active',  showLayout);
+  if (showModules) renderModulesPanel();
+  // Bug T11 fix — when returning to Anim tab from Modules edits, refresh
+  // sheet highlights + preview so module edits are visible immediately.
+  if (showAnim && img && img.naturalWidth) {
+    if (typeof renderSheet === 'function') renderSheet();
+    if (typeof buildTL === 'function') buildTL();
+    if (typeof drawPrev === 'function' && frames.length) drawPrev(selIdx >= 0 ? selIdx : 0);
+  }
+}
+
+// ── PHASE 2: MODULES PANEL ────────────────────────────────────
+function renderModulesPanel() {
+  renderModulesSheet();
+  renderModulesList();
+  updateModulesStat();
+}
+
+function updateModulesStat() {
+  const el = document.getElementById('modulesStat');
+  if (!el) return;
+  const totalFrames = variants.reduce((a, v) => a + v.length, 0);
+  const nMods = Object.keys(modules).length;
+  const ratio = totalFrames ? (totalFrames / Math.max(1, nMods)).toFixed(1) : '0';
+  el.textContent = `${nMods} module(s) · ${totalFrames} frame ref(s) · reuse ratio ${ratio}×`;
+}
+
+// Render sheet canvas inside modules tab — same image as main sheet but
+// overlays the unique module rects (not duplicated per-anim).
+function renderModulesSheet() {
+  const cv = document.getElementById('modulesSheetCanvas');
+  if (!cv || !img.naturalWidth) {
+    if (cv) { cv.width = cv.height = 1; cv.getContext('2d').clearRect(0,0,1,1); }
+    return;
+  }
+  const z = zoom;
+  cv.width  = Math.round(img.naturalWidth  * z);
+  cv.height = Math.round(img.naturalHeight * z);
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  // Draw each module as a rect with name label + ref count + pivot marker
+  Object.entries(modules).forEach(([id, m]) => {
+    const x = m.x * z, y = m.y * z, w = m.w * z, h = m.h * z;
+    const sel = id === selectedModuleId;
+    ctx.strokeStyle = sel ? '#FFD700' : 'rgba(96,165,250,.6)';
+    ctx.lineWidth = sel ? 2 : 1.2;
+    ctx.strokeRect(x + .5, y + .5, w - 1, h - 1);
+    if (sel) { ctx.fillStyle = 'rgba(255,215,0,.07)'; ctx.fillRect(x, y, w, h); }
+    // Label — pivot lives at anim level now, no per-module pivot marker
+    const refs = _moduleRefCount(id);
+    ctx.font = `bold ${Math.max(8, 10 * z | 0)}px monospace`;
+    ctx.fillStyle = sel ? '#FFD700' : 'rgba(96,165,250,.9)';
+    ctx.fillText(`${id} (×${refs})`, x + 3, y + Math.max(11, 13 * z));
+  });
+}
+
+function renderModulesList() {
+  const list = document.getElementById('modulesList');
+  if (!list) return;
+  list.innerHTML = '';
+  const ids = Object.keys(modules).sort();
+  if (!ids.length) {
+    list.innerHTML = `<div style="padding:14px;color:#6b7280;font-size:11px;text-align:center;">Chưa có module. Load 1 màu để auto-import.</div>`;
+    document.getElementById('modulesEdit').style.display = 'none';
+    return;
+  }
+  ids.forEach(id => {
+    const m = modules[id];
+    const refs = _moduleRefCount(id);
+    const isSel = id === selectedModuleId;
+    const row = document.createElement('div');
+    row.style.cssText = `display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:3px;border-radius:5px;cursor:pointer;background:${isSel?'#2a2f3e':'transparent'};border:1px solid ${isSel?'#FFD700':'transparent'};`;
+    // Thumbnail
+    const thumb = document.createElement('canvas');
+    thumb.width = 40; thumb.height = 40;
+    thumb.style.cssText = 'flex-shrink:0;background:#111520;border-radius:3px;';
+    if (img.naturalWidth) {
+      const t = thumb.getContext('2d');
+      const sc = Math.min(40/m.w, 40/m.h);
+      const dw = m.w * sc, dh = m.h * sc;
+      t.drawImage(img, m.x, m.y, m.w, m.h, (40-dw)/2, (40-dh)/2, dw, dh);
+    }
+    row.appendChild(thumb);
+    // Text
+    const txt = document.createElement('div');
+    txt.style.cssText = 'flex:1;min-width:0;';
+    txt.innerHTML = `
+      <div style="font-size:11px;color:${isSel?'#FFD700':'#e8e4d8'};font-weight:${isSel?'700':'400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${id}</div>
+      <div style="font-size:9px;color:#6b7280;">${m.w}×${m.h} · ×${refs} ref${refs!==1?'s':''}</div>
+    `;
+    row.appendChild(txt);
+    row.onclick = () => selectModule(id);
+    list.appendChild(row);
+  });
+  renderModuleEdit();
+}
+
+function renderModuleEdit() {
+  const wrap = document.getElementById('modulesEdit');
+  if (!wrap) return;
+  if (!selectedModuleId || !modules[selectedModuleId]) {
+    wrap.style.display = 'none';
+    return;
+  }
+  const m = modules[selectedModuleId];
+  const refs = _moduleRefCount(selectedModuleId);
+  wrap.style.display = 'block';
+  const inpStyle = 'width:100%;height:22px;background:#1a1f2e;color:#e8e4d8;border:1px solid #2a3040;border-radius:3px;padding:0 6px;font-size:11px;';
+  wrap.innerHTML = `
+    <div style="font-size:10px;color:#FFD700;font-weight:700;margin-bottom:6px;">${selectedModuleId}</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 8px;font-size:10px;align-items:center;">
+      <label style="color:#8090b0;">X</label><input type="number" id="modEdit_x" value="${m.x}" style="${inpStyle}">
+      <label style="color:#8090b0;">Y</label><input type="number" id="modEdit_y" value="${m.y}" style="${inpStyle}">
+      <label style="color:#8090b0;">W</label><input type="number" id="modEdit_w" value="${m.w}" style="${inpStyle}">
+      <label style="color:#8090b0;">H</label><input type="number" id="modEdit_h" value="${m.h}" style="${inpStyle}">
+      <label style="color:#8090b0;">dX</label><input type="number" id="modEdit_dx" value="${m.dx||0}" style="${inpStyle}">
+      <label style="color:#8090b0;">dY</label><input type="number" id="modEdit_dy" value="${m.dy||0}" style="${inpStyle}">
+    </div>
+    <div style="margin-top:8px;font-size:9px;color:#6b7280;">${refs} frame ref${refs!==1?'s':''} sẽ auto-update khi đổi rect ↑ · Pivot now set per-ANIM (shift+click trên preview canvas).</div>
+  `;
+  ['x','y','w','h','dx','dy'].forEach(k => {
+    const inp = document.getElementById('modEdit_'+k);
+    if (!inp) return;
+    inp.oninput = () => {
+      m[k] = parseInt(inp.value, 10) || 0;
+      _propagateModuleToFrames(selectedModuleId);
+      renderModulesSheet();
+      if (document.getElementById('main').style.display !== 'none') {
+        renderSheet(); drawPrev(selIdx); buildTL();
+      }
+    };
+  });
+}
+
+function selectModule(id) {
+  selectedModuleId = id;
+  renderModulesSheet();
+  renderModulesList();
+}
+
+// ── MODULES SHEET DRAG ────────────────────────────────────────
+// Three interaction modes:
+//   - empty area    → drag to CREATE new module rect (auto-id)
+//   - selected corner → drag to RESIZE selected module
+//   - selected/other module body → drag to MOVE
+// Module edits propagate to every frame that references the module via
+// _propagateModuleToFrames after each tick.
+const _MOD_HS = 7;   // corner handle hit-radius (px on screen)
+let _modDrag = null; // {type:'create'|'resize'|'move', id, dxStart..}
+
+function _modulesHitTest(mx, my) {
+  // mx/my are in IMAGE (un-zoomed) coords
+  const hsImg = _MOD_HS / zoom;
+  // Check corner handle of currently selected module first
+  if (selectedModuleId && modules[selectedModuleId]) {
+    const m = modules[selectedModuleId];
+    const corners = [
+      { cx: m.x,       cy: m.y,       dx:-1, dy:-1 },
+      { cx: m.x+m.w,   cy: m.y,       dx: 1, dy:-1 },
+      { cx: m.x,       cy: m.y+m.h,   dx:-1, dy: 1 },
+      { cx: m.x+m.w,   cy: m.y+m.h,   dx: 1, dy: 1 },
+    ];
+    for (const c of corners) {
+      if (Math.abs(mx - c.cx) < hsImg && Math.abs(my - c.cy) < hsImg) {
+        return { type:'resize', id: selectedModuleId, corner: c };
+      }
+    }
+  }
+  // Body hit — pick smallest rect under cursor
+  let pick = null, pickArea = Infinity;
+  for (const [id, m] of Object.entries(modules)) {
+    if (mx >= m.x && mx <= m.x + m.w && my >= m.y && my <= m.y + m.h) {
+      const a = m.w * m.h;
+      if (a < pickArea) { pickArea = a; pick = id; }
+    }
+  }
+  if (pick) return { type:'move', id: pick };
+  return { type:'create' };
+}
+
+function _onModulesSheetMouseDown(ev) {
+  const cv = document.getElementById('modulesSheetCanvas');
+  const r = cv.getBoundingClientRect();
+  const mx = (ev.clientX - r.left) / zoom;
+  const my = (ev.clientY - r.top)  / zoom;
+  ev.preventDefault();
+  // Pivot is now per-ANIM (set via shift+click on preview canvas in Anim tab),
+  // not per-module. Modules sheet only handles create/move/resize.
+  const h = _modulesHitTest(mx, my);
+  if (h.type === 'resize') {
+    const m = modules[h.id];
+    _modDrag = { type:'resize', id:h.id, corner:h.corner, smx:mx, smy:my,
+                 sx:m.x, sy:m.y, sw:m.w, sh:m.h };
+    selectModule(h.id);
+  } else if (h.type === 'move') {
+    const m = modules[h.id];
+    _modDrag = { type:'move', id:h.id, smx:mx, smy:my, sx:m.x, sy:m.y };
+    selectModule(h.id);
+  } else {
+    // Create — start with 0×0 rect anchored at click. Resize on move.
+    // _manual flag → preserved across rebuilds even if no frame refs it yet.
+    const id = _newModuleId('mod');
+    modules[id] = { x: Math.round(mx), y: Math.round(my), w: 1, h: 1, dx:0, dy:0, _manual: true };
+    _modDrag = { type:'create', id, smx:mx, smy:my };
+    selectedModuleId = id;
+  }
+  renderModulesSheet();
+  renderModulesList();
+}
+
+function _onModulesSheetMouseMove(ev) {
+  if (!_modDrag) return;
+  const cv = document.getElementById('modulesSheetCanvas');
+  const r = cv.getBoundingClientRect();
+  const mx = (ev.clientX - r.left) / zoom;
+  const my = (ev.clientY - r.top)  / zoom;
+  const m = modules[_modDrag.id];
+  if (!m) return;
+  if (_modDrag.type === 'create') {
+    const x0 = Math.min(_modDrag.smx, mx), y0 = Math.min(_modDrag.smy, my);
+    const w  = Math.abs(mx - _modDrag.smx), h = Math.abs(my - _modDrag.smy);
+    m.x = Math.round(x0); m.y = Math.round(y0);
+    m.w = Math.max(1, Math.round(w)); m.h = Math.max(1, Math.round(h));
+  } else if (_modDrag.type === 'move') {
+    m.x = Math.round(_modDrag.sx + (mx - _modDrag.smx));
+    m.y = Math.round(_modDrag.sy + (my - _modDrag.smy));
+  } else if (_modDrag.type === 'resize') {
+    const { corner, sx, sy, sw, sh, smx, smy } = _modDrag;
+    const ddx = mx - smx, ddy = my - smy;
+    let nx = sx, ny = sy, nw = sw, nh = sh;
+    if (corner.dx < 0) { nx = sx + ddx; nw = sw - ddx; }
+    else                { nw = sw + ddx; }
+    if (corner.dy < 0) { ny = sy + ddy; nh = sh - ddy; }
+    else                { nh = sh + ddy; }
+    if (nw < 1) nw = 1;
+    if (nh < 1) nh = 1;
+    m.x = Math.round(nx); m.y = Math.round(ny);
+    m.w = Math.round(nw); m.h = Math.round(nh);
+  }
+  _propagateModuleToFrames(_modDrag.id);
+  renderModulesSheet();
+  renderModuleEdit();        // update numeric inputs live
+  updateModulesStat();
+}
+
+function _onModulesSheetMouseUp(ev) {
+  if (!_modDrag) return;
+  // Drop tiny accidental rects on create (e.g. click without drag)
+  if (_modDrag.type === 'create') {
+    const m = modules[_modDrag.id];
+    if (m && (m.w < 3 || m.h < 3)) {
+      delete modules[_modDrag.id];
+      if (selectedModuleId === _modDrag.id) selectedModuleId = null;
+    }
+  }
+  _modDrag = null;
+  renderModulesPanel();
+}
+
+// Auto-dedup: re-run rebuild from current variants. Identical rects across
+// anims collapse into a single shared module ID.
+function autoDedupModules() {
+  const before = Object.keys(modules).length;
+  _rebuildModulesFromVariants();
+  const after = Object.keys(modules).length;
+  renderModulesPanel();
+  if (typeof buildTL === 'function') buildTL();
+  st(`🔄 Dedup: ${before} → ${after} module(s) (${Math.max(0, before-after)} merged)`, 'ok');
 }
 
 function buildLayoutPanel() {
@@ -1410,18 +2457,31 @@ function renderPotPreview() {
   if (!wrap) return;
   wrap.innerHTML = '';
 
-  // Get frame 0 and frame 9 rects (use null placeholders if not loaded)
-  const f0 = (img.naturalWidth && frames[0]) || null;
-  const f9 = (img.naturalWidth && frames[Math.min(9, frames.length-1)]) || null;
+  // Role-based source frames (mirror engine convention):
+  //   Nụ frame   = variants[1][0] if exists, else variants[0][0]   (Bloom frame 0)
+  //   Bông frame = variants[2][0] if exists, else variants[0][last] (Bloom last)
+  //   Sizing anchor for canvas height = always Bloom last frame.
+  const v0 = variants[0] || [];
+  const v1 = variants[1] || [];
+  const v2 = variants[2] || [];
+  const budFrame    = (img.naturalWidth && (v1[0] || v0[0])) || null;
+  const flowerFrame = (img.naturalWidth && (v2[0] || v0[Math.min(9, v0.length-1)])) || null;
+  const sizingFrame = (img.naturalWidth && v0[Math.min(9, v0.length-1)]) || flowerFrame;
 
   // Update hint
   const hint = document.getElementById('layoutHint');
-  if (hint) hint.textContent = !img.naturalWidth
-    ? '⚠️ Load Sheet trước để xem hoa thật'
-    : 'Hoa = frame 9 · Nụ = frame 0 · Drag để chỉnh vị trí';
+  if (hint) {
+    const hasBudAnim = v1.length > 0;
+    const hasFlowerAnim = v2.length > 0;
+    const tags = [
+      hasBudAnim    ? '🌱 Nụ:anim2' : '🌱 Nụ:fallback(Bloom f0)',
+      hasFlowerAnim ? '🌸 Bông:anim3' : '🌸 Bông:fallback(Bloom flast)',
+    ].join(' · ');
+    hint.textContent = !img.naturalWidth ? '⚠️ Load Sheet trước để xem hoa thật' : tags;
+  }
 
   // Single pot: full bloom + buds visible — all slots for complete calibration
-  const potCell = buildPotPreviewCell([0,1,2], [0,1,2], f0, f9);
+  const potCell = buildPotPreviewCell([0,1,2], [0,1,2], budFrame, flowerFrame, sizingFrame);
   wrap.appendChild(potCell);
 
   // Apply CSS vars AFTER DOM is built (so .sb-compact exists and closest() works)
@@ -1437,8 +2497,14 @@ function renderPotPreview() {
   });
 }
 
-// Build pot preview using EXACT game CSS classes — guaranteed to match game visually
-function buildPotPreviewCell(activeSlots, queueSlots, f0, f9) {
+// Build pot preview using EXACT game CSS classes — guaranteed to match game visually.
+// Params (renamed for clarity — role-based, not frame-index-based):
+//   budFrame    = source rect for Nụ (variants[1][0] or Bloom frame 0 fallback)
+//   flowerFrame = source rect for Bông (variants[2][0] or Bloom last fallback)
+//   sizingFrame = source rect used to compute canvas height anchor (Bloom last frame)
+function buildPotPreviewCell(activeSlots, queueSlots, budFrame, flowerFrame, sizingFrame) {
+  // Back-compat aliases for old code inside this function
+  const f0 = budFrame, f9 = sizingFrame || flowerFrame;
   const color = document.getElementById('colorPicker').value;
   const FLOWER_IMGS = {
     red:'flower_red.webp', pink:'flower_pink.webp', yellow:'flower_yellow.webp',
@@ -1513,14 +2579,14 @@ function buildPotPreviewCell(activeSlots, queueSlots, f0, f9) {
     el.style.cssText = 'cursor:move;pointer-events:auto;';
     el.title = `Slot ${['L','C','R'][pos]} · drag để chỉnh`;
     flowerLayer.appendChild(el);
-    // Draw frame 9 sau khi layout
+    // Draw Bông (anim 3 frame 0, else Bloom last) — matches game's upgradeActiveFlowers
     requestAnimationFrame(() => {
-      const f9t = frames[Math.min(9, frames.length-1)];
-      if (f9t && img.naturalWidth) {
+      const fT = flowerFrame;
+      if (fT && img.naturalWidth) {
         const w = el.offsetWidth || 76;
-        const h = Math.round(w * f9t.h / f9t.w);
+        const h = Math.round(w * fT.h / fT.w);
         el.width = w; el.height = h;
-        el.getContext('2d').drawImage(img, f9t.x, f9t.y, f9t.w, f9t.h, 0, 0, w, h);
+        el.getContext('2d').drawImage(img, fT.x, fT.y, fT.w, fT.h, 0, 0, w, h);
       }
     });
     const _pos = pos;

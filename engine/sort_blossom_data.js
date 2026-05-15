@@ -26,28 +26,35 @@
           null,
           null
         ],
-        "queue": [
-          "R",
-          "R"
-        ]
+        "queue": []
       },
       {
         "active": [
           null,
-          null,
-          null
+          "R",
+          "R"
         ],
         "queue": []
       }
     ],
-    "moveLimit": 8,
+    "moveLimit": 2,
     "starThresholds": [
       3,
       5,
       7
     ],
     "tutorial": true,
-    "schemaVersion": 2
+    "schemaVersion": 2,
+    "potLayout": [
+      {
+        "x": 130,
+        "y": 270
+      },
+      {
+        "x": 260,
+        "y": 270
+      }
+    ]
   },
   {
     "id": 2,
@@ -59,34 +66,26 @@
           "P",
           "R"
         ],
-        "queue": [
-          "P",
-          "R",
-          "P"
-        ]
+        "queue": []
       },
       {
         "active": [
           "P",
-          "R",
+          null,
           "P"
         ],
-        "queue": [
-          "R",
-          "P",
-          "R"
-        ]
+        "queue": []
       },
       {
         "active": [
           null,
           null,
-          null
+          "R"
         ],
         "queue": []
       }
     ],
-    "moveLimit": 14,
+    "moveLimit": 3,
     "starThresholds": [
       6,
       9,
@@ -99,12 +98,12 @@
         "y": 287
       },
       {
-        "x": 314,
-        "y": 298
+        "x": 302,
+        "y": 282
       },
       {
-        "x": 199,
-        "y": 390
+        "x": 193,
+        "y": 408
       }
     ]
   },
@@ -145,7 +144,7 @@
         "queue": []
       }
     ],
-    "moveLimit": 12,
+    "moveLimit": 5,
     "starThresholds": [
       4,
       7,
@@ -154,16 +153,16 @@
     "schemaVersion": 2,
     "potLayout": [
       {
-        "x": 91,
-        "y": 195
+        "x": 80,
+        "y": 190
       },
       {
-        "x": 293,
-        "y": 203
+        "x": 295,
+        "y": 190
       },
       {
-        "x": 192,
-        "y": 390
+        "x": 190,
+        "y": 409
       },
       {
         "x": 189,
@@ -193,14 +192,30 @@
       },
       {
         "active": [
+          "V",
+          "Y",
+          "V"
+        ],
+        "queue": []
+      },
+      {
+        "active": [
           null,
           null,
           null
         ],
         "queue": []
+      },
+      {
+        "active": [
+          "V",
+          "Y",
+          "Y"
+        ],
+        "queue": []
       }
     ],
-    "moveLimit": 10,
+    "moveLimit": 7,
     "starThresholds": [
       6,
       7,
@@ -209,16 +224,24 @@
     "schemaVersion": 2,
     "potLayout": [
       {
-        "x": 76,
-        "y": 201
+        "x": 69,
+        "y": 84
       },
       {
         "x": 299,
-        "y": 206
+        "y": 83
       },
       {
-        "x": 195,
-        "y": 249
+        "x": 75,
+        "y": 327
+      },
+      {
+        "x": 190,
+        "y": 181
+      },
+      {
+        "x": 307,
+        "y": 335
       }
     ]
   },
@@ -245,7 +268,31 @@
       {
         "active": [
           null,
-          null,
+          "V",
+          "O"
+        ],
+        "queue": []
+      },
+      {
+        "active": [
+          "O",
+          "W",
+          "V"
+        ],
+        "queue": []
+      },
+      {
+        "active": [
+          "W",
+          "O",
+          null
+        ],
+        "queue": []
+      },
+      {
+        "active": [
+          "V",
+          "W",
           null
         ],
         "queue": []
@@ -260,16 +307,28 @@
     "schemaVersion": 2,
     "potLayout": [
       {
-        "x": 86,
-        "y": 228
+        "x": 75,
+        "y": 98
       },
       {
-        "x": 301,
-        "y": 231
+        "x": 299,
+        "y": 93
       },
       {
-        "x": 189,
-        "y": 328
+        "x": 74,
+        "y": 269
+      },
+      {
+        "x": 296,
+        "y": 264
+      },
+      {
+        "x": 88,
+        "y": 442
+      },
+      {
+        "x": 302,
+        "y": 435
       }
     ]
   },
@@ -283,7 +342,11 @@
           "P",
           "P"
         ],
-        "queue": []
+        "queue": [
+          "Y",
+          "R",
+          "R"
+        ]
       },
       {
         "active": [
@@ -291,15 +354,32 @@
           "Y",
           "P"
         ],
-        "queue": []
+        "queue": [
+          "Y",
+          "Y",
+          "R"
+        ]
+      },
+      {
+        "active": [
+          "R",
+          "R",
+          null
+        ],
+        "queue": [
+          "P",
+          "P"
+        ]
       },
       {
         "active": [
           null,
-          null,
+          "R",
           null
         ],
-        "queue": []
+        "queue": [
+          "P"
+        ]
       }
     ],
     "moveLimit": 10,
@@ -311,16 +391,20 @@
     "schemaVersion": 2,
     "potLayout": [
       {
-        "x": 85,
-        "y": 168
+        "x": 90,
+        "y": 153
       },
       {
-        "x": 326,
-        "y": 165
+        "x": 293,
+        "y": 153
       },
       {
-        "x": 213,
-        "y": 281
+        "x": 104,
+        "y": 384
+      },
+      {
+        "x": 288,
+        "y": 387
       }
     ]
   },
@@ -334,7 +418,11 @@
           "P",
           "P"
         ],
-        "queue": []
+        "queue": [
+          "B",
+          "B",
+          "V"
+        ]
       },
       {
         "active": [
@@ -342,7 +430,11 @@
           "R",
           "Y"
         ],
-        "queue": []
+        "queue": [
+          "V",
+          "V",
+          "W"
+        ]
       },
       {
         "active": [
@@ -350,18 +442,48 @@
           "Y",
           "R"
         ],
-        "queue": []
+        "queue": [
+          "B",
+          "Y",
+          "W"
+        ]
       },
       {
         "active": [
           null,
-          null,
+          "V",
           null
         ],
-        "queue": []
+        "queue": [
+          "W",
+          "R",
+          "R"
+        ]
+      },
+      {
+        "active": [
+          "Y",
+          "V",
+          "Y"
+        ],
+        "queue": [
+          "R",
+          "P"
+        ]
+      },
+      {
+        "active": [
+          null,
+          "V",
+          null
+        ],
+        "queue": [
+          "P",
+          "P"
+        ]
       }
     ],
-    "moveLimit": 8,
+    "moveLimit": 22,
     "starThresholds": [
       5,
       7,
@@ -370,20 +492,28 @@
     "schemaVersion": 2,
     "potLayout": [
       {
-        "x": 91,
-        "y": 219
+        "x": 105,
+        "y": 93
+      },
+      {
+        "x": 280,
+        "y": 95
+      },
+      {
+        "x": 95,
+        "y": 262
+      },
+      {
+        "x": 286,
+        "y": 263
+      },
+      {
+        "x": 99,
+        "y": 434
       },
       {
         "x": 293,
-        "y": 220
-      },
-      {
-        "x": 187,
-        "y": 405
-      },
-      {
-        "x": 192,
-        "y": 252
+        "y": 433
       }
     ]
   },
@@ -397,7 +527,11 @@
           "Y",
           "R"
         ],
-        "queue": []
+        "queue": [
+          "V",
+          "V",
+          "B"
+        ]
       },
       {
         "active": [
@@ -405,7 +539,11 @@
           "Y",
           "P"
         ],
-        "queue": []
+        "queue": [
+          "W",
+          "W",
+          "B"
+        ]
       },
       {
         "active": [
@@ -417,14 +555,55 @@
       },
       {
         "active": [
+          "W",
+          "B",
+          "V"
+        ],
+        "queue": []
+      },
+      {
+        "active": [
+          "O",
+          "Y",
+          "W"
+        ],
+        "queue": [
+          "Y",
+          "W",
+          "W"
+        ]
+      },
+      {
+        "active": [
           null,
+          "Y",
+          null
+        ],
+        "queue": [
+          "O",
+          "O"
+        ]
+      },
+      {
+        "active": [
           null,
+          "V",
+          null
+        ],
+        "queue": [
+          "V"
+        ]
+      },
+      {
+        "active": [
+          null,
+          "V",
           null
         ],
         "queue": []
       }
     ],
-    "moveLimit": 8,
+    "moveLimit": 18,
     "starThresholds": [
       5,
       7,
@@ -433,20 +612,36 @@
     "schemaVersion": 2,
     "potLayout": [
       {
-        "x": 72,
-        "y": 163
+        "x": 91,
+        "y": 32
       },
       {
-        "x": 316,
-        "y": 174
+        "x": 286,
+        "y": 35
       },
       {
-        "x": 180,
-        "y": 404
+        "x": 90,
+        "y": 180
       },
       {
-        "x": 196,
-        "y": 238
+        "x": 289,
+        "y": 178
+      },
+      {
+        "x": 90,
+        "y": 321
+      },
+      {
+        "x": 293,
+        "y": 328
+      },
+      {
+        "x": 91,
+        "y": 468
+      },
+      {
+        "x": 293,
+        "y": 469
       }
     ]
   },
@@ -462,7 +657,10 @@
         ],
         "queue": [
           "P",
-          "P"
+          "P",
+          "C",
+          "Y",
+          "Y"
         ]
       },
       {
@@ -473,7 +671,10 @@
         ],
         "queue": [
           "R",
-          "R"
+          "R",
+          "C",
+          "Y",
+          "Y"
         ]
       },
       {
@@ -483,6 +684,9 @@
           "R"
         ],
         "queue": [
+          "Y",
+          "B",
+          "B",
           "Y"
         ]
       },
@@ -493,16 +697,22 @@
           "Y"
         ],
         "queue": [
-          "Y"
+          "Y",
+          "B",
+          "V"
         ]
       },
       {
         "active": [
           null,
-          null,
+          "C",
           null
         ],
-        "queue": []
+        "queue": [
+          "V",
+          "V",
+          "Y"
+        ]
       }
     ],
     "moveLimit": 18,
@@ -548,7 +758,10 @@
         "queue": [
           "R",
           "P",
-          "R"
+          "R",
+          "C",
+          "C",
+          "V"
         ]
       },
       {
@@ -560,7 +773,10 @@
         "queue": [
           "P",
           "Y",
-          "P"
+          "P",
+          "O",
+          "Y",
+          "Y"
         ]
       },
       {
@@ -572,19 +788,28 @@
         "queue": [
           "R",
           "P",
+          "Y",
+          "B",
+          "B",
           "Y"
         ]
       },
       {
         "active": [
           null,
-          null,
+          "C",
           null
         ],
-        "queue": []
+        "queue": [
+          "B",
+          "O",
+          "O",
+          "V",
+          "V"
+        ]
       }
     ],
-    "moveLimit": 18,
+    "moveLimit": 24,
     "starThresholds": [
       11,
       14,
@@ -2284,21 +2509,35 @@
   }
 ];
 
+  // Bump this whenever the hardcoded SORT_BLOSSOM_LEVELS changes shape OR
+  // ids covered. Browsers with an older stamp in localStorage will be forced
+  // to re-read from file (preventing stale cached data from masking new ids).
+  const LEVELS_DATA_VERSION = '2026-05-14-curve_5_30';
+
   function loadLevels() {
     try {
+      const stamp = localStorage.getItem('kvtm2_levels_v2_stamp');
       const r = localStorage.getItem('kvtm2_levels_v2');
+      if (stamp !== LEVELS_DATA_VERSION) {
+        // Stale cache — drop and use file.
+        try { localStorage.removeItem('kvtm2_levels_v2'); } catch {}
+        return SORT_BLOSSOM_LEVELS;
+      }
       if (r) {
         const p = JSON.parse(r);
-        // Accept if same or more levels than hardcoded (editor push)
-        if (Array.isArray(p) && p.length >= SORT_BLOSSOM_LEVELS.length) return p;
-        // Accept partial push: merge potLayout overrides into hardcoded levels
-        // (editor may have pushed only layout changes, not full level data)
-        if (Array.isArray(p) && p.length > 0) {
-          const merged = SORT_BLOSSOM_LEVELS.map(lv => {
-            const override = p.find(x => x.id === lv.id);
-            return override ? Object.assign({}, lv, override) : lv;
-          });
-          return merged;
+        // Required: localStorage MUST cover every hardcoded id. Otherwise the
+        // editor's partial push from an older session may be missing ids we
+        // just added — fall back to file.
+        if (Array.isArray(p)) {
+          const lsIds = new Set(p.map(x => x.id));
+          const hasAllIds = SORT_BLOSSOM_LEVELS.every(lv => lsIds.has(lv.id));
+          if (hasAllIds && p.length >= SORT_BLOSSOM_LEVELS.length) return p;
+          if (hasAllIds && p.length > 0) {
+            return SORT_BLOSSOM_LEVELS.map(lv => {
+              const override = p.find(x => x.id === lv.id);
+              return override ? Object.assign({}, lv, override) : lv;
+            });
+          }
         }
       }
     } catch {}
@@ -2308,6 +2547,7 @@
   function saveLevels(levels) {
     try {
       localStorage.setItem('kvtm2_levels_v2', JSON.stringify(levels));
+      localStorage.setItem('kvtm2_levels_v2_stamp', LEVELS_DATA_VERSION);
       return true;
     } catch { return false; }
   }

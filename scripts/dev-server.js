@@ -198,12 +198,19 @@ const server = http.createServer((req, res) => {
       if (err) { res.writeHead(413, { 'Content-Type': 'application/json' });
                  res.end(JSON.stringify({ ok: false, error: err.message })); return; }
       try {
-        // Client now sends durationsLiteral (string) — the canonical literal form
-        // ('null' | 'NNN' | '[d1,d2,...]'). Server writes it verbatim into the
-        // _BLOOM_DURS block. Falls back to legacy `durations` array for compat.
-        const { color, rects, durationsLiteral, durations } = JSON.parse(body);
-        console.log(`[save-bloom-rects] color=${color} rects=${rects?.length} durationsLiteral=${JSON.stringify(durationsLiteral)} durations=${JSON.stringify(durations)?.slice(0,60)}`);
-        if (!color || !Array.isArray(rects)) throw new Error('color + rects required');
+        // Client sends:
+        //   - bloomDataLiteral (string, NEW Phase 1): atlas+module+anim format,
+        //     written verbatim into _BLOOM_DATA[color]. Engine prefers this path.
+        //   - rectsLiteral (string): legacy/variant format for _BLOOM_RECTS[color].
+        //   - durationsLiteral (string): same convention for _BLOOM_DURS[color].
+        //   - rects (array), durations (array): legacy fallbacks.
+        //
+        // Phase 1 emits ALL THREE so engine + tool stay in sync even if a
+        // future revert drops _BLOOM_DATA.
+        const { color, rects, rectsLiteral, durationsLiteral, durations, bloomDataLiteral } = JSON.parse(body);
+        console.log(`[save-bloom-rects] color=${color} bloomDataLen=${bloomDataLiteral?.length||0} rectsLiteralLen=${rectsLiteral?.length||0} durationsLiteral=${(durationsLiteral||'').slice(0,60)}`);
+        if (!color) throw new Error('color required');
+        if (!rectsLiteral && !Array.isArray(rects)) throw new Error('rectsLiteral or rects required');
         const renderFile = path.join(ROOT, 'engine', 'sort_blossom_render.js');
         let src = fs.readFileSync(renderFile, 'utf8');
 
@@ -214,15 +221,41 @@ const server = http.createServer((req, res) => {
           const before = source.slice(0, blockStart);
           let block = source.slice(blockStart, blockEnd + 2);
           const after = source.slice(blockEnd + 2);
+          let matched = false;
           const lines = block.split('\n').map(line => {
             const m = line.match(new RegExp(`^(\\s+${colorKey}:\\s*)(.+?)(,?)$`));
-            if (m) return `${m[1]}${newVal}${m[3]}`;
+            if (m) { matched = true; return `${m[1]}${newVal}${m[3]}`; }
             return line;
           });
+          if (!matched) {
+            // Insert before closing `};` — handles empty/sparse blocks like
+            // a fresh _BLOOM_DATA that doesn't yet have any color keys.
+            let closeIdx = -1;
+            for (let i = lines.length - 1; i >= 0; i--) {
+              if (lines[i].trim() === '};') { closeIdx = i; break; }
+            }
+            if (closeIdx >= 0) {
+              const indent = '    ';
+              lines.splice(closeIdx, 0, `${indent}${colorKey}: ${newVal},`);
+            }
+          }
           return before + lines.join('\n') + after;
         }
 
-        src = replaceColorLine(src, '_BLOOM_RECTS', color, JSON.stringify(rects));
+        // _BLOOM_DATA (preferred new path). Optional — only patched when
+        // client sent a literal. Engine treats this as the source of truth
+        // when present, so we want this written first.
+        if (typeof bloomDataLiteral === 'string' && bloomDataLiteral.length) {
+          src = replaceColorLine(src, '_BLOOM_DATA', color, bloomDataLiteral);
+        }
+
+        // _BLOOM_RECTS: prefer pre-built rectsLiteral (handles nested variants),
+        // else stringify the legacy flat rects array. Kept in sync as backup
+        // even when _BLOOM_DATA is present.
+        const rectsLit = (typeof rectsLiteral === 'string' && rectsLiteral.length)
+          ? rectsLiteral
+          : JSON.stringify(rects);
+        src = replaceColorLine(src, '_BLOOM_RECTS', color, rectsLit);
 
         let durLit = null;
         if (typeof durationsLiteral === 'string' && durationsLiteral.length) {
@@ -239,7 +272,7 @@ const server = http.createServer((req, res) => {
 
         fs.writeFileSync(renderFile, src, 'utf8');
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, message: `Saved ${color}: ${rects.length} frames · _BLOOM_DURS=${durLit ?? '(unchanged)'}` }));
+        res.end(JSON.stringify({ ok: true, message: `Saved ${color}: rectsLit=${rectsLit.length}b · _BLOOM_DURS=${durLit ?? '(unchanged)'}` }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: false, error: e.message }));

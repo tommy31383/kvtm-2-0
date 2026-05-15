@@ -77,6 +77,9 @@
     box-shadow: 0 0 0 4px var(--ink), 0 0 0 6px var(--ink-soft), 0 20px 60px rgba(58,42,28,0.5);
     overflow: hidden;
     flex-shrink: 0;
+    /* Set by JS fitPhoneFrame() when viewport smaller than 390×844.
+       Keeps internal 390×844 coord space intact — children don't reflow. */
+    transform-origin: center center;
   }
   /* Notch */
   #phone-frame::before {
@@ -2183,8 +2186,16 @@ const Hub = (() => {
   }
 
   // Build the garden SVG — Cozy Cottage Exterior scene
+  // Memoized by serialized decorTasksDone state — skips template literal eval
+  // + DOM parse on hub re-entry when no decor task was completed in between.
+  let _gardenCache = { key: null, html: null };
   function buildGardenSVG(containerEl) {
     const done = Save.get().hub.decorTasksDone || [];
+    const cacheKey = done.join(',');
+    if (_gardenCache.key === cacheKey && _gardenCache.html) {
+      containerEl.innerHTML = _gardenCache.html;
+      return;
+    }
     const slotDone = [1,2,3,4,5].map(s => isSlotDone(s));
     const slotProg = [1,2,3,4,5].map(s => slotProgress(s));
 
@@ -2439,32 +2450,31 @@ const Hub = (() => {
   <rect x="0" y="330" width="390" height="10" fill="#3a2a1c" opacity="0.08"/>
 </svg>`;
 
+    _gardenCache = { key: cacheKey, html: svg };
     containerEl.innerHTML = svg;
   }
 
-  // Refresh top bar stars counter with pop animation
+  // Refresh top bar stars counter with pop animation.
+  // DOM refs cached per hub mount (cleared in unmount via _clearHubRefs).
+  let _starsEl = null, _lvlEl = null, _badgeEl = null;
+  function _clearHubRefs() { _starsEl = _lvlEl = _badgeEl = null; }
   function refreshStarsUI() {
-    const el = document.getElementById('hub-stars-count');
+    const el = _starsEl || (_starsEl = document.getElementById('hub-stars-count'));
     if (!el) return;
-    const val = Save.get().progress.starsBalance;
-    el.textContent = val;
-    el.classList.remove('star-pop');
-    void el.offsetWidth; // reflow
-    el.classList.add('star-pop');
-    setTimeout(() => el.classList.remove('star-pop'), 400);
-    // Also refresh level number in action button
-    const lvlEl = document.getElementById('rm-level-num');
-    if (lvlEl) lvlEl.textContent = Save.get().progress.currentLevel;
-    // Refresh task badge
-    const badgeEl = document.getElementById('rm-task-badge');
+    const save = Save.get();
+    el.textContent = save.progress.starsBalance;
+    // Web Animations API — no class-toggle reflow needed
+    el.animate(
+      [{transform:'scale(1)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],
+      {duration:400, easing:'ease-out'}
+    );
+    const lvlEl = _lvlEl || (_lvlEl = document.getElementById('rm-level-num'));
+    if (lvlEl) lvlEl.textContent = save.progress.currentLevel;
+    const badgeEl = _badgeEl || (_badgeEl = document.getElementById('rm-task-badge'));
     if (badgeEl) {
       const nextTask = getNextTask();
-      if (nextTask) {
-        badgeEl.textContent = 1;
-        badgeEl.style.display = '';
-      } else {
-        badgeEl.style.display = 'none';
-      }
+      if (nextTask) { badgeEl.textContent = 1; badgeEl.style.display = ''; }
+      else { badgeEl.style.display = 'none'; }
     }
   }
 
@@ -2751,6 +2761,7 @@ const Hub = (() => {
     spawnLeaves,
     openTasksSheet,
     _doTaskFromSheet,
+    _clearHubRefs,
   };
 })();
 
@@ -3050,6 +3061,11 @@ const Scenes = {
 
     `;
 
+    // Clear cached DOM refs when leaving hub — next mount re-resolves them
+    if (typeof Game !== 'undefined' && Game.onTeardown) {
+      Game.onTeardown(() => Hub._clearHubRefs && Hub._clearHubRefs());
+    }
+
     // Build garden SVG after DOM insertion — try RAF, microtask, and timeout fallback
     const _hubMount = () => {
       try {
@@ -3067,9 +3083,12 @@ const Scenes = {
         if (Scenes._maybeAutoShowDiary) Scenes._maybeAutoShowDiary();
       } catch(e) { console.error('[Hub mount]', e); }
     };
-    requestAnimationFrame(_hubMount);
-    setTimeout(_hubMount, 50);
-    setTimeout(_hubMount, 200);
+    requestAnimationFrame(() => {
+      _hubMount();
+      if (!document.getElementById('garden-main-svg')) {
+        setTimeout(_hubMount, 100);
+      }
+    });
     requestAnimationFrame(() => {
 
       // Welcome via Companion (AI or fallback)
@@ -4660,8 +4679,8 @@ if (document.readyState === 'loading') {
 // ════════════════════════════════════════════════
 
 function LEVEL_TYPE(id) {
-  // L1-L20 = Sort Blossom (shared engine), L21+ = Triple Tile
-  return id <= 20 ? 'sort_blossom' : 'triple_tile';
+  // L1-L30 = Sort Blossom (shared engine). Triple Tile reserved for future tiers (id > 30).
+  return id <= 30 ? 'sort_blossom' : 'triple_tile';
 }
 
 // ════════════════════════════════════════════════
@@ -5250,6 +5269,11 @@ const TripleTile = (() => {
       if (_timeLeft <= 30 && _timeLeft % 2 === 0) sfx('urgent');
       if (_timeLeft <= 0) _triggerLose('time');
     }, 1000);
+    // Stop ticking if user navigates away mid-level — prevents drift +
+    // false-positive _triggerLose('time') firing against a detached scene.
+    if (typeof Game !== 'undefined' && Game.onTeardown) {
+      Game.onTeardown(() => { clearInterval(_timerInterval); _timerInterval = null; });
+    }
   }
 
   function _updateTimerDisplay() {
@@ -7203,6 +7227,33 @@ Dev.refresh = function() {
 // ════ PHASE 5: LOG ════
 // ════════════════════════════════════════════════
 console.log('[KVTM 2.0] Phase 5 initialized — Story + Daily + Polish active.');
+
+// ════════════════════════════════════════════════
+// ════ PHONE FRAME AUTO-FIT ════
+// ════════════════════════════════════════════════
+// Scale #phone-frame down (never up) when the window is smaller than 390×844.
+// Children keep their hardcoded 390×844 coord space — only the visual is
+// scaled via CSS transform. Mobile viewport (≤430px) is handled by media
+// query (frame becomes 100vw×100vh) and skipped here.
+(function setupPhoneFit() {
+  const FRAME_W = 390, FRAME_H = 844, MOBILE_BREAKPOINT = 430;
+  function fit() {
+    const frame = document.getElementById('phone-frame');
+    if (!frame) return;
+    if (window.innerWidth <= MOBILE_BREAKPOINT) {
+      frame.style.transform = '';
+      return;
+    }
+    const sx = window.innerWidth / FRAME_W;
+    const sy = window.innerHeight / FRAME_H;
+    const s = Math.min(sx, sy, 1);
+    frame.style.transform = s < 1 ? `scale(${s.toFixed(4)})` : '';
+  }
+  window.addEventListener('resize', fit);
+  // Run once on script eval AND once after load (covers font-shift, etc.)
+  fit();
+  window.addEventListener('load', fit);
+})();
 </script>
 </body>
 </html>

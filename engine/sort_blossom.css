@@ -36,9 +36,9 @@
   --sb-pot-img-w:     82px;
   --sb-active-h:      110px;
   /* per-slot flower offsets (chỉnh bằng Layout tool) */
-  --sb-s0-ox: 7px;  --sb-s0-oy: -12px; --sb-s0-sc: 0.85; --sb-s0-anim-ox: 0px; --sb-s0-anim-oy: 0px;
-  --sb-s1-ox: 3px;  --sb-s1-oy: -3px; --sb-s1-sc: 1;    --sb-s1-anim-ox: 0px; --sb-s1-anim-oy: 0px;
-  --sb-s2-ox: 2px; --sb-s2-oy: -5px;  --sb-s2-sc: 0.85; --sb-s2-anim-ox: 0px; --sb-s2-anim-oy: 0px;
+  --sb-s0-ox: 4px;  --sb-s0-oy: -12px; --sb-s0-sc: 0.85; --sb-s0-anim-ox: 0px; --sb-s0-anim-oy: 0px;
+  --sb-s1-ox: 1px;  --sb-s1-oy: -3px; --sb-s1-sc: 1;    --sb-s1-anim-ox: 0px; --sb-s1-anim-oy: 0px;
+  --sb-s2-ox: -9px; --sb-s2-oy: -5px;  --sb-s2-sc: 0.85; --sb-s2-anim-ox: 1px; --sb-s2-anim-oy: 0px;
   /* bud uses same positioning as flower slots — no separate offsets needed */
 }
 

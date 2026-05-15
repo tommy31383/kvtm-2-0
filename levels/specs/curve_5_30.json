@@ -1,0 +1,36 @@
+{
+  "_comment": "Difficulty curve L5-L30 — ramps: colors 2→8, queue 0→6, emptyPots 1→0, pots 3→9. Run: npm run gen -- --batch levels/specs/curve_5_30.json --write",
+  "_axes": {
+    "colors_R_P_Y_V_W_O_B_C": "red, pink, yellow, violet/purple, white, orange, blue, camellia",
+    "ramp": "easy onramp L5-7 → medium L8-15 → hard L16-25 → brutal L26-30",
+    "emptyPots": "1 = traditional (1 free maneuver pot), 0 = all pots have flowers at start"
+  },
+  "levels": [
+    { "id": 5,  "name": "Đôi Hoa Nhỏ",       "colors": ["R","P"],            "perColor": 3, "pots": 3, "queueDepth": 1, "emptyPots": 1, "difficulty": "easy",   "seed": 5 },
+    { "id": 6,  "name": "Cặp Đôi Hoàn Hảo",   "colors": ["R","P"],            "perColor": 6, "pots": 4, "queueDepth": 2, "emptyPots": 1, "difficulty": "easy",   "seed": 6 },
+    { "id": 7,  "name": "Tam Sắc",           "colors": ["R","P","Y"],        "perColor": 3, "pots": 4, "queueDepth": 0, "emptyPots": 1, "difficulty": "easy",   "seed": 7 },
+    { "id": 8,  "name": "Vườn Ba Màu",       "colors": ["R","P","Y"],        "perColor": 6, "pots": 4, "queueDepth": 3, "emptyPots": 1, "difficulty": "medium", "seed": 8 },
+    { "id": 9,  "name": "Buổi Sớm Rực Rỡ",   "colors": ["R","P","Y"],        "perColor": 6, "pots": 5, "queueDepth": 2, "emptyPots": 1, "difficulty": "medium", "seed": 9 },
+    { "id": 10, "name": "Vườn Không Lối",     "colors": ["R","P","Y"],        "perColor": 6, "pots": 4, "queueDepth": 3, "emptyPots": 0, "difficulty": "medium", "seed": 10 },
+    { "id": 11, "name": "Tứ Sắc Khởi Đầu",    "colors": ["R","P","Y","V"],    "perColor": 3, "pots": 5, "queueDepth": 0, "emptyPots": 1, "difficulty": "medium", "seed": 11 },
+    { "id": 12, "name": "Cung Đường Hoa",     "colors": ["R","P","Y","V"],    "perColor": 6, "pots": 6, "queueDepth": 2, "emptyPots": 1, "difficulty": "medium", "seed": 12 },
+    { "id": 13, "name": "Khu Vườn Khép Kín",  "colors": ["R","P","Y","V"],    "perColor": 6, "pots": 5, "queueDepth": 3, "emptyPots": 0, "difficulty": "hard",   "seed": 13 },
+    { "id": 14, "name": "Bão Tứ Sắc",        "colors": ["R","P","Y","V"],    "perColor": 9, "pots": 7, "queueDepth": 3, "emptyPots": 0, "difficulty": "hard",   "seed": 14 },
+    { "id": 15, "name": "Ngũ Sắc Êm Đềm",     "colors": ["R","P","Y","V","W"], "perColor": 3, "pots": 6, "queueDepth": 0, "emptyPots": 1, "difficulty": "medium", "seed": 15 },
+    { "id": 16, "name": "Cầu Vồng Ban Mai",   "colors": ["R","P","Y","V","W"], "perColor": 6, "pots": 7, "queueDepth": 2, "emptyPots": 1, "difficulty": "hard",   "seed": 16 },
+    { "id": 17, "name": "Vườn Năm Tầng",     "colors": ["R","P","Y","V","W"], "perColor": 6, "pots": 6, "queueDepth": 3, "emptyPots": 0, "difficulty": "hard",   "seed": 17 },
+    { "id": 18, "name": "Đêm Hoa Đèn",       "colors": ["R","P","Y","V","W"], "perColor": 6, "pots": 6, "queueDepth": 4, "emptyPots": 0, "difficulty": "hard",   "seed": 18 },
+    { "id": 19, "name": "Sáu Sắc Giao Hòa",   "colors": ["R","P","Y","V","W","O"], "perColor": 3, "pots": 7, "queueDepth": 0, "emptyPots": 1, "difficulty": "medium", "seed": 19 },
+    { "id": 20, "name": "Vườn Lục Sắc",       "colors": ["R","P","Y","V","W","O"], "perColor": 6, "pots": 8, "queueDepth": 3, "emptyPots": 1, "difficulty": "hard",   "seed": 20 },
+    { "id": 21, "name": "Cuộc Chơi Sáu Màu",  "colors": ["R","P","Y","V","W","O"], "perColor": 6, "pots": 7, "queueDepth": 3, "emptyPots": 0, "difficulty": "hard",   "seed": 21 },
+    { "id": 22, "name": "Lốc Xoáy Sắc Màu",   "colors": ["R","P","Y","V","W","O"], "perColor": 9, "pots": 9, "queueDepth": 4, "emptyPots": 0, "difficulty": "hard",   "seed": 22 },
+    { "id": 23, "name": "Bảy Sắc Cầu Vồng",   "colors": ["R","P","Y","V","W","O","B"], "perColor": 3, "pots": 8, "queueDepth": 0, "emptyPots": 1, "difficulty": "hard",   "seed": 23 },
+    { "id": 24, "name": "Biển Hoa Bảy Tầng",  "colors": ["R","P","Y","V","W","O","B"], "perColor": 6, "pots": 9, "queueDepth": 3, "emptyPots": 1, "difficulty": "hard",   "seed": 24 },
+    { "id": 25, "name": "Vũ Trụ Hoa",        "colors": ["R","P","Y","V","W","O","B"], "perColor": 6, "pots": 8, "queueDepth": 4, "emptyPots": 0, "difficulty": "brutal", "seed": 25 },
+    { "id": 26, "name": "Đỉnh Bảy Sắc",       "colors": ["R","P","Y","V","W","O","B"], "perColor": 9, "pots": 9, "queueDepth": 5, "emptyPots": 0, "difficulty": "brutal", "seed": 26 },
+    { "id": 27, "name": "Tám Sắc Tinh Hoa",   "colors": ["R","P","Y","V","W","O","B","C"], "perColor": 3, "pots": 9, "queueDepth": 0, "emptyPots": 1, "difficulty": "hard",   "seed": 27 },
+    { "id": 28, "name": "Vườn Bát Sắc",       "colors": ["R","P","Y","V","W","O","B","C"], "perColor": 6, "pots": 9, "queueDepth": 3, "emptyPots": 1, "difficulty": "brutal", "seed": 28 },
+    { "id": 29, "name": "Cuộc Chiến Cuối",    "colors": ["R","P","Y","V","W","O","B","C"], "perColor": 6, "pots": 9, "queueDepth": 5, "emptyPots": 0, "difficulty": "brutal", "seed": 29 },
+    { "id": 30, "name": "Truyền Thuyết Vườn", "colors": ["R","P","Y","V","W","O","B","C"], "perColor": 9, "pots": 9, "queueDepth": 6, "emptyPots": 0, "difficulty": "brutal", "seed": 30 }
+  ]
+}

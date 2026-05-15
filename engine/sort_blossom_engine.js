@@ -216,6 +216,96 @@
    * @param {number} maxStates safety cap
    * @returns {{moves:number, states:number, solvable:boolean, timeout?:boolean}}
    */
+  /**
+   * Like bfsSolve but reconstructs a move sequence so callers can REPLAY it
+   * (auto-play, hint chain, etc.).
+   *
+   * Returns `{ solvable, path, moves, states, solved, ... }`:
+   *   - solvable=true, solved=true : found WIN path → `path` solves the level
+   *   - solvable=true, solved=false: budget exhausted but `path` is best-effort
+   *     progress (leads to state with fewest flowers remaining). Replaying it
+   *     advances the board but won't necessarily win.
+   *   - solvable=false: no legal move at all (deadlock at start)
+   *
+   * Memory ~2× of bfsSolve (parent map). Use higher maxStates cautiously.
+   */
+  function bfsSolveWithPath(pots, maxStates = 200000) {
+    const start = initState(pots);
+    if (isWon(start)) return { moves: 0, path: [], states: 1, solvable: true, solved: true };
+
+    const startKey = encode(start);
+    const parent = new Map();   // childKey → { parentKey, move }
+    parent.set(startKey, null);
+
+    const queue = [{ state: start, key: startKey }];
+    let head = 0, states = 1;
+
+    // Track BEST leaf seen so far (lowest flower count = closest to win).
+    function countFlowers(s) {
+      let n = 0;
+      for (const p of s) {
+        for (const c of p.active) if (c) n++;
+        n += p.queue.length;
+      }
+      return n;
+    }
+    function reconstructPath(k) {
+      const path = [];
+      let cur = k;
+      while (parent.get(cur)) {
+        path.unshift(parent.get(cur).move);
+        cur = parent.get(cur).parentKey;
+      }
+      return path;
+    }
+    let bestKey = null;
+    let bestFlowers = countFlowers(start);
+
+    while (head < queue.length) {
+      if (states > maxStates) {
+        // Budget exhausted — return best-effort partial path.
+        if (bestKey) {
+          const path = reconstructPath(bestKey);
+          return { moves: path.length, path, states, solvable: true, solved: false, timeout: true };
+        }
+        return { moves: -1, states, solvable: false, timeout: true };
+      }
+      const { state, key } = queue[head++];
+      const N = state.length;
+      for (let a = 0; a < N; a++) {
+        for (let posA = 0; posA < 3; posA++) {
+          if (!state[a].active[posA]) continue;
+          for (let b = 0; b < N; b++) {
+            for (let posB = 0; posB < 3; posB++) {
+              if (a === b && posA === posB) continue;
+              if (state[b].active[posB] !== null) continue;
+              const ns = clone(state);
+              const r = applyMove(ns, a, posA, b, posB);
+              if (!r.ok) continue;
+              const nk = encode(ns);
+              if (parent.has(nk)) continue;
+              parent.set(nk, { parentKey: key, move: { a, posA, b, posB } });
+              states++;
+              if (isWon(ns)) {
+                return { moves: queue.length, path: reconstructPath(nk), states, solvable: true, solved: true };
+              }
+              // Track best-effort leaf (lowest flower count).
+              const fc = countFlowers(ns);
+              if (fc < bestFlowers) { bestFlowers = fc; bestKey = nk; }
+              queue.push({ state: ns, key: nk });
+            }
+          }
+        }
+      }
+    }
+    // Exhausted search space without win — return best partial if any.
+    if (bestKey) {
+      const path = reconstructPath(bestKey);
+      return { moves: path.length, path, states, solvable: true, solved: false };
+    }
+    return { moves: -1, states, solvable: false };
+  }
+
   function bfsSolve(pots, maxStates = 100000) {
     const start = initState(pots);
     if (isWon(start)) return { moves: 0, states: 1, solvable: true };
@@ -299,7 +389,7 @@
     isWon, isDeadlock, hasPendingVanish,
     starsFor,
     validate, countColors,
-    bfsSolve, findHint, difficultyScore,
+    bfsSolve, bfsSolveWithPath, findHint, difficultyScore,
     VERSION: 3,
   };
 

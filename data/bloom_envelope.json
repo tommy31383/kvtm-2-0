@@ -1,0 +1,36 @@
+{
+  "compact": {
+    "pot_w": 114,
+    "pot_h": 160,
+    "pad_left": 36,
+    "pad_right": 52,
+    "pad_top": 0,
+    "pad_bot": 0,
+    "effective_w": 202,
+    "effective_h": 160,
+    "raw": {
+      "xmin": -35.11999361434245,
+      "xmax": 165.62845589395187,
+      "ymin": 5.964493793409559,
+      "ymax": 136.2694208157032
+    },
+    "measured_at": "2026-05-14T05:06:37.181Z"
+  },
+  "tighter": {
+    "pot_w": 96,
+    "pot_h": 135,
+    "pad_left": 38,
+    "pad_right": 38,
+    "pad_top": 0,
+    "pad_bot": 0,
+    "effective_w": 172,
+    "effective_h": 135,
+    "raw": {
+      "xmin": -37.68705356475262,
+      "xmax": 133.2822577950192,
+      "ymin": 6.97075959457257,
+      "ymax": 114.51599361293202
+    },
+    "measured_at": "2026-05-14T05:06:37.277Z"
+  }
+}

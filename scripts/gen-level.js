@@ -64,11 +64,16 @@ function validateSpec(spec) {
   if (typeof spec.perColor !== 'number' || spec.perColor < 3 || spec.perColor % 3 !== 0) {
     errs.push('perColor must be a positive multiple of 3');
   }
-  if (typeof spec.pots !== 'number' || spec.pots < 2 || spec.pots > 9) {
-    errs.push('pots must be 2..9');
+  if (typeof spec.pots !== 'number' || spec.pots < 2 || spec.pots > 12) {
+    errs.push('pots must be 2..12');
   }
   if (typeof spec.queueDepth !== 'number' || spec.queueDepth < 0 || spec.queueDepth > 6) {
     errs.push('queueDepth must be 0..6');
+  }
+  if (spec.emptyPots !== undefined) {
+    if (typeof spec.emptyPots !== 'number' || spec.emptyPots < 0 || spec.emptyPots >= spec.pots) {
+      errs.push(`emptyPots must be 0..${spec.pots - 1}`);
+    }
   }
   return errs;
 }
@@ -103,11 +108,17 @@ function generate(spec) {
   if (errs.length) throw new Error(`Spec invalid: ${errs.join('; ')}`);
 
   const totalFlowers = spec.colors.length * spec.perColor;
-  const playPots = spec.pots - 1;     // keep 1 empty for maneuver
+  const emptyPots = spec.emptyPots ?? 1;  // default: reserve 1 empty maneuver pot
+  const playPots = spec.pots - emptyPots;
   const capPerPot = 3 + spec.queueDepth;
 
   if (totalFlowers > playPots * capPerPot) {
     throw new Error(`Infeasible: ${totalFlowers} flowers > ${playPots} pots × ${capPerPot} cap`);
+  }
+  // With 0 empty maneuver pots, we need >=1 free slot somewhere so the
+  // player can make a first move. Require strictly more capacity than flowers.
+  if (emptyPots === 0 && totalFlowers >= playPots * capPerPot) {
+    throw new Error(`Infeasible (emptyPots=0): ${totalFlowers} flowers ≥ ${playPots} pots × ${capPerPot} cap — no slack for initial move. Increase queueDepth or pots, or set emptyPots:1.`);
   }
 
   const flowers = [];
@@ -134,7 +145,23 @@ function generate(spec) {
         queue: chunk.slice(3),
       });
     }
-    pots.push({ active: [null, null, null], queue: [] });
+    // When emptyPots=0 we may end up with every active row full → no legal
+    // moves at init. Ensure at least 1 active slot is empty somewhere by
+    // pulling the LAST active flower of the LAST play pot to its queue.
+    if (emptyPots === 0 && pots.length > 0) {
+      const allActiveFull = pots.every(p => p.active.every(c => c !== null));
+      if (allActiveFull) {
+        const last = pots[pots.length - 1];
+        if (last.queue.length < spec.queueDepth) {
+          last.queue.push(last.active[2]);
+          last.active[2] = null;
+        }
+        // else: queue is also full; level is over-packed — let attempt fail
+      }
+    }
+    for (let e = 0; e < emptyPots; e++) {
+      pots.push({ active: [null, null, null], queue: [] });
+    }
 
     const probe = { id: spec.id, name: spec.name || `Level ${spec.id}`, pots, moveLimit: 999, starThresholds: [10, 20, 30], schemaVersion: 2 };
     if (Engine.validate(probe).length) continue;
@@ -162,9 +189,6 @@ function generate(spec) {
   const t2  = Math.ceil(opt * diff.t2);
   const t1  = lim;
 
-  // Pot layout positions
-  const potLayout = layoutPots(spec.pots, { jitter: spec.jitter || 0, seed: seedBase });
-
   const level = {
     id: spec.id,
     name: spec.name || `Level ${spec.id}`,
@@ -172,11 +196,16 @@ function generate(spec) {
     moveLimit: lim,
     starThresholds: [t3, t2, t1],
     schemaVersion: 2,
-    potLayout,
   };
+  // Pot layout: only emit when spec.layout === true. Otherwise the level
+  // ships without `potLayout`, and the game falls back to flex auto-center
+  // (or the designer adds positions later via tools/level_editor.html).
+  if (spec.layout === true) {
+    level.potLayout = layoutPots(spec.pots, { jitter: spec.jitter || 0, seed: seedBase });
+  }
   if (spec.tutorial) level.tutorial = true;
 
-  return { level, meta: { optimal: opt, solverConverged: best.solved, totalFlowers, playPots, difficulty: spec.difficulty || 'medium' } };
+  return { level, meta: { optimal: opt, solverConverged: best.solved, totalFlowers, playPots, emptyPots, difficulty: spec.difficulty || 'medium' } };
 }
 
 // ─── Apply to engine/sort_blossom_data.js ──────────────────────
@@ -195,16 +224,18 @@ function applyLevels(levels) {
   }
   if (end === -1) throw new Error('Could not find closing ] of SORT_BLOSSOM_LEVELS');
 
-  // Parse existing levels to merge by id
+  // Parse existing levels to merge by id (dedupe via Map — file may contain
+  // duplicate ids from earlier buggy writes; one merged record per id wins).
   const existingRaw = src.slice(arrStart, end + 1);
   const existing = eval(existingRaw); // file content is trusted; eval ok for parse
-  const merged = [...existing];
-  levels.forEach(lv => {
-    const idx = merged.findIndex(e => e.id === lv.id);
-    if (idx >= 0) merged[idx] = lv;
-    else merged.push(lv);
-  });
-  merged.sort((a, b) => a.id - b.id);
+  const byId = new Map();
+  for (const e of existing) {
+    if (!byId.has(e.id)) byId.set(e.id, e); // keep first occurrence on dup
+  }
+  for (const lv of levels) {
+    byId.set(lv.id, lv); // new gen wins
+  }
+  const merged = [...byId.values()].sort((a, b) => a.id - b.id);
 
   let tail = end + 1;
   if (src[tail] === ';') tail++;
