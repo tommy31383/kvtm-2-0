@@ -64,7 +64,7 @@ Y_MIN = EDGE_PAD_TOP                       =  12
 Y_MAX = FRAME_H - POT_H - EDGE_PAD_BOT = 700-160-18 = 522
 ```
 
-Max grid khả thi: **3 cols × 4 rows = 12 pot** (giới hạn N ≤ 9 cho UX).
+Max grid khả thi: **3 cols × 4 rows = 12 pot** (N ≤ 12, dùng N=10-12 cho hard levels).
 
 ## Khoảng cách thực tế từng preset
 
@@ -80,6 +80,9 @@ Max grid khả thi: **3 cols × 4 rows = 12 pot** (giới hạn N ≤ 9 cho UX).
 | 7 | 77 | 77 |  12 |  18 |  8 | 10 |
 | 8 | 77 | 77 |  12 |  18 |  8 | 10 |
 | 9 | 16 | 16 |  97 | 103 |  8 | 10 |
+| 10 | 16 | 16 |  12 |  18 |  8 | 10 |
+| 11 | 16 | 16 |  12 |  18 |  8 | 10 |
+| 12 | 16 | 16 |  12 |  18 |  8 | 10 |
 
 **Quan sát:**
 - N=2..8: chỉ 1 row hoặc 2 cột → edge X = 77 (rộng rãi)
@@ -87,7 +90,7 @@ Max grid khả thi: **3 cols × 4 rows = 12 pot** (giới hạn N ≤ 9 cho UX).
 - N=7..8 (4 rows): edge top/bottom 12-18 → pot gần biên trên/dưới
 - minGap luôn = 8 hoặc 10 → đảm bảo no overlap, no overflow
 
-## Patterns (N=2..9)
+## Patterns (N=2..12)
 
 | N | Pattern | Hàng |
 |---|---|---|
@@ -99,6 +102,57 @@ Max grid khả thi: **3 cols × 4 rows = 12 pot** (giới hạn N ≤ 9 cho UX).
 | 7 | 1 apex + 2-2-2 stack | 4 rows |
 | 8 | 2×4 grid | 4 rows |
 | 9 | 3×3 grid | 3 rows |
+| 10 | 3-3-3-1 stack | 4 rows |
+| 11 | 3-3-3-2 stack | 4 rows |
+| 12 | 3×4 grid (max density) | 4 rows |
+
+**Hard levels (N=10-12)** dùng 3-col packing × 4-row stack. Vừa khít frame vertically: `4×160 + 3×10 + 12 + 18 = 700`.
+
+## Bloom envelope (visual fan của 3 bông full)
+
+CSS `.sb-compact` được thiết kế để 3 bông nở **xoè ra như fan** từ gốc stem chung:
+- Pos 0 (trái): canvas rotate `-43°` quanh pivot `(50%, 95%)` → đầu bông lệch trái
+- Pos 1 (giữa): upright
+- Pos 2 (phải): rotate `+43°` → đầu bông lệch phải
+
+Visual envelope (đo bằng `scripts/measure-bloom-envelope.js`, ghi vào `data/bloom_envelope.json`):
+
+| Mode | Pot bbox | Pad L / R / T / B | Effective W × H |
+|---|---|---|---|
+| `.sb-compact` (current) | 114 × 160 | **36 / 52 / 0 / 0** | 202 × 160 |
+| `.sb-tighter` (reserved) | 96 × 135 | 38 / 38 / 0 / 0 | 172 × 135 |
+
+**Key insight**: bloom envelope **vượt pot bbox 52px sang phải, 36px sang trái** (compact mode, do `stem_x=4` lệch tâm). Hai pot side-by-side với `POT_GAP_X=8` (pot center distance = 122) sẽ có fan bloom **giao thoa visually ~30-45px** — đây là **design intent**, không phải bug:
+
+- **Pot bbox (114×160) không overlap** ✓ — đảm bảo bởi `POT_GAP_X` / `POT_GAP_Y`
+- **Pot rim** (terracotta `--sb-pot-img-w=82`) cách nhau ≥40px → rõ ràng visually
+- **Hit zone tap** = pot cell 114×160 → tap không nhầm sang pot khác
+- **Fan blooms** giữa pot cạnh nhau giao thoa "trên không" → look đẹp tự nhiên (vườn rậm)
+
+Visual fan overlap count theo N (informational, từ `describeBloomOverlap()`):
+
+| N  | bloom-fan pairs giao thoa |
+|----|---|
+| 2-3 | 1 |
+| 4-5 | 2 |
+| 6-7 | 3 |
+| 8 | 4 |
+| 9-10 | 6 |
+| 11 | 7 |
+| 12 | 8 |
+
+Số này tăng tuyến tính với N — **không cần "fix"**. Ngược lại, nếu muốn DECREASE fan overlap, options:
+1. Reduce `--sb-flower-w-side` (làm bông nhỏ lại) → giảm độ xoè
+2. Reduce CSS rotation angle (`--sb-flower-angle: 43° → ví dụ 30°`) → fan hẹp hơn
+3. Đổi sang `.sb-tighter` mode cho high-N (đã định nghĩa, chưa wire vào game)
+
+## Re-measure bloom envelope
+
+Khi CSS `.sb-compact` thay đổi (flower size, angle, stem offsets):
+```bash
+node scripts/measure-bloom-envelope.js  # cập nhật data/bloom_envelope.json
+node scripts/layout-pots.js report      # xem effective_w mới
+```
 
 ## Validation
 
@@ -143,4 +197,4 @@ Constants liên quan nhau:
 Tutorial L1-3 không có `potLayout` → fallback flex auto-layout.
 Mid levels có `potLayout` cũ (manually placed via editor) → vẫn render đúng vì validate là soft check, không re-generate.
 
-Generated levels (L31+) sẽ luôn có `potLayout` từ pipeline này.
+Generated levels (L31+) sẽ luôn có `potLayout` từ pipeline này. Hard tier (L41+ chẳng hạn) có thể dùng N=10-12 để tăng difficulty thông qua spatial density.
