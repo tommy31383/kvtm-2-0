@@ -1,0 +1,28 @@
+{
+  "_source": "Extracted from KVTM 2.0 engine/sort_blossom_render.js _BLOOM_DATA.R",
+  "_sheet": "flower_red_bloom.webp",
+  "_note": "Sample atlas+anim data in KVTM custom format. Used for Phase 0.4 import test in spine-clone.",
+  "modules": {
+    "bloom_0_0":  { "x": 44,  "y": 59,  "w": 75,  "h": 114, "dx": 1,  "dy": 3   },
+    "bloom_1_1":  { "x": 139, "y": 58,  "w": 82,  "h": 115, "dy": 3              },
+    "bloom_2_2":  { "x": 240, "y": 48,  "w": 88,  "h": 125, "dy": -3             },
+    "bloom_3_3":  { "x": 340, "y": 53,  "w": 98,  "h": 119, "dy": -4             },
+    "bloom_12":   { "x": 470, "y": 54,  "w": 93,  "h": 119, "dy": -8             },
+    "bloom_13":   { "x": 28,  "y": 249, "w": 92,  "h": 120, "dx": -1, "dy": -9   },
+    "bloom_14":   { "x": 128, "y": 246, "w": 100, "h": 122, "dx": 3,  "dy": -10  },
+    "bloom_15":   { "x": 230, "y": 246, "w": 106, "h": 123, "dx": 3,  "dy": -10  },
+    "bloom_8_8":  { "x": 340, "y": 243, "w": 101, "h": 125, "dx": 2,  "dy": -12  },
+    "bloom_16":   { "x": 474, "y": 243, "w": 103, "h": 126, "dx": 3,  "dy": -12  }
+  },
+  "anims": {
+    "bloom": [
+      {"m": "bloom_0_0", "d": 90}, {"m": "bloom_1_1", "d": 90},
+      {"m": "bloom_2_2", "d": 90}, {"m": "bloom_3_3", "d": 90},
+      {"m": "bloom_12",  "d": 90}, {"m": "bloom_13",  "d": 90},
+      {"m": "bloom_14",  "d": 90}, {"m": "bloom_15",  "d": 90},
+      {"m": "bloom_8_8", "d": 90}, {"m": "bloom_16",  "d": 90}
+    ],
+    "bud":    [{"m": "bloom_0_0", "d": 90}],
+    "flower": [{"m": "bloom_8_8", "d": 90}]
+  }
+}

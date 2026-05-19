@@ -1,11 +1,17 @@
 // Spine Clone — Phase 0 prototype entry
 //
-// "Hello bone": render a placeholder skeleton with 1 root bone + 1 attachment.
-// Slider rotates the bone → attachment follows because it's a child of the
-// bone's Pixi Container. Validates: PixiJS render path + parent/child transform
-// inheritance (foundation for full bone hierarchy in Phase 1).
+// What this validates so far:
+//   - Phase 0.3 "Hello bone": PixiJS Container parent/child = bone hierarchy
+//   - Phase 0.4 KVTM atlas import: load existing _BLOOM_DATA, render frames
+//     as RegionAttachments cycling through a "bloom" animation
+//
+// Scrub the timeline slider to step through bloom frames — each frame is a
+// different module from the atlas, swapped via attachment timeline (stepped).
 
-import { Application, Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Sprite, Texture, Rectangle, Assets } from 'pixi.js';
+import { loadKvtmSample } from './io/kvtmImport.js';
+import type { ImportResult } from './io/kvtmImport.js';
+import type { Skeleton, RegionAttachment } from './core/types.js';
 
 const canvasHost = document.getElementById('canvas-host') as HTMLDivElement;
 const rotSlider  = document.getElementById('rot-slider') as HTMLInputElement;
@@ -16,6 +22,7 @@ const resetBtn   = document.getElementById('reset-btn') as HTMLButtonElement;
 const statusMsg  = document.getElementById('status-msg') as HTMLSpanElement;
 const propRot    = document.getElementById('prop-rot') as HTMLSpanElement;
 const propScale  = document.getElementById('prop-scale') as HTMLSpanElement;
+const boneTree   = document.getElementById('bone-tree') as HTMLUListElement;
 
 async function boot() {
   const app = new Application();
@@ -32,65 +39,131 @@ async function boot() {
   const world = new Container();
   app.stage.addChild(world);
   const recenter = () => {
-    world.x = app.renderer.width / 2 / (window.devicePixelRatio || 1);
-    world.y = app.renderer.height / 2 / (window.devicePixelRatio || 1);
+    world.x = canvasHost.clientWidth / 2;
+    world.y = canvasHost.clientHeight / 2 + 100; // a bit lower so flower has room above
   };
   recenter();
   window.addEventListener('resize', recenter);
 
-  // Bone — child of world. Visual: line (length) + dot at pivot.
-  const bone = new Container();
-  world.addChild(bone);
-
-  const boneGraphic = new Graphics();
-  const BONE_LEN = 100;
-  boneGraphic.moveTo(0, 0).lineTo(BONE_LEN, 0).stroke({ color: 0xff8a3d, width: 2 });
-  boneGraphic.circle(0, 0, 5).fill({ color: 0xff8a3d, alpha: 0.9 });
-  boneGraphic.circle(0, 0, 2).fill({ color: 0xffffff });
-  bone.addChild(boneGraphic);
-
-  // Attachment — placeholder "flower" graphic, child of bone.
-  // In real skeleton: Slot → RegionAttachment → Sprite. For Phase 0 mock with Graphics.
-  const attach = new Graphics();
-  const FLOWER_R = 28;
-  attach.circle(BONE_LEN, 0, FLOWER_R).fill({ color: 0xe8455a });
-  // Petal hint — 6 small circles around center
-  for (let i = 0; i < 6; i++) {
-    const angle = (i / 6) * Math.PI * 2;
-    const px = BONE_LEN + Math.cos(angle) * FLOWER_R * 0.7;
-    const py = Math.sin(angle) * FLOWER_R * 0.7;
-    attach.circle(px, py, FLOWER_R * 0.35).fill({ color: 0xff6b80, alpha: 0.85 });
-  }
-  attach.circle(BONE_LEN, 0, FLOWER_R * 0.3).fill({ color: 0xfbbf24 });
-  bone.addChild(attach);
-
   // Center axes for reference
   const axes = new Graphics();
-  axes.moveTo(-300, 0).lineTo(300, 0).stroke({ color: 0x60a5fa, width: 1, alpha: 0.15 });
-  axes.moveTo(0, -300).lineTo(0, 300).stroke({ color: 0x60a5fa, width: 1, alpha: 0.15 });
-  world.addChildAt(axes, 0);
+  axes.moveTo(-400, 0).lineTo(400, 0).stroke({ color: 0x60a5fa, width: 1, alpha: 0.12 });
+  axes.moveTo(0, -400).lineTo(0, 400).stroke({ color: 0x60a5fa, width: 1, alpha: 0.12 });
+  world.addChild(axes);
 
-  // Bind sliders
-  function syncFromSliders() {
-    const degs = parseFloat(rotSlider.value);
+  // Root bone (visual only)
+  const rootBone = new Container();
+  world.addChild(rootBone);
+  const boneGraphic = new Graphics();
+  boneGraphic.circle(0, 0, 5).fill({ color: 0xff8a3d, alpha: 0.9 });
+  boneGraphic.circle(0, 0, 2).fill({ color: 0xffffff });
+  rootBone.addChild(boneGraphic);
+
+  // ── Phase 0.4: load KVTM sample bloom data + sheet ────────────
+  statusMsg.textContent = '⏳ Loading KVTM bloom sample...';
+  let importResult: ImportResult;
+  let sheetTexture: Texture;
+  try {
+    importResult = await loadKvtmSample('/sample-assets/kvtm-bloom-red.json', 'flower_red_bloom.webp');
+    sheetTexture = await Assets.load<Texture>('/sample-assets/flower_red_bloom.webp');
+  } catch (err: any) {
+    statusMsg.textContent = '❌ Load sample failed: ' + (err?.message || String(err));
+    return;
+  }
+
+  const skeleton: Skeleton = importResult.skeleton;
+  console.log('[spine-clone] imported skeleton:', skeleton);
+  console.log('[spine-clone] atlas regions:', importResult.atlas.pages[0].regions.length);
+
+  // Update hierarchy panel
+  boneTree.innerHTML = '';
+  skeleton.bones.forEach(b => {
+    const li = document.createElement('li');
+    li.className = 'tree-item' + (b.name === 'root' ? ' selected' : '');
+    li.textContent = b.name;
+    boneTree.appendChild(li);
+  });
+  skeleton.slots.forEach(s => {
+    const li = document.createElement('li');
+    li.className = 'tree-item';
+    li.style.paddingLeft = '20px';
+    li.textContent = `📎 ${s.name}`;
+    boneTree.appendChild(li);
+  });
+
+  // ── Render: a sprite child of rootBone, swapped each frame ───
+  const flowerSlot = new Container();
+  rootBone.addChild(flowerSlot);
+
+  const attachmentSprite = new Sprite();
+  attachmentSprite.anchor.set(0.5, 1.0); // bottom-center pivot (KVTM convention)
+  flowerSlot.addChild(attachmentSprite);
+
+  // Helper: swap sprite to a named module's atlas region
+  function setAttachment(name: string) {
+    const att = skeleton.skins[0].attachments.flower[name] as RegionAttachment | undefined;
+    const region = importResult.atlas.pages[0].regions.find(r => r.name === name);
+    if (!att || !region) {
+      console.warn('attachment not found:', name);
+      return;
+    }
+    const tex = new Texture({
+      source: sheetTexture.source,
+      frame: new Rectangle(region.x, region.y, region.width, region.height),
+    });
+    attachmentSprite.texture = tex;
+    attachmentSprite.x = att.x;
+    attachmentSprite.y = att.y;
+  }
+
+  // ── Build a timeline scrubber from the "bloom" anim ───────────
+  const bloomAnim = skeleton.animations['bloom'];
+  if (!bloomAnim || !bloomAnim.slots.flower?.attachment) {
+    statusMsg.textContent = '❌ no bloom animation in sample';
+    return;
+  }
+  const keys = bloomAnim.slots.flower.attachment;
+
+  // Replace the rot/scale sliders' duty: rot = play position, scale = scale ;)
+  rotSlider.min = '0';
+  rotSlider.max = String(bloomAnim.duration * 1000); // ms
+  rotSlider.step = '10';
+  rotSlider.value = '0';
+
+  function applyFromSliders() {
+    const tMs = parseFloat(rotSlider.value);
+    const tSec = tMs / 1000;
+    // Pick latest key whose time <= tSec (stepped)
+    let frameName: string | null = keys[0].value;
+    for (const k of keys) {
+      if (k.time <= tSec) frameName = k.value;
+      else break;
+    }
+    if (frameName) setAttachment(frameName);
+
     const sc = parseFloat(scaleSlider.value);
-    bone.angle = degs;      // PixiJS .angle = degrees
-    bone.scale.set(sc);
-    rotVal.textContent = `${degs}°`;
+    flowerSlot.scale.set(sc);
+    rotVal.textContent = `${tMs.toFixed(0)}ms`;
     scaleVal.textContent = sc.toFixed(2);
-    propRot.textContent = `${degs}°`;
+    propRot.textContent = frameName || '—';
     propScale.textContent = sc.toFixed(2);
   }
-  rotSlider.addEventListener('input', syncFromSliders);
-  scaleSlider.addEventListener('input', syncFromSliders);
+  rotSlider.addEventListener('input', applyFromSliders);
+  scaleSlider.addEventListener('input', applyFromSliders);
   resetBtn.addEventListener('click', () => {
     rotSlider.value = '0';
     scaleSlider.value = '1';
-    syncFromSliders();
+    applyFromSliders();
   });
 
-  syncFromSliders();
-  statusMsg.textContent = `PixiJS ${(window as any).PIXI?.VERSION || 'v8'} · WebGL ready · Phase 0 hello-bone`;
+  // Relabel the slider in DOM
+  const rotLabel = rotSlider.parentElement;
+  if (rotLabel && rotLabel.firstChild) {
+    rotLabel.firstChild.textContent = `Time `;
+  }
+
+  applyFromSliders();
+  statusMsg.textContent = `✅ KVTM bloom imported · ${skeleton.bones.length} bone · ${skeleton.slots.length} slot · ${Object.keys(skeleton.skins[0].attachments.flower).length} attachments · "bloom" anim ${bloomAnim.duration.toFixed(2)}s`;
 }
 
 window.addEventListener('DOMContentLoaded', () => {
