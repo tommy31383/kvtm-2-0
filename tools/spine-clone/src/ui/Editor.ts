@@ -26,6 +26,21 @@ import type {
 } from '../core/types.js';
 import { makeEmptySkeleton } from '../core/types.js';
 
+/** Guess MIME type from filename extension. Shared with fileApi.ts. */
+function guessMime(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  switch (ext) {
+    case 'png':  return 'image/png';
+    case 'webp': return 'image/webp';
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg';
+    case 'gif':  return 'image/gif';
+    case 'json': return 'application/json';
+    case 'atlas': return 'text/plain';
+    default: return 'application/octet-stream';
+  }
+}
+
 type Mode = 'atlas' | 'pose';
 
 export class Editor {
@@ -221,24 +236,57 @@ export class Editor {
   }
 
   /**
-   * Drag-drop support: user kéo file từ Explorer thả vào canvas → auto-load.
-   * Smart dispatch:
-   *   - 1 file image      → loadImageFromFile (set as atlas sheet)
-   *   - 1 file .json/.spine-json (no atlas) → try as spine-clone project,
-   *     fallback to Spine JSON
-   *   - 2+ files with .atlas or .spine-json → loadSpineProject (full bundle)
-   *   - multiple images → first becomes atlas, rest ignored (Phase 4: multi-page)
+   * Drag-drop support — uses BOTH:
+   *   1) Tauri's native drag-drop event API (works in WebView, OS-level)
+   *   2) HTML drag-drop events (fallback for plain browser dev)
    *
-   * Drop zone covers both #canvas-host (visible target) and the document body
-   * (fallback so user doesn't miss).
+   * Tauri 2 by default captures drag-drop at the OS level and emits its own
+   * events with FILE PATHS (not File objects). We read the paths via fs plugin
+   * to construct File objects, then dispatch through the unified handler.
    */
-  private setupDragDrop() {
+  private async setupDragDrop() {
     const host = document.getElementById('canvas-host') as HTMLElement;
 
+    // ── (1) Tauri native drag-drop events ──────────────────────
+    if (isTauri()) {
+      try {
+        const { getCurrentWebview } = await import('@tauri-apps/api/webview');
+        const { readFile } = await import('@tauri-apps/plugin-fs');
+        console.log('[dragdrop] Tauri webview drag-drop listener attached');
+        getCurrentWebview().onDragDropEvent(async (event) => {
+          const payload: any = event.payload;
+          console.log(`[dragdrop] tauri event type=${payload.type}`);
+          if (payload.type === 'enter' || payload.type === 'over') {
+            host.classList.add('drag-over');
+          } else if (payload.type === 'leave') {
+            host.classList.remove('drag-over');
+          } else if (payload.type === 'drop') {
+            host.classList.remove('drag-over');
+            const paths: string[] = payload.paths ?? [];
+            console.log(`[dragdrop] dropped ${paths.length} path(s):`, paths);
+            const files: File[] = [];
+            for (const p of paths) {
+              try {
+                const bytes = await readFile(p);
+                const name = p.replace(/^.*[\\/]/, '');
+                const f = new File([bytes], name, { type: guessMime(name) });
+                (f as any)._tauriPath = p;
+                files.push(f);
+              } catch (e) {
+                console.error('[dragdrop] read failed for', p, e);
+              }
+            }
+            if (files.length) this.handleDroppedFiles(files);
+          }
+        });
+      } catch (err) {
+        console.error('[dragdrop] Tauri listener setup failed:', err);
+      }
+    }
+
+    // ── (2) HTML drag-drop fallback (plain browser dev) ─────────
     const prevent = (e: DragEvent) => { e.preventDefault(); e.stopPropagation(); };
     let dragDepth = 0;
-
-    // Use document-level listeners so drop works anywhere in the window
     document.addEventListener('dragenter', e => {
       prevent(e);
       dragDepth++;
@@ -246,7 +294,6 @@ export class Editor {
     });
     document.addEventListener('dragover', e => {
       prevent(e);
-      // Set dropEffect so cursor shows the right icon
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
     });
     document.addEventListener('dragleave', e => {
@@ -479,14 +526,16 @@ export class Editor {
         (f.name.endsWith('.json') && !f.name.endsWith('.spineclone.json'))
       );
       const atlasFile = findFile(f => f.name.endsWith('.atlas'));
-      if (!skelFile) throw new Error('No .spine-json / .json (skeleton) file selected');
-      if (!atlasFile) throw new Error('No .atlas file selected');
+      if (!skelFile) throw new Error('Cần ít nhất 1 file .spine-json hoặc .json');
 
-      // Parse skeleton + atlas
+      // Parse skeleton (always) + atlas (optional)
       const skelText = await skelFile.text();
-      const atlasText = await atlasFile.text();
       const skeleton = parseSpineJson(skelText);
-      const atlas = parseAtlas(atlasText);
+      const atlas = atlasFile
+        ? parseAtlas(await atlasFile.text())
+        : { pages: [] };
+      console.log(`[loadSpine] skeleton: ${skeleton.bones.length} bones, ${skeleton.slots.length} slots`);
+      console.log(`[loadSpine] atlas: ${atlas.pages.length} pages, ${atlas.pages[0]?.regions.length ?? 0} regions`);
 
       // Set skeleton name from filename (strip .spine-json/.json)
       skeleton.name = skelFile.name.replace(/\.(spine-json|json)$/i, '');
