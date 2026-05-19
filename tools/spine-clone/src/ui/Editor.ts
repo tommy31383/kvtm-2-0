@@ -165,6 +165,8 @@ export class Editor {
       );
       this.worldContainer.addChild(this.poseRenderer.root);
       this.poseRenderer.render(this.store.currentAnimation, this.store.currentTimeSec);
+      // Auto-fit so skeleton fills viewport (handles large coordinate ranges)
+      requestAnimationFrame(() => this.fitToView());
     } else {
       this.atlasView = new AtlasView(this.app, this.store.atlas, {
         onRegionCreated: r => this.handleRegionCreated(r),
@@ -508,6 +510,7 @@ export class Editor {
     const timeSlider = document.getElementById('time-slider') as HTMLInputElement;
     const scaleSlider = document.getElementById('scale-slider') as HTMLInputElement;
     const playBtn = document.getElementById('btn-play') as HTMLButtonElement;
+    const fitBtn = document.getElementById('btn-fit') as HTMLButtonElement;
 
     timeSlider.addEventListener('input', () => {
       const t = parseFloat(timeSlider.value) / 1000;
@@ -519,6 +522,58 @@ export class Editor {
       (document.getElementById('scale-val') as HTMLElement).textContent = sc.toFixed(2);
     });
     playBtn.addEventListener('click', () => this.togglePlay());
+    fitBtn.addEventListener('click', () => this.fitToView());
+  }
+
+  /**
+   * Compute skeleton bounds from bone setup-pose positions + attachment sizes,
+   * zoom + pan worldContainer so it fits the canvas.
+   */
+  private fitToView() {
+    if (!this.poseRenderer) return;
+    const host = document.getElementById('canvas-host') as HTMLDivElement;
+    const W = host.clientWidth, H = host.clientHeight;
+    if (W < 10 || H < 10) return;
+
+    // Reset world transform first so getBounds returns LOCAL bounds
+    this.worldContainer.scale.set(1);
+    this.worldContainer.x = 0;
+    this.worldContainer.y = 0;
+
+    // Force a re-render at current time to compute fresh bone positions
+    this.poseRenderer.render(this.store.currentAnimation, this.store.currentTimeSec);
+
+    // Use Pixi's getBounds() on renderer root — covers all bones + attachments
+    const b = this.poseRenderer.root.getBounds();
+    const rb: any = (b as any).rectangle ?? b;
+    let minX = rb.x ?? rb.minX ?? 0;
+    let minY = rb.y ?? rb.minY ?? 0;
+    let bw = rb.width  ?? ((rb.maxX ?? 0) - minX);
+    let bh = rb.height ?? ((rb.maxY ?? 0) - minY);
+
+    if (!isFinite(minX) || !isFinite(bw) || bw < 1 || bh < 1) {
+      console.warn(`[fitToView] degenerate bounds:`, b);
+      // Fallback: just center at default scale
+      this.worldContainer.x = W / 2;
+      this.worldContainer.y = H / 2;
+      return;
+    }
+
+    const pad = 1.2;
+    const scale = Math.min(W / (bw * pad), H / (bh * pad));
+    const clampedScale = Math.max(0.05, Math.min(3, scale));
+    const centerX = minX + bw / 2;
+    const centerY = minY + bh / 2;
+    this.worldContainer.scale.set(clampedScale);
+    this.worldContainer.x = W / 2 - centerX * clampedScale;
+    this.worldContainer.y = H / 2 - centerY * clampedScale;
+
+    const slider = document.getElementById('scale-slider') as HTMLInputElement;
+    const valEl  = document.getElementById('scale-val') as HTMLElement;
+    if (slider) slider.value = String(clampedScale);
+    if (valEl)  valEl.textContent = clampedScale.toFixed(2);
+
+    console.log(`[fitToView] bounds (${minX.toFixed(0)},${minY.toFixed(0)}) size ${bw.toFixed(0)}×${bh.toFixed(0)} → scale=${clampedScale.toFixed(2)} pan=(${this.worldContainer.x.toFixed(0)},${this.worldContainer.y.toFixed(0)})`);
   }
 
   private togglePlay() {
