@@ -1,4 +1,4 @@
-/* Spine Clone — Phase 0 layout */
+/* Spine Clone — editor layout */
 :root {
   --bg-0: #0c0f15;
   --bg-1: #131720;
@@ -10,6 +10,7 @@
   --gold: #FFD700;
   --orange: #ff8a3d;
   --blue: #60a5fa;
+  --red: #e8455a;
 }
 
 * { box-sizing: border-box; }
@@ -24,51 +25,145 @@ html, body {
   overflow: hidden;
 }
 
-body { display: grid; grid-template-rows: 36px 1fr 28px; }
+body { display: grid; grid-template-rows: 44px 1fr 26px; }
 
+/* ── Header / Toolbar ─────────────────────────────────────── */
 #app-header {
-  display: flex; align-items: center; gap: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 0 14px;
   background: var(--bg-1);
   border-bottom: 1px solid var(--border);
 }
-#app-header strong { color: var(--gold); }
+#app-header strong { color: var(--gold); font-size: 14px; }
+#project-name { font-size: 12px; }
 .muted { color: var(--muted); font-size: 11px; }
 
+#toolbar { display: flex; gap: 4px; margin-left: 8px; }
+#toolbar button {
+  background: var(--bg-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+#toolbar button:hover { border-color: var(--gold); color: var(--gold); }
+#toolbar button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+#mode-switcher { display: flex; gap: 2px; margin-left: auto; }
+.mode-btn {
+  background: var(--bg-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 4px 14px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.mode-btn:first-child { border-radius: 3px 0 0 3px; }
+.mode-btn:last-child  { border-radius: 0 3px 3px 0; }
+.mode-btn.active { background: var(--bg-3); color: var(--gold); border-color: var(--gold); }
+
+/* ── Main 3-column ─────────────────────────────────────────── */
 #app-main {
   display: grid;
-  grid-template-columns: 220px 1fr 240px;
+  grid-template-columns: 240px 1fr 260px;
   overflow: hidden;
   background: var(--bg-0);
 }
 
 #app-left, #app-right {
   background: var(--bg-1);
-  padding: 10px 12px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
-#app-left { border-right: 1px solid var(--border); }
-#app-right { border-left: 1px solid var(--border); }
+#app-left  { border-right: 1px solid var(--border); }
+#app-right { border-left: 1px solid var(--border); padding: 10px 12px; }
 
-#app-left h3, #app-right h3 {
-  margin: 0 0 8px 0;
+.panel-section {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+}
+.panel-section:last-child { border-bottom: none; }
+.panel-section h3 {
+  margin: 0 0 6px 0;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.panel-actions {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+.sm-btn {
+  background: var(--bg-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 3px;
   font-size: 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.sm-btn:hover { border-color: var(--gold); color: var(--gold); }
+.sm-btn.active { background: var(--gold); color: #000; border-color: var(--gold); }
+
+#app-right h3 {
+  margin: 0 0 8px 0;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.9px;
   color: var(--muted);
   font-weight: 700;
 }
 
-.tree { list-style: none; padding: 0; margin: 0; }
+/* ── Tree (hierarchy / modules / animations) ────────────── */
+.tree {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
 .tree-item {
-  padding: 5px 8px;
+  padding: 4px 8px;
   border-radius: 3px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
 }
 .tree-item:hover { background: var(--bg-2); }
 .tree-item.selected { background: var(--bg-3); color: var(--gold); }
+.tree-item.indent { padding-left: 22px; }
+.tree-item .tag {
+  font-size: 9px;
+  background: var(--bg-3);
+  color: var(--muted);
+  padding: 1px 5px;
+  border-radius: 2px;
+  margin-left: auto;
+}
+.tree-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--bg-3);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
 
+/* ── Canvas area ──────────────────────────────────────────── */
 #app-canvas-wrap { display: flex; flex-direction: column; overflow: hidden; }
 #canvas-host {
   flex: 1;
@@ -89,30 +184,74 @@ body { display: grid; grid-template-rows: 36px 1fr 28px; }
   padding: 8px 14px;
   background: var(--bg-1);
   border-top: 1px solid var(--border);
-  display: flex; align-items: center; gap: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
   flex-wrap: wrap;
+  min-height: 40px;
 }
 #canvas-tools label {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
 }
-#canvas-tools input[type=range] { width: 160px; accent-color: var(--gold); }
-#canvas-tools span { color: var(--gold); font-size: 11px; min-width: 36px; text-align: right; }
+#canvas-tools input[type=range] { width: 140px; accent-color: var(--gold); }
+#canvas-tools span.value { color: var(--gold); font-size: 11px; min-width: 36px; text-align: right; }
+#canvas-tools #time-val, #canvas-tools #scale-val {
+  color: var(--gold); font-size: 11px; min-width: 50px;
+}
 #canvas-tools button {
-  background: var(--bg-3); color: var(--text);
+  background: var(--bg-3);
+  color: var(--text);
   border: 1px solid var(--border);
-  padding: 4px 12px; border-radius: 3px;
-  font-size: 11px; cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
 }
 #canvas-tools button:hover { border-color: var(--gold); color: var(--gold); }
+#atlas-tools, #pose-tools { display: flex; align-items: center; gap: 10px; }
 
-#props-panel p { margin: 4px 0; font-size: 11px; }
-#props-panel span { color: var(--text); }
+/* ── Properties panel ───────────────────────────────────── */
+#props-panel { font-size: 11px; }
+#props-panel .prop-row {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 6px;
+  margin-bottom: 4px;
+  align-items: center;
+}
+#props-panel .prop-row label { color: var(--muted); font-size: 10px; }
+#props-panel .prop-row input {
+  width: 100%;
+  height: 22px;
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-family: inherit;
+}
+#props-panel .prop-row input:focus { outline: none; border-color: var(--gold); }
+#props-panel .prop-section {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--gold);
+  margin: 10px 0 4px 0;
+}
 
+/* ── Footer ─────────────────────────────────────────────── */
 #app-footer {
   padding: 0 14px;
   background: var(--bg-1);
   border-top: 1px solid var(--border);
-  display: flex; align-items: center;
-  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
 }

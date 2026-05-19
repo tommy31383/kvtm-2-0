@@ -4,47 +4,94 @@
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spine Clone — Phase 0 Prototype</title>
+    <title>Spine Clone — Editor</title>
     <script type="module" src="/src/main.ts" defer></script>
   </head>
   <body>
     <header id="app-header">
       <strong>🦴 Spine Clone</strong>
-      <span class="muted">Phase 0 · Hello Bone</span>
+      <span id="project-name" class="muted">Untitled</span>
+      <div id="toolbar">
+        <button id="btn-new" title="New project">📄 New</button>
+        <button id="btn-load-image" title="Load image as atlas">🖼 Load Image</button>
+        <button id="btn-load-sample" title="Load KVTM bloom sample">🌸 Load KVTM Sample</button>
+        <button id="btn-save" title="Save .spineclone.json">💾 Save</button>
+        <button id="btn-export-spine" title="Export Spine 4.x JSON">📤 Export Spine</button>
+        <button id="btn-export-kvtm" title="Export KVTM _BLOOM_DATA format">📤 Export KVTM</button>
+      </div>
+      <div id="mode-switcher">
+        <button id="btn-mode-atlas" class="mode-btn">🎨 Atlas</button>
+        <button id="btn-mode-pose" class="mode-btn active">🦴 Pose</button>
+      </div>
     </header>
+
     <main id="app-main">
       <aside id="app-left">
-        <h3>Hierarchy</h3>
-        <ul id="bone-tree" class="tree">
-          <li class="tree-item selected">root</li>
-        </ul>
+        <div class="panel-section">
+          <h3>Hierarchy</h3>
+          <div class="panel-actions">
+            <button id="btn-add-bone" class="sm-btn" title="Add child bone">+ Bone</button>
+            <button id="btn-add-slot" class="sm-btn" title="Add slot to selected bone">+ Slot</button>
+            <button id="btn-delete-item" class="sm-btn" title="Delete selected item">✕</button>
+          </div>
+          <ul id="hierarchy-tree" class="tree"></ul>
+        </div>
+        <div class="panel-section">
+          <h3>Modules (atlas regions)</h3>
+          <div class="panel-actions">
+            <span id="module-count" class="muted">0 modules</span>
+          </div>
+          <ul id="module-list" class="tree"></ul>
+        </div>
+        <div class="panel-section">
+          <h3>Animations</h3>
+          <div class="panel-actions">
+            <button id="btn-add-anim" class="sm-btn">+ Anim</button>
+            <button id="btn-delete-anim" class="sm-btn">✕</button>
+          </div>
+          <ul id="animation-list" class="tree"></ul>
+        </div>
       </aside>
+
       <section id="app-canvas-wrap">
         <div id="canvas-host"></div>
         <div id="canvas-tools">
-          <label>Rotation
-            <input id="rot-slider" type="range" min="-180" max="180" step="1" value="0" />
-            <span id="rot-val">0°</span>
-          </label>
-          <label>Scale
-            <input id="scale-slider" type="range" min="0.2" max="3" step="0.05" value="1" />
-            <span id="scale-val">1.00</span>
-          </label>
-          <button id="reset-btn">Reset</button>
+          <div id="atlas-tools" style="display:none;">
+            <span class="muted">Atlas mode:</span>
+            <button id="btn-draw-region" class="sm-btn active">📐 Draw Region</button>
+            <button id="btn-select-region" class="sm-btn">↖ Select</button>
+            <span class="muted">| Drag chuột trên ảnh để tạo region mới</span>
+          </div>
+          <div id="pose-tools">
+            <label>Time
+              <input id="time-slider" type="range" min="0" max="1000" step="10" value="0" />
+              <span id="time-val">0ms</span>
+            </label>
+            <button id="btn-play" title="Play/Pause">▶</button>
+            <label>Scale
+              <input id="scale-slider" type="range" min="0.2" max="3" step="0.05" value="1" />
+              <span id="scale-val">1.00</span>
+            </label>
+          </div>
         </div>
       </section>
+
       <aside id="app-right">
         <h3>Properties</h3>
         <div id="props-panel">
-          <p class="muted">Bone: <span id="prop-bone">root</span></p>
-          <p class="muted">x: <span id="prop-x">0</span> · y: <span id="prop-y">0</span></p>
-          <p class="muted">rot: <span id="prop-rot">0°</span></p>
-          <p class="muted">scale: <span id="prop-scale">1.00</span></p>
+          <p class="muted" id="props-empty">Nothing selected</p>
+          <div id="props-content"></div>
         </div>
       </aside>
     </main>
+
     <footer id="app-footer">
       <span id="status-msg" class="muted">Ready</span>
+      <span id="status-stats" class="muted"></span>
     </footer>
+
+    <!-- Hidden file input for image load (fallback when not in Tauri) -->
+    <input type="file" id="file-input-image" accept="image/*" style="display:none;" />
+    <input type="file" id="file-input-project" accept=".json" style="display:none;" />
   </body>
 </html>

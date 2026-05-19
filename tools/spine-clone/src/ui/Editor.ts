@@ -1,0 +1,669 @@
+// Editor — orchestrates the whole spine-clone editor UI.
+//
+// Owns:
+//   - DocumentStore (single source of truth)
+//   - PixiJS Application (shared canvas)
+//   - PixiRenderer (pose mode) + AtlasView (atlas mode) — only one mounted at a time
+//   - All HTML panels (hierarchy, modules, animations, properties)
+//   - Toolbar action handlers
+//
+// Mode switching: when user clicks 🎨 Atlas, the pose renderer is removed and
+// AtlasView is mounted. When 🦴 Pose, vice versa. The DocumentStore is shared,
+// so edits in atlas mode (e.g. creating regions) reflect immediately when
+// switching back to pose mode (e.g. as new attachment options).
+
+import { Application, Container, Texture, Assets } from 'pixi.js';
+import { DocumentStore } from '../store/DocumentStore.js';
+import { PixiRenderer } from '../render/PixiRenderer.js';
+import { AtlasView } from './AtlasView.js';
+import { serializeProject } from '../io/customFormat.js';
+import { exportToSpineJson } from '../io/spineExport.js';
+import { loadKvtmSample } from '../io/kvtmImport.js';
+import type {
+  Atlas, RegionAttachment, Bone, Slot,
+} from '../core/types.js';
+import { makeEmptySkeleton } from '../core/types.js';
+
+type Mode = 'atlas' | 'pose';
+
+export class Editor {
+  private store: DocumentStore;
+  private app!: Application;
+  private worldContainer!: Container;
+  private mode: Mode = 'pose';
+  private poseRenderer: PixiRenderer | null = null;
+  private atlasView: AtlasView | null = null;
+  private sheetTexture: Texture | undefined;
+  private playbackRaf: number | null = null;
+  private playbackStartMs = 0;
+  private playbackStartTimeSec = 0;
+
+  constructor() {
+    // Start with an empty project
+    const emptySkel = makeEmptySkeleton('Untitled');
+    this.store = new DocumentStore({
+      skeleton: emptySkel,
+      atlas: { pages: [] },
+    });
+  }
+
+  async init() {
+    await this.initPixi();
+    this.bindToolbar();
+    this.bindMode();
+    this.bindHierarchyActions();
+    this.bindPlayback();
+    this.subscribeStore();
+    this.renderAll();
+    this.setMode('pose');
+    this.setStatus('Ready. Click 🌸 Load KVTM Sample to import existing flower data, or 🖼 Load Image to start fresh.');
+  }
+
+  // ── Pixi setup ──────────────────────────────────────────────
+  private async initPixi() {
+    const host = document.getElementById('canvas-host') as HTMLDivElement;
+    this.app = new Application();
+    await this.app.init({
+      background: 0x0c0f15,
+      resizeTo: host,
+      antialias: true,
+      autoDensity: true,
+      resolution: window.devicePixelRatio || 1,
+    });
+    host.appendChild(this.app.canvas);
+
+    this.worldContainer = new Container();
+    this.worldContainer.label = 'world';
+    this.app.stage.addChild(this.worldContainer);
+    this.recenter();
+    window.addEventListener('resize', () => this.recenter());
+  }
+
+  private recenter() {
+    const host = document.getElementById('canvas-host') as HTMLDivElement;
+    if (this.mode === 'pose') {
+      this.worldContainer.x = host.clientWidth / 2;
+      this.worldContainer.y = host.clientHeight / 2 + 60;
+    } else {
+      // Atlas mode: top-left origin so sheet image sits in upper-left
+      this.worldContainer.x = 20;
+      this.worldContainer.y = 20;
+    }
+  }
+
+  // ── Mode switch ─────────────────────────────────────────────
+  setMode(mode: Mode) {
+    if (this.mode === mode && (this.poseRenderer || this.atlasView)) return;
+    this.mode = mode;
+    // Tear down current view
+    if (this.poseRenderer) {
+      this.worldContainer.removeChild(this.poseRenderer.root);
+      this.poseRenderer.destroy();
+      this.poseRenderer = null;
+    }
+    if (this.atlasView) {
+      this.worldContainer.removeChild(this.atlasView.root);
+      this.atlasView.destroy();
+      this.atlasView = null;
+    }
+
+    // Build the appropriate view
+    if (mode === 'pose') {
+      if (this.sheetTexture && this.store.atlas.pages.length) {
+        this.poseRenderer = new PixiRenderer(
+          this.app, this.store.skeleton, this.store.atlas, this.sheetTexture,
+          { showBoneGizmos: true },
+        );
+        this.worldContainer.addChild(this.poseRenderer.root);
+        this.poseRenderer.render(this.store.currentAnimation, this.store.currentTimeSec);
+      }
+    } else {
+      this.atlasView = new AtlasView(this.app, this.store.atlas, {
+        onRegionCreated: r => this.handleRegionCreated(r),
+        onRegionSelected: name => this.store.setSelection(
+          name ? { type: 'attachment', slot: '__atlas__', name } : { type: 'none' }
+        ),
+        onRegionEdited: (name, patch) => this.handleRegionEdited(name, patch),
+      });
+      this.atlasView.setSheet(this.sheetTexture);
+      this.worldContainer.addChild(this.atlasView.root);
+    }
+
+    // Toggle tool UI
+    (document.getElementById('atlas-tools') as HTMLElement).style.display = mode === 'atlas' ? 'flex' : 'none';
+    (document.getElementById('pose-tools') as HTMLElement).style.display = mode === 'pose' ? 'flex' : 'none';
+    (document.getElementById('btn-mode-atlas') as HTMLElement).classList.toggle('active', mode === 'atlas');
+    (document.getElementById('btn-mode-pose') as HTMLElement).classList.toggle('active', mode === 'pose');
+
+    this.recenter();
+  }
+
+  // ── Toolbar wiring ──────────────────────────────────────────
+  private bindToolbar() {
+    document.getElementById('btn-new')!.onclick = () => this.newProject();
+    document.getElementById('btn-load-image')!.onclick = () => this.openImagePicker();
+    document.getElementById('btn-load-sample')!.onclick = () => this.loadKvtmSample();
+    document.getElementById('btn-save')!.onclick = () => this.saveProject();
+    document.getElementById('btn-export-spine')!.onclick = () => this.exportSpine();
+    document.getElementById('btn-export-kvtm')!.onclick = () => this.exportKvtm();
+
+    // File inputs
+    const fileImg = document.getElementById('file-input-image') as HTMLInputElement;
+    fileImg.addEventListener('change', e => {
+      const f = (e.target as HTMLInputElement).files?.[0];
+      if (f) this.loadImageFromFile(f);
+    });
+  }
+
+  private bindMode() {
+    document.getElementById('btn-mode-atlas')!.onclick = () => this.setMode('atlas');
+    document.getElementById('btn-mode-pose')!.onclick = () => this.setMode('pose');
+    document.getElementById('btn-draw-region')!.onclick = () => this.setAtlasTool('draw');
+    document.getElementById('btn-select-region')!.onclick = () => this.setAtlasTool('select');
+  }
+
+  private bindHierarchyActions() {
+    document.getElementById('btn-add-bone')!.onclick = () => this.addBone();
+    document.getElementById('btn-add-slot')!.onclick = () => this.addSlot();
+    document.getElementById('btn-delete-item')!.onclick = () => this.deleteSelected();
+    document.getElementById('btn-add-anim')!.onclick = () => this.addAnimation();
+    document.getElementById('btn-delete-anim')!.onclick = () => this.deleteSelectedAnimation();
+  }
+
+  private bindPlayback() {
+    const timeSlider = document.getElementById('time-slider') as HTMLInputElement;
+    const scaleSlider = document.getElementById('scale-slider') as HTMLInputElement;
+    const playBtn = document.getElementById('btn-play') as HTMLButtonElement;
+
+    timeSlider.addEventListener('input', () => {
+      const t = parseFloat(timeSlider.value) / 1000;
+      this.store.setTime(t);
+    });
+    scaleSlider.addEventListener('input', () => {
+      const sc = parseFloat(scaleSlider.value);
+      if (this.poseRenderer) this.poseRenderer.root.scale.set(sc);
+      (document.getElementById('scale-val') as HTMLElement).textContent = sc.toFixed(2);
+    });
+    playBtn.addEventListener('click', () => this.togglePlay());
+  }
+
+  private togglePlay() {
+    if (this.store.playing) {
+      this.store.setPlaying(false);
+      if (this.playbackRaf) cancelAnimationFrame(this.playbackRaf);
+      this.playbackRaf = null;
+      (document.getElementById('btn-play') as HTMLElement).textContent = '▶';
+    } else {
+      this.store.setPlaying(true);
+      this.playbackStartMs = performance.now();
+      this.playbackStartTimeSec = this.store.currentTimeSec;
+      (document.getElementById('btn-play') as HTMLElement).textContent = '⏸';
+      const tick = (now: number) => {
+        if (!this.store.playing) return;
+        const elapsed = (now - this.playbackStartMs) / 1000;
+        const dur = this.store.currentDuration;
+        let t = this.playbackStartTimeSec + elapsed;
+        if (dur > 0) t = t % dur;  // loop
+        this.store.setTime(t);
+        this.playbackRaf = requestAnimationFrame(tick);
+      };
+      this.playbackRaf = requestAnimationFrame(tick);
+    }
+  }
+
+  // ── Project operations ──────────────────────────────────────
+  newProject() {
+    if (!confirm('Tạo project mới? Mọi thay đổi chưa lưu sẽ mất.')) return;
+    this.sheetTexture = undefined;
+    this.store.setProject(makeEmptySkeleton('Untitled'), { pages: [] });
+    this.setProjectName('Untitled');
+    this.setStatus('✅ New project');
+    this.setMode('pose');
+  }
+
+  private openImagePicker() {
+    (document.getElementById('file-input-image') as HTMLInputElement).click();
+  }
+
+  private async loadImageFromFile(file: File) {
+    this.setStatus(`⏳ Loading ${file.name}...`);
+    try {
+      const url = URL.createObjectURL(file);
+      const tex = await Assets.load<Texture>(url);
+      this.sheetTexture = tex;
+      // Replace or create the first atlas page
+      const atlas = this.store.atlas;
+      const newAtlas: Atlas = {
+        pages: [{
+          name: file.name,
+          width: tex.width,
+          height: tex.height,
+          format: 'RGBA8888',
+          filter: ['Linear', 'Linear'],
+          regions: atlas.pages[0]?.regions ?? [],
+        }],
+      };
+      this.store.setProject(this.store.skeleton, newAtlas);
+      this.setProjectName(this.store.skeleton.name);
+      this.setMode('atlas');
+      this.setStatus(`✅ ${file.name} ${tex.width}×${tex.height} · drag chuột để tạo regions`);
+    } catch (err: any) {
+      this.setStatus('❌ ' + (err?.message || String(err)));
+    }
+  }
+
+  private async loadKvtmSample() {
+    this.setStatus('⏳ Loading KVTM red bloom sample...');
+    try {
+      const { skeleton, atlas } = await loadKvtmSample('/sample-assets/kvtm-bloom-red.json', 'flower_red_bloom.webp');
+      const tex = await Assets.load<Texture>('/sample-assets/flower_red_bloom.webp');
+      // Patch atlas page size from texture
+      atlas.pages[0].width = tex.width;
+      atlas.pages[0].height = tex.height;
+      this.sheetTexture = tex;
+      this.store.setProject(skeleton, atlas);
+      this.setProjectName(skeleton.name);
+      this.setMode('pose');
+      this.setStatus(`✅ Loaded ${skeleton.bones.length} bone, ${skeleton.slots.length} slot, ${atlas.pages[0].regions.length} regions, ${Object.keys(skeleton.animations).length} animations`);
+    } catch (err: any) {
+      this.setStatus('❌ ' + (err?.message || String(err)));
+    }
+  }
+
+  saveProject() {
+    const json = serializeProject(this.store.skeleton, this.store.atlas);
+    this.downloadJson(json, `${this.store.skeleton.name || 'project'}.spineclone.json`);
+    this.setStatus(`💾 Saved ${this.store.skeleton.name}.spineclone.json`);
+  }
+
+  exportSpine() {
+    const json = exportToSpineJson(this.store.skeleton);
+    this.downloadJson(json, `${this.store.skeleton.name || 'skeleton'}.json`);
+    this.setStatus(`📤 Exported Spine JSON`);
+  }
+
+  exportKvtm() {
+    // KVTM _BLOOM_DATA format: {modules:{...}, anims:{...}}
+    const sk = this.store.skeleton;
+    const atlas = this.store.atlas;
+    const out: any = { modules: {}, anims: {} };
+    const page = atlas.pages[0];
+    if (page) {
+      page.regions.forEach(r => {
+        out.modules[r.name] = { x: r.x, y: r.y, w: r.width, h: r.height };
+      });
+    }
+    Object.entries(sk.animations).forEach(([name, anim]) => {
+      const slotTl = anim.slots[sk.slots[0]?.name]?.attachment;
+      if (slotTl) {
+        // Reconstruct {m, d} from attachment keys (stepped)
+        const frames: { m: string; d: number }[] = [];
+        for (let i = 0; i < slotTl.length; i++) {
+          const k = slotTl[i];
+          const next = slotTl[i + 1];
+          const durMs = Math.round(((next?.time ?? anim.duration) - k.time) * 1000);
+          if (k.value) frames.push({ m: k.value, d: durMs });
+        }
+        out.anims[name] = frames;
+      }
+    });
+    const json = JSON.stringify(out, null, 2);
+    this.downloadJson(json, `${this.store.skeleton.name || 'kvtm'}.bloomdata.json`);
+    this.setStatus(`📤 Exported KVTM _BLOOM_DATA format`);
+  }
+
+  private downloadJson(content: string, filename: string) {
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // ── Atlas region operations ────────────────────────────────
+  private handleRegionCreated(r: import('../core/types.js').AtlasRegion) {
+    if (!this.store.atlas.pages.length) return;
+    this.store.atlas.pages[0].regions.push(r);
+    this.renderModuleList();
+    this.atlasView?.setAtlas(this.store.atlas);
+    this.setStatus(`✅ Created region "${r.name}" (${r.width}×${r.height})`);
+  }
+
+  private handleRegionEdited(name: string, patch: any) {
+    const r = this.store.atlas.pages[0]?.regions.find(r => r.name === name);
+    if (!r) return;
+    Object.assign(r, patch);
+    this.renderModuleList();
+    this.renderProperties();
+  }
+
+  private setAtlasTool(tool: 'draw' | 'select') {
+    this.atlasView?.setTool(tool);
+    document.getElementById('btn-draw-region')!.classList.toggle('active', tool === 'draw');
+    document.getElementById('btn-select-region')!.classList.toggle('active', tool === 'select');
+  }
+
+  // ── Hierarchy operations ────────────────────────────────────
+  private addBone() {
+    const sel = this.store.selection;
+    const parentName = sel.type === 'bone' ? sel.name : 'root';
+    const baseName = `bone_${this.store.skeleton.bones.length}`;
+    const newBone: Bone = {
+      name: baseName, parent: parentName, length: 30,
+      x: 30, y: 0, rotation: 0, scaleX: 1, scaleY: 1,
+    };
+    this.store.skeleton.bones.push(newBone);
+    this.renderHierarchy();
+    this.store.setSelection({ type: 'bone', name: baseName });
+    this.refreshRenderer();
+    this.setStatus(`✅ Added bone "${baseName}" under "${parentName}"`);
+  }
+
+  private addSlot() {
+    const sel = this.store.selection;
+    const boneName = sel.type === 'bone' ? sel.name : 'root';
+    const baseName = `slot_${this.store.skeleton.slots.length}`;
+    const newSlot: Slot = { name: baseName, bone: boneName };
+    this.store.skeleton.slots.push(newSlot);
+    // Ensure default skin has an empty attachments entry for this slot
+    if (!this.store.skeleton.skins[0].attachments[baseName]) {
+      this.store.skeleton.skins[0].attachments[baseName] = {};
+    }
+    this.renderHierarchy();
+    this.store.setSelection({ type: 'slot', name: baseName });
+    this.refreshRenderer();
+    this.setStatus(`✅ Added slot "${baseName}" on "${boneName}"`);
+  }
+
+  private deleteSelected() {
+    const sel = this.store.selection;
+    if (sel.type === 'bone') {
+      if (sel.name === 'root') { alert('Cannot delete root bone'); return; }
+      this.store.skeleton.bones = this.store.skeleton.bones.filter(b => b.name !== sel.name);
+      // Cascade: re-parent or drop children + drop slots on this bone
+      this.store.skeleton.bones.forEach(b => { if (b.parent === sel.name) b.parent = 'root'; });
+      this.store.skeleton.slots = this.store.skeleton.slots.filter(s => s.bone !== sel.name);
+      this.store.setSelection({ type: 'none' });
+      this.renderHierarchy();
+      this.refreshRenderer();
+      this.setStatus(`🗑 Deleted bone "${sel.name}"`);
+    } else if (sel.type === 'slot') {
+      this.store.skeleton.slots = this.store.skeleton.slots.filter(s => s.name !== sel.name);
+      delete this.store.skeleton.skins[0].attachments[sel.name];
+      this.store.setSelection({ type: 'none' });
+      this.renderHierarchy();
+      this.refreshRenderer();
+      this.setStatus(`🗑 Deleted slot "${sel.name}"`);
+    }
+  }
+
+  private addAnimation() {
+    const baseName = `anim_${Object.keys(this.store.skeleton.animations).length}`;
+    this.store.skeleton.animations[baseName] = {
+      name: baseName, duration: 1, bones: {}, slots: {},
+    };
+    this.renderAnimList();
+    this.store.setCurrentAnimation(baseName);
+    this.setStatus(`✅ Added animation "${baseName}"`);
+  }
+
+  private deleteSelectedAnimation() {
+    const cur = this.store.currentAnimation;
+    if (!cur) return;
+    if (!confirm(`Delete animation "${cur}"?`)) return;
+    delete this.store.skeleton.animations[cur];
+    const remaining = Object.keys(this.store.skeleton.animations);
+    this.store.setCurrentAnimation(remaining[0]);
+    this.renderAnimList();
+    this.setStatus(`🗑 Deleted animation "${cur}"`);
+  }
+
+  // ── Store subscription ─────────────────────────────────────
+  private subscribeStore() {
+    this.store.on('project-changed', () => {
+      this.refreshRenderer();
+      this.renderAll();
+    });
+    this.store.on('selection-changed', () => {
+      this.renderHierarchy();
+      this.renderProperties();
+    });
+    this.store.on('animation-changed', () => {
+      this.renderAnimList();
+      this.updateTimeSlider();
+      this.poseRenderer?.render(this.store.currentAnimation, this.store.currentTimeSec);
+    });
+    this.store.on('time-changed', () => {
+      this.updateTimeSlider();
+      this.poseRenderer?.render(this.store.currentAnimation, this.store.currentTimeSec);
+    });
+    this.store.on('bone-changed', () => {
+      this.poseRenderer?.render(this.store.currentAnimation, this.store.currentTimeSec);
+      this.renderProperties();
+    });
+  }
+
+  private refreshRenderer() {
+    // Rebuild renderer when skeleton/atlas structure changes
+    if (this.mode === 'pose') this.setMode('pose');
+    if (this.mode === 'atlas') this.atlasView?.setAtlas(this.store.atlas);
+  }
+
+  // ── Panels ──────────────────────────────────────────────────
+  private renderAll() {
+    this.renderHierarchy();
+    this.renderModuleList();
+    this.renderAnimList();
+    this.renderProperties();
+    this.updateStats();
+  }
+
+  private renderHierarchy() {
+    const tree = document.getElementById('hierarchy-tree') as HTMLUListElement;
+    tree.innerHTML = '';
+    // Build bone tree
+    const sel = this.store.selection;
+    const bonesByParent = new Map<string | undefined, Bone[]>();
+    for (const b of this.store.skeleton.bones) {
+      const key = b.parent;
+      if (!bonesByParent.has(key)) bonesByParent.set(key, []);
+      bonesByParent.get(key)!.push(b);
+    }
+    const renderBone = (b: Bone, depth: number) => {
+      const li = document.createElement('li');
+      li.className = 'tree-item';
+      if (sel.type === 'bone' && sel.name === b.name) li.classList.add('selected');
+      li.style.paddingLeft = (8 + depth * 14) + 'px';
+      li.innerHTML = `🦴 ${b.name}`;
+      li.onclick = () => this.store.setSelection({ type: 'bone', name: b.name });
+      tree.appendChild(li);
+      // Children
+      const children = bonesByParent.get(b.name) || [];
+      children.forEach(c => renderBone(c, depth + 1));
+      // Slots on this bone
+      this.store.skeleton.slots
+        .filter(s => s.bone === b.name)
+        .forEach(s => {
+          const sli = document.createElement('li');
+          sli.className = 'tree-item';
+          if (sel.type === 'slot' && sel.name === s.name) sli.classList.add('selected');
+          sli.style.paddingLeft = (8 + (depth + 1) * 14) + 'px';
+          sli.innerHTML = `📎 ${s.name}${s.attachment ? ` <span class="tag">${s.attachment}</span>` : ''}`;
+          sli.onclick = () => this.store.setSelection({ type: 'slot', name: s.name });
+          tree.appendChild(sli);
+        });
+    };
+    const roots = bonesByParent.get(undefined) || [];
+    roots.forEach(b => renderBone(b, 0));
+  }
+
+  private renderModuleList() {
+    const list = document.getElementById('module-list') as HTMLUListElement;
+    list.innerHTML = '';
+    const regions = this.store.atlas.pages[0]?.regions ?? [];
+    (document.getElementById('module-count') as HTMLElement).textContent = `${regions.length} modules`;
+    regions.forEach(r => {
+      const li = document.createElement('li');
+      li.className = 'tree-item';
+      li.innerHTML = `<span style="color:#60a5fa;">▭</span> ${r.name} <span class="tag">${r.width}×${r.height}</span>`;
+      li.onclick = () => {
+        this.atlasView?.selectRegion(r.name);
+      };
+      list.appendChild(li);
+    });
+  }
+
+  private renderAnimList() {
+    const list = document.getElementById('animation-list') as HTMLUListElement;
+    list.innerHTML = '';
+    const cur = this.store.currentAnimation;
+    Object.keys(this.store.skeleton.animations).forEach(name => {
+      const li = document.createElement('li');
+      li.className = 'tree-item';
+      if (name === cur) li.classList.add('selected');
+      const anim = this.store.skeleton.animations[name];
+      li.innerHTML = `🎬 ${name} <span class="tag">${anim.duration.toFixed(2)}s</span>`;
+      li.onclick = () => this.store.setCurrentAnimation(name);
+      list.appendChild(li);
+    });
+  }
+
+  private renderProperties() {
+    const empty = document.getElementById('props-empty') as HTMLElement;
+    const content = document.getElementById('props-content') as HTMLElement;
+    const sel = this.store.selection;
+    if (sel.type === 'none') {
+      empty.style.display = 'block';
+      content.style.display = 'none';
+      content.innerHTML = '';
+      return;
+    }
+    empty.style.display = 'none';
+    content.style.display = 'block';
+
+    if (sel.type === 'bone') {
+      const bone = this.store.skeleton.bones.find(b => b.name === sel.name);
+      if (!bone) return;
+      content.innerHTML = `
+        <div class="prop-section">Bone</div>
+        <div class="prop-row"><label>Name</label><input id="p-name" value="${bone.name}"></div>
+        <div class="prop-row"><label>Parent</label><input id="p-parent" value="${bone.parent ?? ''}"></div>
+        <div class="prop-row"><label>X</label><input id="p-x" type="number" value="${bone.x}" step="1"></div>
+        <div class="prop-row"><label>Y</label><input id="p-y" type="number" value="${bone.y}" step="1"></div>
+        <div class="prop-row"><label>Rotation</label><input id="p-rot" type="number" value="${bone.rotation}" step="1"></div>
+        <div class="prop-row"><label>Scale X</label><input id="p-sx" type="number" value="${bone.scaleX}" step="0.1"></div>
+        <div class="prop-row"><label>Scale Y</label><input id="p-sy" type="number" value="${bone.scaleY}" step="0.1"></div>
+        <div class="prop-row"><label>Length</label><input id="p-len" type="number" value="${bone.length}" step="1"></div>
+      `;
+      const bind = (id: string, k: keyof Bone, parse: (s: string) => any) => {
+        const el = document.getElementById(id) as HTMLInputElement;
+        el.addEventListener('input', () => {
+          this.store.setBone(bone.name, { [k]: parse(el.value) } as any);
+        });
+      };
+      bind('p-x', 'x', parseFloat);
+      bind('p-y', 'y', parseFloat);
+      bind('p-rot', 'rotation', parseFloat);
+      bind('p-sx', 'scaleX', parseFloat);
+      bind('p-sy', 'scaleY', parseFloat);
+      bind('p-len', 'length', parseFloat);
+    } else if (sel.type === 'slot') {
+      const slot = this.store.skeleton.slots.find(s => s.name === sel.name);
+      if (!slot) return;
+      const regions = this.store.atlas.pages[0]?.regions ?? [];
+      content.innerHTML = `
+        <div class="prop-section">Slot</div>
+        <div class="prop-row"><label>Name</label><input id="p-name" value="${slot.name}" disabled></div>
+        <div class="prop-row"><label>Bone</label><input id="p-bone" value="${slot.bone}" disabled></div>
+        <div class="prop-row"><label>Attach</label>
+          <select id="p-att" style="width:100%;height:22px;background:var(--bg-2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:11px;">
+            <option value="">(none)</option>
+            ${regions.map(r => `<option value="${r.name}" ${slot.attachment === r.name ? 'selected' : ''}>${r.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="muted" style="margin-top:8px;font-size:10px;">Chọn module để gán làm attachment cho slot này. Module phải đã được tạo trong Atlas tab.</div>
+      `;
+      const att = document.getElementById('p-att') as HTMLSelectElement;
+      att.addEventListener('change', () => {
+        slot.attachment = att.value || undefined;
+        // Ensure attachment entry exists in skin
+        if (att.value && !this.store.skeleton.skins[0].attachments[slot.name]?.[att.value]) {
+          const r = regions.find(r => r.name === att.value);
+          if (r) {
+            const newAtt: RegionAttachment = {
+              type: 'region', name: r.name, path: r.name,
+              x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1,
+              width: r.width, height: r.height,
+            };
+            if (!this.store.skeleton.skins[0].attachments[slot.name]) {
+              this.store.skeleton.skins[0].attachments[slot.name] = {};
+            }
+            this.store.skeleton.skins[0].attachments[slot.name][r.name] = newAtt;
+          }
+        }
+        this.refreshRenderer();
+        this.renderHierarchy();
+      });
+    } else if (sel.type === 'attachment' && sel.slot === '__atlas__') {
+      // Atlas region selection
+      const r = this.store.atlas.pages[0]?.regions.find(r => r.name === sel.name);
+      if (!r) return;
+      content.innerHTML = `
+        <div class="prop-section">Region</div>
+        <div class="prop-row"><label>Name</label><input id="p-name" value="${r.name}"></div>
+        <div class="prop-row"><label>X</label><input id="p-x" type="number" value="${r.x}" step="1"></div>
+        <div class="prop-row"><label>Y</label><input id="p-y" type="number" value="${r.y}" step="1"></div>
+        <div class="prop-row"><label>Width</label><input id="p-w" type="number" value="${r.width}" step="1"></div>
+        <div class="prop-row"><label>Height</label><input id="p-h" type="number" value="${r.height}" step="1"></div>
+      `;
+      const bind = (id: string, k: keyof typeof r, parse: (s: string) => any) => {
+        const el = document.getElementById(id) as HTMLInputElement;
+        el.addEventListener('input', () => {
+          (r as any)[k] = parse(el.value);
+          this.atlasView?.setAtlas(this.store.atlas);
+          this.renderModuleList();
+        });
+      };
+      bind('p-x', 'x', parseFloat);
+      bind('p-y', 'y', parseFloat);
+      bind('p-w', 'width', parseFloat);
+      bind('p-h', 'height', parseFloat);
+      const nameEl = document.getElementById('p-name') as HTMLInputElement;
+      nameEl.addEventListener('change', () => {
+        // Rename atlas region — also rename in slot attachment refs (Phase 3+)
+        r.name = nameEl.value;
+        this.atlasView?.setAtlas(this.store.atlas);
+        this.renderModuleList();
+      });
+    }
+  }
+
+  private updateTimeSlider() {
+    const slider = document.getElementById('time-slider') as HTMLInputElement;
+    const val = document.getElementById('time-val') as HTMLElement;
+    const dur = this.store.currentDuration;
+    slider.max = String(dur * 1000);
+    slider.value = String(this.store.currentTimeSec * 1000);
+    val.textContent = `${(this.store.currentTimeSec * 1000).toFixed(0)}ms / ${(dur * 1000).toFixed(0)}ms`;
+  }
+
+  private updateStats() {
+    const sk = this.store.skeleton;
+    const stats = document.getElementById('status-stats') as HTMLElement;
+    stats.textContent = `${sk.bones.length} bone · ${sk.slots.length} slot · ${this.store.atlas.pages[0]?.regions.length ?? 0} module · ${Object.keys(sk.animations).length} anim`;
+  }
+
+  private setStatus(msg: string) {
+    (document.getElementById('status-msg') as HTMLElement).textContent = msg;
+    this.updateStats();
+  }
+
+  private setProjectName(name: string) {
+    (document.getElementById('project-name') as HTMLElement).textContent = name;
+    document.title = `${name} — Spine Clone`;
+  }
+}

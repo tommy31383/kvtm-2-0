@@ -18,7 +18,7 @@
 //   - No particle effects (Spine doesn't support natively — would need custom ext)
 
 import type {
-  Skeleton, Animation, Bone, Slot, RegionAttachment, TimelineKey, CurveType,
+  Skeleton, Animation, Bone, Slot, RegionAttachment, CurveType,
 } from '../core/types.js';
 
 interface SpineJson {
