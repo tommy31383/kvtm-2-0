@@ -13,9 +13,12 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "spine-clone",
-        "width": 800,
-        "height": 600
+        "title": "Spine Clone",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1000,
+        "minHeight": 700,
+        "dragDropEnabled": false
       }
     ],
     "security": {

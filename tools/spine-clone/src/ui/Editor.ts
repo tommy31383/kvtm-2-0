@@ -20,6 +20,7 @@ import { serializeProject, parseProject } from '../io/customFormat.js';
 import { exportToSpineJson } from '../io/spineExport.js';
 import { parseSpineJson } from '../io/spineImport.js';
 import { parseAtlas } from '../io/atlasParser.js';
+import { openFilePicker, saveTextFile, isTauri } from '../io/fileApi.js';
 import type {
   Atlas, RegionAttachment, Bone, Slot,
 } from '../core/types.js';
@@ -142,33 +143,53 @@ export class Editor {
 
   // ── Toolbar wiring ──────────────────────────────────────────
   private bindToolbar() {
-    document.getElementById('btn-new')!.onclick = () => this.newProject();
-    document.getElementById('btn-load-image')!.onclick = () => this.openImagePicker();
-    document.getElementById('btn-load-spine')!.onclick = () => this.openSpinePicker();
-    document.getElementById('btn-load-project')!.onclick = () => this.openProjectPicker();
-    document.getElementById('btn-load-sample')!.onclick = () => this.loadDemo();
-    document.getElementById('btn-save')!.onclick = () => this.saveProject();
-    document.getElementById('btn-export-spine')!.onclick = () => this.exportSpine();
+    // All buttons now use Tauri's native file dialog when in WebView, with
+    // automatic fallback to <input type="file"> when running in plain browser.
+    // Log every click so user can see in DevTools the flow is working.
+    const wrap = (label: string, fn: () => Promise<void> | void) => async () => {
+      console.log(`[Editor] click: ${label}`);
+      try { await fn(); }
+      catch (err: any) {
+        console.error(`[Editor] ${label} failed:`, err);
+        this.setStatus(`❌ ${label}: ${err?.message ?? err}`);
+        alert(`Lỗi ${label}: ${err?.message ?? err}`);
+      }
+    };
+    document.getElementById('btn-new')!.onclick        = wrap('New',          () => this.newProject());
+    document.getElementById('btn-load-image')!.onclick = wrap('Load Image',   () => this.pickAndLoadImage());
+    document.getElementById('btn-load-spine')!.onclick = wrap('Open Spine',   () => this.pickAndLoadSpine());
+    document.getElementById('btn-load-project')!.onclick = wrap('Open',       () => this.pickAndLoadProject());
+    document.getElementById('btn-load-sample')!.onclick  = wrap('Demo',       () => this.loadDemo());
+    document.getElementById('btn-save')!.onclick         = wrap('Save',       () => this.saveProject());
+    document.getElementById('btn-export-spine')!.onclick = wrap('Export Spine', () => this.exportSpine());
+    console.log('[Editor] toolbar bound · isTauri =', isTauri());
+  }
 
-    // Hidden file inputs (browser fallback)
-    const fileImg = document.getElementById('file-input-image') as HTMLInputElement;
-    fileImg.addEventListener('change', e => {
-      const f = (e.target as HTMLInputElement).files?.[0];
-      if (f) this.loadImageFromFile(f);
-      fileImg.value = '';  // allow re-picking same file
+  private async pickAndLoadImage() {
+    const files = await openFilePicker({
+      multiple: false,
+      title: 'Chọn image sheet',
+      filters: [{ name: 'Image', extensions: ['png', 'webp', 'jpg', 'jpeg'] }],
     });
-    const fileProj = document.getElementById('file-input-project') as HTMLInputElement;
-    fileProj.addEventListener('change', e => {
-      const f = (e.target as HTMLInputElement).files?.[0];
-      if (f) this.loadProjectFromFile(f);
-      fileProj.value = '';
+    if (files[0]) await this.loadImageFromFile(files[0]);
+  }
+
+  private async pickAndLoadSpine() {
+    const files = await openFilePicker({
+      multiple: true,
+      title: 'Chọn .spine-json + .atlas + .png',
+      filters: [{ name: 'Spine files', extensions: ['spine-json', 'json', 'atlas', 'png', 'webp', 'jpg'] }],
     });
-    const fileSpine = document.getElementById('file-input-spine') as HTMLInputElement;
-    fileSpine.addEventListener('change', e => {
-      const files = Array.from((e.target as HTMLInputElement).files ?? []);
-      if (files.length) this.loadSpineProject(files);
-      fileSpine.value = '';
+    if (files.length) await this.loadSpineProject(files);
+  }
+
+  private async pickAndLoadProject() {
+    const files = await openFilePicker({
+      multiple: false,
+      title: 'Open Spine Clone project',
+      filters: [{ name: 'Project', extensions: ['json', 'spineclone'] }],
     });
+    if (files[0]) await this.loadProjectFromFile(files[0]);
   }
 
   private bindMode() {
@@ -374,10 +395,6 @@ export class Editor {
     this.setMode('pose');
   }
 
-  private openImagePicker() {
-    (document.getElementById('file-input-image') as HTMLInputElement).click();
-  }
-
   private async loadImageFromFile(file: File) {
     this.setStatus(`⏳ Loading ${file.name}...`);
     try {
@@ -429,14 +446,6 @@ export class Editor {
     } catch (err: any) {
       this.setStatus('❌ ' + (err?.message || String(err)));
     }
-  }
-
-  private openProjectPicker() {
-    (document.getElementById('file-input-project') as HTMLInputElement).click();
-  }
-
-  private openSpinePicker() {
-    (document.getElementById('file-input-spine') as HTMLInputElement).click();
   }
 
   /**
@@ -523,28 +532,22 @@ export class Editor {
     }
   }
 
-  saveProject() {
+  async saveProject() {
     const json = serializeProject(this.store.skeleton, this.store.atlas);
-    this.downloadJson(json, `${this.store.skeleton.name || 'project'}.spineclone.json`);
-    this.setStatus(`💾 Saved ${this.store.skeleton.name}.spineclone.json`);
+    const ok = await saveTextFile(json, `${this.store.skeleton.name || 'project'}.spineclone.json`, {
+      title: 'Save Spine Clone project',
+      filters: [{ name: 'Spine Clone project', extensions: ['spineclone.json', 'json'] }],
+    });
+    if (ok) this.setStatus(`💾 Saved ${this.store.skeleton.name}.spineclone.json`);
   }
 
-  exportSpine() {
+  async exportSpine() {
     const json = exportToSpineJson(this.store.skeleton);
-    this.downloadJson(json, `${this.store.skeleton.name || 'skeleton'}.json`);
-    this.setStatus(`📤 Exported Spine 4.x JSON (compat any spine-runtime)`);
-  }
-
-  private downloadJson(content: string, filename: string) {
-    const blob = new Blob([content], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const ok = await saveTextFile(json, `${this.store.skeleton.name || 'skeleton'}.json`, {
+      title: 'Export Spine 4.x JSON',
+      filters: [{ name: 'Spine JSON', extensions: ['json'] }],
+    });
+    if (ok) this.setStatus(`📤 Exported Spine 4.x JSON`);
   }
 
   // ── Atlas region operations ────────────────────────────────
