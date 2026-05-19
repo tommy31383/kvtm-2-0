@@ -26,6 +26,35 @@ import type {
 } from '../core/types.js';
 import { makeEmptySkeleton } from '../core/types.js';
 
+/**
+ * Resolve a relative path against a base file path (mimics Node's path.resolve).
+ * Handles Windows backslash + forward slash separators.
+ *   resolveRelativePath('E:/a/b/c/file.atlas', '../sheet.png')
+ *     → 'E:/a/b/sheet.png'
+ */
+function resolveRelativePath(basePath: string, relPath: string): string {
+  // Normalize to forward slashes for parsing
+  const baseNorm = basePath.replace(/\\/g, '/');
+  const relNorm  = relPath.replace(/\\/g, '/');
+  // If rel is absolute (has drive letter or starts with /), return as-is
+  if (/^[a-z]:\//i.test(relNorm) || relNorm.startsWith('/')) {
+    return relNorm.replace(/\//g, basePath.includes('\\') ? '\\' : '/');
+  }
+  // Get base directory (strip filename)
+  const baseDir = baseNorm.substring(0, baseNorm.lastIndexOf('/'));
+  // Combine + normalize ../ and ./
+  const parts = (baseDir + '/' + relNorm).split('/');
+  const result: string[] = [];
+  for (const p of parts) {
+    if (p === '..') result.pop();
+    else if (p !== '.' && p !== '') result.push(p);
+  }
+  // Restore drive letter root for Windows
+  const joined = result.join('/');
+  const out = /^[a-z]:/i.test(joined) ? joined : '/' + joined;
+  return basePath.includes('\\') ? out.replace(/\//g, '\\') : out;
+}
+
 /** Guess MIME type from filename extension. Shared with fileApi.ts. */
 function guessMime(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
@@ -541,19 +570,43 @@ export class Editor {
       // Set skeleton name from filename (strip .spine-json/.json)
       skeleton.name = skelFile.name.replace(/\.(spine-json|json)$/i, '');
 
-      // Find matching image: look in selected files for one whose name matches
-      // the atlas page's image reference (basename, ignore path prefix).
+      // Find texture image — 3 strategies in order:
+      //   1) Image file included in the drop (matched by basename)
+      //   2) Any image in the drop (fallback)
+      //   3) Auto-resolve the atlas's image reference relative to atlas file's
+      //      absolute path via Tauri fs (handles "../sprites.png" pattern that
+      //      Spine commonly uses)
       let tex: Texture | undefined;
       if (atlas.pages[0]) {
-        const pageImageName = atlas.pages[0].name.replace(/^.*[\\/]/, '');  // strip path
-        const imgFile = findFile(f =>
-          f.type.startsWith('image/') &&
-          f.name.toLowerCase() === pageImageName.toLowerCase()
-        ) ?? findFile(f => f.type.startsWith('image/'));  // fallback: any image
+        const pageImagePath = atlas.pages[0].name;            // e.g. "../pots_set_00.png"
+        const pageImageBase = pageImagePath.replace(/^.*[\\/]/, '');
+
+        // Strategy 1+2: in-drop image
+        let imgFile = findFile(f =>
+          (f.type.startsWith('image/') || /\.(png|webp|jpg|jpeg)$/i.test(f.name)) &&
+          f.name.toLowerCase() === pageImageBase.toLowerCase()
+        ) ?? findFile(f => f.type.startsWith('image/'));
+
+        // Strategy 3: Tauri fs auto-resolve relative path
+        if (!imgFile && atlasFile && (atlasFile as any)._tauriPath && isTauri()) {
+          const atlasPath = (atlasFile as any)._tauriPath as string;
+          const resolved = resolveRelativePath(atlasPath, pageImagePath);
+          console.log(`[loadSpine] auto-resolve image: ${pageImagePath} → ${resolved}`);
+          try {
+            const { readFile } = await import('@tauri-apps/plugin-fs');
+            const bytes = await readFile(resolved);
+            const blob = new Blob([bytes], { type: guessMime(resolved) });
+            imgFile = new File([blob], pageImageBase, { type: blob.type });
+            (imgFile as any)._tauriPath = resolved;
+            console.log(`[loadSpine] ✅ auto-loaded image ${pageImageBase} (${bytes.byteLength}B)`);
+          } catch (e) {
+            console.warn(`[loadSpine] auto-resolve failed:`, e);
+          }
+        }
+
         if (imgFile) {
           const url = URL.createObjectURL(imgFile);
           tex = await Assets.load<Texture>(url);
-          // Update atlas page with real image dimensions
           atlas.pages[0].name = imgFile.name;
           if (!atlas.pages[0].width) atlas.pages[0].width = tex.width;
           if (!atlas.pages[0].height) atlas.pages[0].height = tex.height;
