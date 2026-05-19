@@ -14,6 +14,7 @@
       <div id="toolbar">
         <button id="btn-new" title="New project">📄 New</button>
         <button id="btn-load-image" title="Load image as atlas page">🖼 Load Image</button>
+        <button id="btn-load-spine" title="Open Spine project — pick .spine-json + .atlas + .png together">🦴 Open Spine</button>
         <button id="btn-load-project" title="Open .spineclone.json project">📂 Open</button>
         <button id="btn-save" title="Save .spineclone.json">💾 Save</button>
         <button id="btn-export-spine" title="Export Spine 4.x JSON (compat any spine-runtime)">📤 Export Spine</button>
@@ -93,5 +94,6 @@
     <!-- Hidden file inputs (browser fallback when not running in Tauri) -->
     <input type="file" id="file-input-image" accept="image/*" style="display:none;" />
     <input type="file" id="file-input-project" accept=".json,application/json" style="display:none;" />
+    <input type="file" id="file-input-spine" accept=".json,.spine-json,.atlas,image/*" multiple style="display:none;" />
   </body>
 </html>

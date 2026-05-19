@@ -18,6 +18,8 @@ import { PixiRenderer } from '../render/PixiRenderer.js';
 import { AtlasView } from './AtlasView.js';
 import { serializeProject, parseProject } from '../io/customFormat.js';
 import { exportToSpineJson } from '../io/spineExport.js';
+import { parseSpineJson } from '../io/spineImport.js';
+import { parseAtlas } from '../io/atlasParser.js';
 import type {
   Atlas, RegionAttachment, Bone, Slot,
 } from '../core/types.js';
@@ -141,6 +143,7 @@ export class Editor {
   private bindToolbar() {
     document.getElementById('btn-new')!.onclick = () => this.newProject();
     document.getElementById('btn-load-image')!.onclick = () => this.openImagePicker();
+    document.getElementById('btn-load-spine')!.onclick = () => this.openSpinePicker();
     document.getElementById('btn-load-project')!.onclick = () => this.openProjectPicker();
     document.getElementById('btn-load-sample')!.onclick = () => this.loadDemo();
     document.getElementById('btn-save')!.onclick = () => this.saveProject();
@@ -158,6 +161,12 @@ export class Editor {
       const f = (e.target as HTMLInputElement).files?.[0];
       if (f) this.loadProjectFromFile(f);
       fileProj.value = '';
+    });
+    const fileSpine = document.getElementById('file-input-spine') as HTMLInputElement;
+    fileSpine.addEventListener('change', e => {
+      const files = Array.from((e.target as HTMLInputElement).files ?? []);
+      if (files.length) this.loadSpineProject(files);
+      fileSpine.value = '';
     });
   }
 
@@ -286,6 +295,76 @@ export class Editor {
 
   private openProjectPicker() {
     (document.getElementById('file-input-project') as HTMLInputElement).click();
+  }
+
+  private openSpinePicker() {
+    (document.getElementById('file-input-spine') as HTMLInputElement).click();
+  }
+
+  /**
+   * Load a Spine project from user-selected files. Expects user to multi-select:
+   *   - one .json / .spine-json (skeleton)
+   *   - one .atlas (region coordinates)
+   *   - one or more image files (.png/.webp) referenced by the atlas
+   *
+   * The skeleton + atlas don't have to be in matching path order — we look up
+   * the texture by the atlas page name (first page's image file).
+   */
+  private async loadSpineProject(files: File[]) {
+    this.setStatus(`⏳ Loading ${files.length} Spine files...`);
+    try {
+      const findFile = (predicate: (f: File) => boolean) => files.find(predicate);
+      const skelFile = findFile(f =>
+        f.name.endsWith('.spine-json') ||
+        (f.name.endsWith('.json') && !f.name.endsWith('.spineclone.json'))
+      );
+      const atlasFile = findFile(f => f.name.endsWith('.atlas'));
+      if (!skelFile) throw new Error('No .spine-json / .json (skeleton) file selected');
+      if (!atlasFile) throw new Error('No .atlas file selected');
+
+      // Parse skeleton + atlas
+      const skelText = await skelFile.text();
+      const atlasText = await atlasFile.text();
+      const skeleton = parseSpineJson(skelText);
+      const atlas = parseAtlas(atlasText);
+
+      // Set skeleton name from filename (strip .spine-json/.json)
+      skeleton.name = skelFile.name.replace(/\.(spine-json|json)$/i, '');
+
+      // Find matching image: look in selected files for one whose name matches
+      // the atlas page's image reference (basename, ignore path prefix).
+      let tex: Texture | undefined;
+      if (atlas.pages[0]) {
+        const pageImageName = atlas.pages[0].name.replace(/^.*[\\/]/, '');  // strip path
+        const imgFile = findFile(f =>
+          f.type.startsWith('image/') &&
+          f.name.toLowerCase() === pageImageName.toLowerCase()
+        ) ?? findFile(f => f.type.startsWith('image/'));  // fallback: any image
+        if (imgFile) {
+          const url = URL.createObjectURL(imgFile);
+          tex = await Assets.load<Texture>(url);
+          // Update atlas page with real image dimensions
+          atlas.pages[0].name = imgFile.name;
+          if (!atlas.pages[0].width) atlas.pages[0].width = tex.width;
+          if (!atlas.pages[0].height) atlas.pages[0].height = tex.height;
+        }
+      }
+
+      this.sheetTexture = tex;
+      this.store.setProject(skeleton, atlas);
+      this.setProjectName(skeleton.name);
+      this.setMode('pose');
+      const stats = [
+        `${skeleton.bones.length} bone`,
+        `${skeleton.slots.length} slot`,
+        `${atlas.pages[0]?.regions.length ?? 0} regions`,
+        `${Object.keys(skeleton.animations).length} anim`,
+      ].join(' · ');
+      this.setStatus(`🦴 Loaded "${skeleton.name}" · ${stats}${tex ? '' : ' · ⚠️ no image (atlas regions visible but no texture)'}`);
+    } catch (err: any) {
+      console.error(err);
+      this.setStatus('❌ ' + (err?.message || String(err)));
+    }
   }
 
   private async loadProjectFromFile(file: File) {
