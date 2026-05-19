@@ -182,8 +182,10 @@ function parseAnimation(name: string, raw: any): Animation {
           curve: parseCurve(k.curve) ?? 'stepped',
         } as TimelineKey<string | null>));
       }
-      if (tlRaw.color) {
-        tl.color = tlRaw.color.map((k: any) => ({
+      // Spine 4.x uses `rgba` field; Spine 3.x used `color`. Support both.
+      const colorRaw = tlRaw.rgba ?? tlRaw.color;
+      if (colorRaw && Array.isArray(colorRaw)) {
+        tl.color = colorRaw.map((k: any) => ({
           time: k.time ?? 0,
           value: k.color ? `#${k.color}` : '#ffffffff',
           curve: parseCurve(k.curve),
