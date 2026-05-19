@@ -675,11 +675,33 @@ export class Editor {
         }
 
         if (imgFile) {
+          console.log(`[loadSpine] loading image "${imgFile.name}" (${imgFile.size}B, type=${imgFile.type})`);
           const url = URL.createObjectURL(imgFile);
-          tex = await Assets.load<Texture>(url);
-          atlas.pages[0].name = imgFile.name;
-          if (!atlas.pages[0].width) atlas.pages[0].width = tex.width;
-          if (!atlas.pages[0].height) atlas.pages[0].height = tex.height;
+          try {
+            // Bulletproof image load: use HTMLImageElement + Texture.from() instead
+            // of Assets.load() which can fail on blob: URLs in some Pixi v8 builds.
+            const imgEl = new Image();
+            await new Promise<void>((resolve, reject) => {
+              imgEl.onload = () => resolve();
+              imgEl.onerror = () => reject(new Error(`Image decode failed: ${imgFile.name}`));
+              imgEl.src = url;
+            });
+            console.log(`[loadSpine] image decoded: ${imgEl.naturalWidth}×${imgEl.naturalHeight}`);
+            tex = Texture.from(imgEl);
+            // Wait one frame to ensure GPU upload
+            await new Promise(r => requestAnimationFrame(r));
+            console.log(`[loadSpine] ✅ texture ready: ${tex.width}×${tex.height}`);
+          } catch (err: any) {
+            console.error(`[loadSpine] image load failed:`, err);
+            // Don't throw — let skeleton + atlas load without texture
+            // (placeholders will render instead). User sees clear status.
+            tex = undefined;
+          }
+          if (tex) {
+            atlas.pages[0].name = imgFile.name;
+            if (!atlas.pages[0].width) atlas.pages[0].width = tex.width;
+            if (!atlas.pages[0].height) atlas.pages[0].height = tex.height;
+          }
         }
       }
 
