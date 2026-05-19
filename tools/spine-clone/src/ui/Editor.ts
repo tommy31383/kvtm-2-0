@@ -963,9 +963,26 @@ export class Editor {
       if (name === cur) li.classList.add('selected');
       const anim = this.store.skeleton.animations[name];
       li.innerHTML = `🎬 ${name} <span class="tag">${anim.duration.toFixed(2)}s</span>`;
-      li.onclick = () => this.store.setCurrentAnimation(name);
+      li.onclick = () => this.selectAndPlayAnimation(name);
       list.appendChild(li);
     });
+  }
+
+  /**
+   * Click anim in list → switch to Pose mode (so anim is visible), set as
+   * current, reset to t=0, auto-play. One-click anim preview.
+   */
+  private selectAndPlayAnimation(name: string) {
+    console.log(`[anim] select+play: ${name}`);
+    // Stop any current playback so togglePlay() starts fresh
+    if (this.store.playing) {
+      this.store.setPlaying(false);
+      if (this.playbackRaf) { cancelAnimationFrame(this.playbackRaf); this.playbackRaf = null; }
+    }
+    this.store.setCurrentAnimation(name);    // resets time to 0, emits events
+    if (this.mode !== 'pose') this.setMode('pose');
+    // Start playback
+    this.togglePlay();
   }
 
   private renderProperties() {
