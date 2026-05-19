@@ -81,8 +81,19 @@ class DebugLogger {
 
 function formatArgs(args: any[]): string {
   return args.map(a => {
+    if (a === null) return 'null';
+    if (a === undefined) return 'undefined';
     if (typeof a === 'string') return a;
-    try { return JSON.stringify(a); } catch { return String(a); }
+    if (typeof a === 'number' || typeof a === 'boolean') return String(a);
+    if (a instanceof Error) return `[Error: ${a.message}${a.stack ? '\n' + a.stack.split('\n').slice(0, 3).join('\n') : ''}]`;
+    if (typeof Event !== 'undefined' && a instanceof Event) return `[Event: ${a.type} on ${(a.target as any)?.id ?? a.target?.constructor?.name ?? '?'}]`;
+    if (typeof HTMLElement !== 'undefined' && a instanceof HTMLElement) return `[<${a.tagName} id=${a.id || '∅'}>]`;
+    if (Array.isArray(a)) return `[Array(${a.length})]`;
+    try {
+      const s = JSON.stringify(a);
+      if (s === '{}' || s === undefined) return `[${a.constructor?.name ?? 'object'}: ${Object.keys(a).join(',') || 'empty'}]`;
+      return s.length > 200 ? s.slice(0, 200) + '...' : s;
+    } catch { return `[${a.constructor?.name ?? 'object'}]`; }
   }).join(' ');
 }
 

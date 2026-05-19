@@ -155,6 +155,19 @@ export class Editor {
         alert(`Lỗi ${label}: ${err?.message ?? err}`);
       }
     };
+    // TEST button — proves dialog plugin works end-to-end
+    document.getElementById('btn-test-dialog')!.onclick = wrap('TEST', async () => {
+      console.log('TEST: calling openFilePicker with multiple=true');
+      const files = await openFilePicker({
+        multiple: true,
+        title: '🔧 TEST — pick ANY file(s) to confirm dialog opens',
+      });
+      console.log(`TEST: picker returned ${files.length} file(s)`);
+      files.forEach((f, i) => {
+        console.log(`  [${i}] ${f.name} · ${f.size}B · type="${f.type}" · path=${(f as any)._tauriPath ?? '?'}`);
+      });
+      alert(`Picked ${files.length} file(s):\n` + files.map(f => `- ${f.name} (${f.size}B)`).join('\n'));
+    });
     document.getElementById('btn-new')!.onclick        = wrap('New',          () => this.newProject());
     document.getElementById('btn-load-image')!.onclick = wrap('Load Image',   () => this.pickAndLoadImage());
     document.getElementById('btn-load-spine')!.onclick = wrap('Open Spine',   () => this.pickAndLoadSpine());
