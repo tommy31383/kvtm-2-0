@@ -13,11 +13,11 @@
       <span id="project-name" class="muted">Untitled</span>
       <div id="toolbar">
         <button id="btn-new" title="New project">📄 New</button>
-        <button id="btn-load-image" title="Load image as atlas">🖼 Load Image</button>
-        <button id="btn-load-sample" title="Load KVTM bloom sample">🌸 Load KVTM Sample</button>
+        <button id="btn-load-image" title="Load image as atlas page">🖼 Load Image</button>
+        <button id="btn-load-project" title="Open .spineclone.json project">📂 Open</button>
         <button id="btn-save" title="Save .spineclone.json">💾 Save</button>
-        <button id="btn-export-spine" title="Export Spine 4.x JSON">📤 Export Spine</button>
-        <button id="btn-export-kvtm" title="Export KVTM _BLOOM_DATA format">📤 Export KVTM</button>
+        <button id="btn-export-spine" title="Export Spine 4.x JSON (compat any spine-runtime)">📤 Export Spine</button>
+        <button id="btn-load-sample" title="Load demo sprite (for testing)">🎁 Demo</button>
       </div>
       <div id="mode-switcher">
         <button id="btn-mode-atlas" class="mode-btn">🎨 Atlas</button>
@@ -90,8 +90,8 @@
       <span id="status-stats" class="muted"></span>
     </footer>
 
-    <!-- Hidden file input for image load (fallback when not in Tauri) -->
+    <!-- Hidden file inputs (browser fallback when not running in Tauri) -->
     <input type="file" id="file-input-image" accept="image/*" style="display:none;" />
-    <input type="file" id="file-input-project" accept=".json" style="display:none;" />
+    <input type="file" id="file-input-project" accept=".json,application/json" style="display:none;" />
   </body>
 </html>

@@ -1,21 +1,58 @@
 import { describe, it, expect } from 'vitest';
 import { exportToSpineJson } from '../src/io/spineExport.js';
 import { serializeProject, parseProject } from '../src/io/customFormat.js';
-import { importKvtmBloom } from '../src/io/kvtmImport.js';
-import type { Skeleton } from '../src/core/types.js';
+import type { Skeleton, Atlas, RegionAttachment } from '../src/core/types.js';
 
-const sampleKvtm = {
-  modules: {
-    m0: { x: 0, y: 0, w: 50, h: 50 },
-    m1: { x: 50, y: 0, w: 60, h: 50, dx: 2, dy: -3 },
-  },
-  anims: {
-    bloom: [{ m: 'm0', d: 100 }, { m: 'm1', d: 100 }],
-  },
-};
+// Build a small generic skeleton for testing the exporters.
+function makeSampleSkeleton(): { skeleton: Skeleton; atlas: Atlas } {
+  const skeleton: Skeleton = {
+    name: 'sample',
+    version: '0.1.0',
+    bones: [{ name: 'root', length: 0, x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 }],
+    slots: [{ name: 'flower', bone: 'root' }],
+    skins: [{
+      name: 'default',
+      attachments: {
+        flower: {
+          m0: { type: 'region', name: 'm0', path: 'm0', x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, width: 50, height: 50 } as RegionAttachment,
+          m1: { type: 'region', name: 'm1', path: 'm1', x: 2, y: -3, rotation: 0, scaleX: 1, scaleY: 1, width: 60, height: 50 } as RegionAttachment,
+        },
+      },
+    }],
+    animations: {
+      bloom: {
+        name: 'bloom',
+        duration: 0.2,
+        bones: {},
+        slots: {
+          flower: {
+            attachment: [
+              { time: 0,   value: 'm0', curve: 'stepped' },
+              { time: 0.1, value: 'm1', curve: 'stepped' },
+            ],
+          },
+        },
+      },
+    },
+  };
+  const atlas: Atlas = {
+    pages: [{
+      name: 'sheet.png',
+      width: 256,
+      height: 128,
+      format: 'RGBA8888',
+      filter: ['Linear', 'Linear'],
+      regions: [
+        { name: 'm0', x: 0,  y: 0, width: 50, height: 50 },
+        { name: 'm1', x: 50, y: 0, width: 60, height: 50 },
+      ],
+    }],
+  };
+  return { skeleton, atlas };
+}
 
 describe('exportToSpineJson', () => {
-  const { skeleton } = importKvtmBloom(sampleKvtm, 'sheet.png');
+  const { skeleton } = makeSampleSkeleton();
   const json = exportToSpineJson(skeleton);
   const parsed = JSON.parse(json);
 
@@ -132,7 +169,7 @@ describe('exportToSpineJson — bone keyframes', () => {
 });
 
 describe('customFormat', () => {
-  const { skeleton, atlas } = importKvtmBloom(sampleKvtm, 'sheet.png', 256, 128);
+  const { skeleton, atlas } = makeSampleSkeleton();
 
   it('serialize then parse round-trips', () => {
     const json = serializeProject(skeleton, atlas);

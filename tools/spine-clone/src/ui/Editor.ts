@@ -16,9 +16,8 @@ import { Application, Container, Texture, Assets } from 'pixi.js';
 import { DocumentStore } from '../store/DocumentStore.js';
 import { PixiRenderer } from '../render/PixiRenderer.js';
 import { AtlasView } from './AtlasView.js';
-import { serializeProject } from '../io/customFormat.js';
+import { serializeProject, parseProject } from '../io/customFormat.js';
 import { exportToSpineJson } from '../io/spineExport.js';
-import { loadKvtmSample } from '../io/kvtmImport.js';
 import type {
   Atlas, RegionAttachment, Bone, Slot,
 } from '../core/types.js';
@@ -56,7 +55,7 @@ export class Editor {
     this.subscribeStore();
     this.renderAll();
     this.setMode('pose');
-    this.setStatus('Ready. Click 🌸 Load KVTM Sample to import existing flower data, or 🖼 Load Image to start fresh.');
+    this.setStatus('Ready. 🖼 Load Image để bắt đầu cắt regions, 📂 Open để mở project có sẵn, hoặc 🎁 Demo để load test sprite.');
   }
 
   // ── Pixi setup ──────────────────────────────────────────────
@@ -142,16 +141,23 @@ export class Editor {
   private bindToolbar() {
     document.getElementById('btn-new')!.onclick = () => this.newProject();
     document.getElementById('btn-load-image')!.onclick = () => this.openImagePicker();
-    document.getElementById('btn-load-sample')!.onclick = () => this.loadKvtmSample();
+    document.getElementById('btn-load-project')!.onclick = () => this.openProjectPicker();
+    document.getElementById('btn-load-sample')!.onclick = () => this.loadDemo();
     document.getElementById('btn-save')!.onclick = () => this.saveProject();
     document.getElementById('btn-export-spine')!.onclick = () => this.exportSpine();
-    document.getElementById('btn-export-kvtm')!.onclick = () => this.exportKvtm();
 
-    // File inputs
+    // Hidden file inputs (browser fallback)
     const fileImg = document.getElementById('file-input-image') as HTMLInputElement;
     fileImg.addEventListener('change', e => {
       const f = (e.target as HTMLInputElement).files?.[0];
       if (f) this.loadImageFromFile(f);
+      fileImg.value = '';  // allow re-picking same file
+    });
+    const fileProj = document.getElementById('file-input-project') as HTMLInputElement;
+    fileProj.addEventListener('change', e => {
+      const f = (e.target as HTMLInputElement).files?.[0];
+      if (f) this.loadProjectFromFile(f);
+      fileProj.value = '';
     });
   }
 
@@ -252,19 +258,49 @@ export class Editor {
     }
   }
 
-  private async loadKvtmSample() {
-    this.setStatus('⏳ Loading KVTM red bloom sample...');
+  /** Load a generic demo sprite sheet so user can test workflow immediately. */
+  private async loadDemo() {
+    this.setStatus('⏳ Loading demo sprite...');
     try {
-      const { skeleton, atlas } = await loadKvtmSample('/sample-assets/kvtm-bloom-red.json', 'flower_red_bloom.webp');
-      const tex = await Assets.load<Texture>('/sample-assets/flower_red_bloom.webp');
-      // Patch atlas page size from texture
-      atlas.pages[0].width = tex.width;
-      atlas.pages[0].height = tex.height;
+      const tex = await Assets.load<Texture>('/sample-assets/sample_sprite.webp');
       this.sheetTexture = tex;
+      const skeleton = makeEmptySkeleton('demo');
+      const atlas: Atlas = {
+        pages: [{
+          name: 'sample_sprite.webp',
+          width: tex.width,
+          height: tex.height,
+          format: 'RGBA8888',
+          filter: ['Linear', 'Linear'],
+          regions: [],
+        }],
+      };
       this.store.setProject(skeleton, atlas);
       this.setProjectName(skeleton.name);
+      this.setMode('atlas');
+      this.setStatus(`🎁 Demo sheet ${tex.width}×${tex.height} loaded. Drag chuột trên ảnh để cắt region.`);
+    } catch (err: any) {
+      this.setStatus('❌ ' + (err?.message || String(err)));
+    }
+  }
+
+  private openProjectPicker() {
+    (document.getElementById('file-input-project') as HTMLInputElement).click();
+  }
+
+  private async loadProjectFromFile(file: File) {
+    this.setStatus(`⏳ Opening ${file.name}...`);
+    try {
+      const text = await file.text();
+      const project = parseProject(text);
+      // Sheet image is referenced by name only — user must load it separately
+      // unless we embed/base64 (Phase 3 enhancement).
+      this.sheetTexture = undefined;
+      this.store.setProject(project.skeleton, project.atlas);
+      this.setProjectName(project.skeleton.name);
       this.setMode('pose');
-      this.setStatus(`✅ Loaded ${skeleton.bones.length} bone, ${skeleton.slots.length} slot, ${atlas.pages[0].regions.length} regions, ${Object.keys(skeleton.animations).length} animations`);
+      const regionsN = project.atlas.pages[0]?.regions.length ?? 0;
+      this.setStatus(`📂 Opened "${project.skeleton.name}" · ${project.skeleton.bones.length} bone · ${regionsN} regions · ${Object.keys(project.skeleton.animations).length} anim. 🖼 Load Image để gắn sheet.`);
     } catch (err: any) {
       this.setStatus('❌ ' + (err?.message || String(err)));
     }
@@ -279,37 +315,7 @@ export class Editor {
   exportSpine() {
     const json = exportToSpineJson(this.store.skeleton);
     this.downloadJson(json, `${this.store.skeleton.name || 'skeleton'}.json`);
-    this.setStatus(`📤 Exported Spine JSON`);
-  }
-
-  exportKvtm() {
-    // KVTM _BLOOM_DATA format: {modules:{...}, anims:{...}}
-    const sk = this.store.skeleton;
-    const atlas = this.store.atlas;
-    const out: any = { modules: {}, anims: {} };
-    const page = atlas.pages[0];
-    if (page) {
-      page.regions.forEach(r => {
-        out.modules[r.name] = { x: r.x, y: r.y, w: r.width, h: r.height };
-      });
-    }
-    Object.entries(sk.animations).forEach(([name, anim]) => {
-      const slotTl = anim.slots[sk.slots[0]?.name]?.attachment;
-      if (slotTl) {
-        // Reconstruct {m, d} from attachment keys (stepped)
-        const frames: { m: string; d: number }[] = [];
-        for (let i = 0; i < slotTl.length; i++) {
-          const k = slotTl[i];
-          const next = slotTl[i + 1];
-          const durMs = Math.round(((next?.time ?? anim.duration) - k.time) * 1000);
-          if (k.value) frames.push({ m: k.value, d: durMs });
-        }
-        out.anims[name] = frames;
-      }
-    });
-    const json = JSON.stringify(out, null, 2);
-    this.downloadJson(json, `${this.store.skeleton.name || 'kvtm'}.bloomdata.json`);
-    this.setStatus(`📤 Exported KVTM _BLOOM_DATA format`);
+    this.setStatus(`📤 Exported Spine 4.x JSON (compat any spine-runtime)`);
   }
 
   private downloadJson(content: string, filename: string) {

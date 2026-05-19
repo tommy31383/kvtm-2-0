@@ -1,7 +1,8 @@
-# Spine Clone Tool — Design Document
+# Spine Clone — Universal 2D Animation Editor
 
-> 2D skeletal animation editor for PC. Tauri + Rust + PixiJS + TypeScript.
-> Goal: open-source Spine-equivalent tool. Output compatible with Spine JSON.
+> Universal PC sprite/skeletal animation editor. Tauri + Rust + PixiJS + TypeScript.
+> Open-source Spine-equivalent tool. **Game-agnostic** — works with ANY sprite sheet
+> from ANY game/project. Output compatible with Spine 4.x JSON for runtime reuse.
 
 ---
 
@@ -22,13 +23,14 @@
 - Particle effects (emitter, lifetime, velocity, gravity, color-over-time)
 - Shader filters (glow, tint, blur)
 - Atlas packer (offline tool)
-- KVTM integration (replace flipbook with bone anim)
+- Generic JS runtime library (load + play .spineclone.json in any web game)
 
 ### Non-goals (initially)
 - Skin system (later)
 - Path attachments (later)
 - Audio events (later)
 - Mobile/web runtime (later)
+- Game-specific integration (the tool is UNIVERSAL — game adapters live outside)
 
 ---
 
@@ -316,15 +318,16 @@ Pose application:
 ### Phase 6 — Export pipeline (2-3 weeks)
 - Spine 4.x JSON export
 - Atlas packer (Rust, offline CLI + Tauri-invoked)
-- Runtime library for KVTM (TS, separate package)
+- Generic JS runtime library (separate npm package: `spine-clone-runtime`)
 
-### Phase 7 — KVTM integration + polish (1 month)
-- Migrate KVTM hoa: flipbook → bone anim
-- Undo/redo
+### Phase 7 — Editor polish (1 month)
+- Undo/redo (Command pattern, integrated into DocumentStore)
 - Copy/paste keyframes
 - Onion skin (show prev/next frames faded)
 - Snap-to-grid / snap-to-bone
+- Keyboard shortcuts (B = bone tool, M = move, R = rotate, etc.)
 - Documentation + video tutorial
+- Spine JSON IMPORTER (read .json from official Spine tool — round-trip parity)
 
 **Total: 7-13 months solo, full-time.**
 
@@ -333,10 +336,10 @@ Pose application:
 ## 8. Open Questions
 
 1. **Render performance**: Should PixiRenderer use sprite-per-attachment or batch via mesh? (Decide at Phase 1 prototype)
-2. **Undo/redo strategy**: Command pattern vs. snapshot-based? (Phase 2 decision)
+2. **Undo/redo strategy**: Command pattern vs. snapshot-based? (Phase 7 decision)
 3. **Particle format**: Match Spine extension if any, or invent? (Phase 5)
 4. **Atlas packer algorithm**: MaxRects vs. Skyline vs. Guillotine? (Phase 6, simple MaxRects to start)
-5. **KVTM bloom migration**: One bone (current) or multi-bone (cánh/lá riêng)? (Phase 7 — depends on artist re-export)
+5. **Repo separation**: Currently sub-folder of KVTM 2.0 repo. When stable, extract to standalone `spine-clone` repo for clarity — tool is universal, not tied to KVTM.
 
 ---
 
