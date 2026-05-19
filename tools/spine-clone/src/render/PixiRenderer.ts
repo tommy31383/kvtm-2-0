@@ -79,18 +79,33 @@ export class PixiRenderer {
   }
 
   /** Pre-create a Texture for every atlas region (sub-rect of the sheet).
-   *  No-op when no sheet texture loaded — sprites will show placeholder rects. */
+   *  For rotated regions (packed 90° to fit tighter), the frame in the atlas
+   *  is h-wide × w-tall — swap dimensions when creating the Texture. The
+   *  sprite then needs counter-rotation by -90° (handled in setAttachment). */
   private buildAtlasTextures() {
     if (!this.sheetTexture) return;
+    this.regionTextures.clear();
     for (const page of this.atlas.pages) {
       for (const region of page.regions) {
+        const w = region.rotate ? region.height : region.width;
+        const h = region.rotate ? region.width  : region.height;
         const tex = new Texture({
           source: this.sheetTexture.source,
-          frame: new Rectangle(region.x, region.y, region.width, region.height),
+          frame: new Rectangle(region.x, region.y, w, h),
         });
         this.regionTextures.set(region.name, tex);
       }
     }
+  }
+
+  /** Look up region metadata (for rotation flag) by name. */
+  private findRegion(name: string) {
+    for (const page of this.atlas.pages) {
+      for (const r of page.regions) {
+        if (r.name === name) return r;
+      }
+    }
+    return undefined;
   }
 
   /** Build Pixi Container hierarchy mirroring the bone tree. */
@@ -175,14 +190,25 @@ export class PixiRenderer {
       placeholder.visible = false;
       return;
     }
-    const tex = this.regionTextures.get(att.path ?? attachmentName);
+    const regionName = att.path ?? attachmentName;
+    const tex = this.regionTextures.get(regionName);
     if (tex) {
-      // Has texture — show real sprite
+      // Has texture — show real sprite at attachment's render size.
       sprite.texture = tex;
       sprite.x = att.x;
       sprite.y = att.y;
-      sprite.rotation = (att.rotation * Math.PI) / 180;
-      sprite.scale.set(att.scaleX, att.scaleY);
+      // attachment.width/height = skeleton-space pixel size. If 0/missing,
+      // use the texture's natural size.
+      const renderW = (att.width  && att.width  > 0) ? att.width  : tex.width;
+      const renderH = (att.height && att.height > 0) ? att.height : tex.height;
+      sprite.width  = renderW * (att.scaleX || 1);
+      sprite.height = renderH * (att.scaleY || 1);
+      // Combine Spine attachment rotation + atlas pack rotation.
+      // Atlas-rotated regions (rotate=true) were packed 90° CW, so the
+      // texture data is 90° rotated — counter with -90° on the sprite.
+      const region = this.findRegion(regionName);
+      const atlasRotDeg = region?.rotate ? -90 : 0;
+      sprite.rotation = (((att.rotation || 0) + atlasRotDeg) * Math.PI) / 180;
       sprite.visible = true;
       placeholder.visible = false;
     } else {
