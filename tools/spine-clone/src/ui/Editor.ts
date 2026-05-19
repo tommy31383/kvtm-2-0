@@ -127,14 +127,15 @@ export class Editor {
 
     // Build the appropriate view
     if (mode === 'pose') {
-      if (this.sheetTexture && this.store.atlas.pages.length) {
-        this.poseRenderer = new PixiRenderer(
-          this.app, this.store.skeleton, this.store.atlas, this.sheetTexture,
-          { showBoneGizmos: true },
-        );
-        this.worldContainer.addChild(this.poseRenderer.root);
-        this.poseRenderer.render(this.store.currentAnimation, this.store.currentTimeSec);
-      }
+      // Always build renderer — even without texture, show bone gizmos +
+      // placeholder rectangles where sprites would go. User can drop the
+      // atlas + image later to add textures.
+      this.poseRenderer = new PixiRenderer(
+        this.app, this.store.skeleton, this.store.atlas, this.sheetTexture,
+        { showBoneGizmos: true },
+      );
+      this.worldContainer.addChild(this.poseRenderer.root);
+      this.poseRenderer.render(this.store.currentAnimation, this.store.currentTimeSec);
     } else {
       this.atlasView = new AtlasView(this.app, this.store.atlas, {
         onRegionCreated: r => this.handleRegionCreated(r),

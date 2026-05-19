@@ -23,6 +23,7 @@ import {
 import type { Skeleton, Atlas, RegionAttachment } from '../core/types.js';
 import { evaluateLocalTransform } from '../core/pose.js';
 
+
 export interface PixiRendererOptions {
   /** Show small ⊕ marker at each bone's origin. */
   showBoneGizmos?: boolean;
@@ -36,15 +37,16 @@ export class PixiRenderer {
   readonly skeleton: Skeleton;
 
   private atlas: Atlas;
-  private sheetTexture: Texture;
+  private sheetTexture?: Texture;
   private regionTextures = new Map<string, Texture>();
 
   // One Container per bone, keyed by bone name. Parent container = parent bone's Container.
   private boneContainers = new Map<string, Container>();
   // One Container per slot (child of slot.bone's Container).
   private slotContainers = new Map<string, Container>();
-  // One Sprite per slot for the active attachment.
+  // Slot visuals: sprite (for textured attachments) + placeholder (when no texture)
   private slotSprites = new Map<string, Sprite>();
+  private slotPlaceholders = new Map<string, Graphics>();
   // Track current attachment name so we only swap textures when it changes.
   private currentAttachment = new Map<string, string | null | undefined>();
   // Bone gizmo Graphics for editor display.
@@ -56,7 +58,7 @@ export class PixiRenderer {
     app: Application,
     skeleton: Skeleton,
     atlas: Atlas,
-    sheetTexture: Texture,
+    sheetTexture: Texture | undefined,
     options: PixiRendererOptions = {},
   ) {
     this.app = app;
@@ -76,8 +78,10 @@ export class PixiRenderer {
     this.buildSlots();
   }
 
-  /** Pre-create a Texture for every atlas region (sub-rect of the sheet). */
+  /** Pre-create a Texture for every atlas region (sub-rect of the sheet).
+   *  No-op when no sheet texture loaded — sprites will show placeholder rects. */
   private buildAtlasTextures() {
+    if (!this.sheetTexture) return;
     for (const page of this.atlas.pages) {
       for (const region of page.regions) {
         const tex = new Texture({
@@ -131,10 +135,16 @@ export class PixiRenderer {
       // Sprite — texture set per-frame via setAttachment.
       const sp = new Sprite();
       sp.label = `attach:${slot.name}`;
-      // KVTM convention: bottom-center anchor so flowers grow from stem.
-      sp.anchor.set(0.5, 1.0);
+      sp.anchor.set(0.5, 0.5); // Spine center pivot
       sc.addChild(sp);
       this.slotSprites.set(slot.name, sp);
+
+      // Placeholder rect — shown when attachment has no texture (no atlas/png loaded)
+      const ph = new Graphics();
+      ph.label = `placeholder:${slot.name}`;
+      ph.visible = false;
+      sc.addChild(ph);
+      this.slotPlaceholders.set(slot.name, ph);
 
       // Setup-pose attachment
       if (slot.attachment) {
@@ -150,32 +160,48 @@ export class PixiRenderer {
     this.currentAttachment.set(slotName, attachmentName);
 
     const sprite = this.slotSprites.get(slotName);
-    if (!sprite) return;
+    const placeholder = this.slotPlaceholders.get(slotName);
+    if (!sprite || !placeholder) return;
 
     if (!attachmentName) {
       sprite.visible = false;
+      placeholder.visible = false;
       return;
     }
-    // Resolve attachment def → atlas region path
-    const slot = this.skeleton.slots.find(s => s.name === slotName);
-    if (!slot) return;
     const skin = this.skeleton.skins[0]; // Phase 1: default skin only
     const att = skin?.attachments[slotName]?.[attachmentName] as RegionAttachment | undefined;
     if (!att || att.type !== 'region') {
       sprite.visible = false;
+      placeholder.visible = false;
       return;
     }
     const tex = this.regionTextures.get(att.path ?? attachmentName);
-    if (!tex) {
+    if (tex) {
+      // Has texture — show real sprite
+      sprite.texture = tex;
+      sprite.x = att.x;
+      sprite.y = att.y;
+      sprite.rotation = (att.rotation * Math.PI) / 180;
+      sprite.scale.set(att.scaleX, att.scaleY);
+      sprite.visible = true;
+      placeholder.visible = false;
+    } else {
+      // No texture — show colored placeholder rect at attachment dimensions
       sprite.visible = false;
-      return;
+      placeholder.clear();
+      const w = att.width || 32;
+      const h = att.height || 32;
+      // Hash-based color from name so each attachment is distinguishable
+      const hue = hashHue(attachmentName);
+      const fill = hslToHex(hue, 60, 40);
+      const stroke = hslToHex(hue, 70, 65);
+      placeholder.rect(-w/2 + att.x, -h/2 + att.y, w, h)
+        .fill({ color: fill, alpha: 0.4 })
+        .stroke({ color: stroke, width: 1.5, alpha: 0.9 });
+      placeholder.rotation = (att.rotation * Math.PI) / 180;
+      placeholder.scale.set(att.scaleX, att.scaleY);
+      placeholder.visible = true;
     }
-    sprite.texture = tex;
-    sprite.x = att.x;
-    sprite.y = att.y;
-    sprite.rotation = (att.rotation * Math.PI) / 180;
-    sprite.scale.set(att.scaleX, att.scaleY);
-    sprite.visible = true;
   }
 
   /**
@@ -225,3 +251,21 @@ export class PixiRenderer {
     this.root.destroy({ children: true });
   }
 }
+
+// ── Placeholder color helpers ──────────────────────────────────
+function hashHue(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h) % 360;
+}
+function hslToHex(h: number, s: number, l: number): number {
+  s /= 100; l /= 100;
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const r = Math.round(255 * f(0));
+  const g = Math.round(255 * f(8));
+  const b = Math.round(255 * f(4));
+  return (r << 16) | (g << 8) | b;
+}
+
