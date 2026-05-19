@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spine Clone — Phase 0 Prototype</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+  <body>
+    <header id="app-header">
+      <strong>🦴 Spine Clone</strong>
+      <span class="muted">Phase 0 · Hello Bone</span>
+    </header>
+    <main id="app-main">
+      <aside id="app-left">
+        <h3>Hierarchy</h3>
+        <ul id="bone-tree" class="tree">
+          <li class="tree-item selected">root</li>
+        </ul>
+      </aside>
+      <section id="app-canvas-wrap">
+        <div id="canvas-host"></div>
+        <div id="canvas-tools">
+          <label>Rotation
+            <input id="rot-slider" type="range" min="-180" max="180" step="1" value="0" />
+            <span id="rot-val">0°</span>
+          </label>
+          <label>Scale
+            <input id="scale-slider" type="range" min="0.2" max="3" step="0.05" value="1" />
+            <span id="scale-val">1.00</span>
+          </label>
+          <button id="reset-btn">Reset</button>
+        </div>
+      </section>
+      <aside id="app-right">
+        <h3>Properties</h3>
+        <div id="props-panel">
+          <p class="muted">Bone: <span id="prop-bone">root</span></p>
+          <p class="muted">x: <span id="prop-x">0</span> · y: <span id="prop-y">0</span></p>
+          <p class="muted">rot: <span id="prop-rot">0°</span></p>
+          <p class="muted">scale: <span id="prop-scale">1.00</span></p>
+        </div>
+      </aside>
+    </main>
+    <footer id="app-footer">
+      <span id="status-msg" class="muted">Ready</span>
+    </footer>
+  </body>
+</html>

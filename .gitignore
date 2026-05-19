@@ -1,3 +1,4 @@
+# existing entries kept below
 # Local secrets
 .env
 *.local.html
@@ -18,3 +19,9 @@ Thumbs.db
 # Node
 node_modules/
 .gitignore.check
+
+# spine-clone tool
+tools/spine-clone/node_modules/
+tools/spine-clone/dist/
+tools/spine-clone/src-tauri/target/
+tools/spine-clone/src-tauri/gen/

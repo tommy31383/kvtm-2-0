@@ -1,0 +1,118 @@
+/* Spine Clone — Phase 0 layout */
+:root {
+  --bg-0: #0c0f15;
+  --bg-1: #131720;
+  --bg-2: #1a1f2b;
+  --bg-3: #232938;
+  --border: #2a3040;
+  --text: #e8e4d8;
+  --muted: #6b7280;
+  --gold: #FFD700;
+  --orange: #ff8a3d;
+  --blue: #60a5fa;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+body { display: grid; grid-template-rows: 36px 1fr 28px; }
+
+#app-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 14px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+}
+#app-header strong { color: var(--gold); }
+.muted { color: var(--muted); font-size: 11px; }
+
+#app-main {
+  display: grid;
+  grid-template-columns: 220px 1fr 240px;
+  overflow: hidden;
+  background: var(--bg-0);
+}
+
+#app-left, #app-right {
+  background: var(--bg-1);
+  padding: 10px 12px;
+  overflow-y: auto;
+}
+#app-left { border-right: 1px solid var(--border); }
+#app-right { border-left: 1px solid var(--border); }
+
+#app-left h3, #app-right h3 {
+  margin: 0 0 8px 0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.tree { list-style: none; padding: 0; margin: 0; }
+.tree-item {
+  padding: 5px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.tree-item:hover { background: var(--bg-2); }
+.tree-item.selected { background: var(--bg-3); color: var(--gold); }
+
+#app-canvas-wrap { display: flex; flex-direction: column; overflow: hidden; }
+#canvas-host {
+  flex: 1;
+  position: relative;
+  background:
+    linear-gradient(45deg, var(--bg-1) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--bg-1) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--bg-1) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--bg-1) 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-color: var(--bg-0);
+  overflow: hidden;
+}
+#canvas-host canvas { display: block; }
+
+#canvas-tools {
+  padding: 8px 14px;
+  background: var(--bg-1);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px;
+  flex-wrap: wrap;
+}
+#canvas-tools label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--muted);
+}
+#canvas-tools input[type=range] { width: 160px; accent-color: var(--gold); }
+#canvas-tools span { color: var(--gold); font-size: 11px; min-width: 36px; text-align: right; }
+#canvas-tools button {
+  background: var(--bg-3); color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 12px; border-radius: 3px;
+  font-size: 11px; cursor: pointer;
+}
+#canvas-tools button:hover { border-color: var(--gold); color: var(--gold); }
+
+#props-panel p { margin: 4px 0; font-size: 11px; }
+#props-panel span { color: var(--text); }
+
+#app-footer {
+  padding: 0 14px;
+  background: var(--bg-1);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center;
+  font-size: 11px;
+}
