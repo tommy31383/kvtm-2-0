@@ -267,17 +267,27 @@ Pose application:
 
 ## 7. Phase Roadmap
 
-### Phase 0 — Foundation (1-2 weeks) [CURRENT]
-- [ ] Design doc (this file)
-- [ ] Project scaffold (Tauri + Vite + TS + PixiJS)
-- [ ] "Hello bone" demo (1 sprite + slider rotation)
-- [ ] Atlas import test (load KVTM `_BLOOM_DATA`)
+### Phase 0 — Foundation (1-2 weeks) ✅ DONE 2026-05-19
+- [x] Design doc (this file)
+- [x] Project scaffold (Tauri 2 + Vite + TS + PixiJS 8)
+- [x] "Hello bone" demo (1 sprite + slider rotation)
+- [x] Atlas import test (load KVTM `_BLOOM_DATA` red color)
+- [x] Rust 1.95 + VS Build Tools 2022 + MSVC 14.44 installed
+- [x] cargo check passes (Tauri deps compile in 2m31s)
 
-### Phase 1 — Core data + render (1-2 months)
-- Skeleton/Bone/Slot/Attachment data model + tests
-- File I/O (custom format)
-- PixiRenderer (skeleton → Pixi containers)
-- Setup pose rendering (no animation yet)
+### Phase 1 — Core data + render (1-2 months) ✅ MOSTLY DONE 2026-05-19
+- [x] Skeleton/Bone/Slot/Attachment data model (`src/core/types.ts`)
+- [x] Interpolation — Linear/Stepped/Bezier (`src/core/interpolation.ts`)
+- [x] Pose evaluator + 2D affine matrix (`src/core/pose.ts`)
+- [x] PixiRenderer — skeleton ↔ Pixi scene bridge (`src/render/PixiRenderer.ts`)
+- [x] KVTM importer (`src/io/kvtmImport.ts`)
+- [x] Custom format I/O (`src/io/customFormat.ts`)
+- [x] Spine 4.x JSON exporter (`src/io/spineExport.ts`)
+- [x] **54 unit tests** passing (Vitest)
+- [ ] Native Tauri window launch (build in progress)
+- [ ] Spine JSON IMPORTER (read .json from other tools)
+- [ ] Atlas `.atlas` text parser (Spine's text format)
+- [ ] Animation playback loop with `requestAnimationFrame`
 
 ### Phase 2 — Skeleton editor (1-2 months)
 - Hierarchy panel + bone tree
