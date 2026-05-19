@@ -91,6 +91,16 @@
       <span id="status-stats" class="muted"></span>
     </footer>
 
+    <!-- Debug overlay — visible without F12 -->
+    <div id="debug-overlay">
+      <div id="debug-header">
+        <strong>🐛 Debug log</strong>
+        <button id="debug-clear">Clear</button>
+        <button id="debug-toggle">▼</button>
+      </div>
+      <div id="debug-log"></div>
+    </div>
+
     <!-- File pickers handled by src/io/fileApi.ts (Tauri native dialog or browser fallback) -->
   </body>
 </html>
