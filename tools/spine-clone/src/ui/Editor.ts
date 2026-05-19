@@ -410,67 +410,65 @@ export class Editor {
 
   /**
    * Auto-discover Spine sibling files in the same folder via Tauri fs.
-   * Use case: user Ctrl-clicks 3 files in Explorer but Tauri only receives 1
-   * path (multi-drag flakiness). Or user drops just .atlas → we find .spine-json
-   * + .png next to it.
+   * Use case: user dropped only 1 file (multi-drag flaky), we find siblings
+   * with matching basename in the same folder AND in parent (for "../sheet.png"
+   * atlas refs).
    *
-   * Strategy: for any dropped .atlas / .spine-json, get its _tauriPath, scan
-   * its directory for related files by basename match.
+   * Strategy: try direct readFile on candidate paths. Avoid readDir which has
+   * stricter permission requirements + can fail on some folders.
    */
   private async discoverSiblings(files: File[]): Promise<File[]> {
     if (!isTauri() || files.length === 0) return files;
 
-    // Pick a "anchor" file with a tauriPath to derive the directory from
     const anchor = files.find(f =>
       (f as any)._tauriPath &&
       /\.(atlas|spine-json|json|png|webp|jpg|jpeg)$/i.test(f.name)
     );
-    if (!anchor) return files;
+    if (!anchor) {
+      console.log('[siblings] no anchor file with _tauriPath, skipping discovery');
+      return files;
+    }
 
     const anchorPath = (anchor as any)._tauriPath as string;
     const sep = anchorPath.includes('\\') ? '\\' : '/';
     const dir = anchorPath.substring(0, anchorPath.lastIndexOf(sep));
+    const parentDir = dir.substring(0, dir.lastIndexOf(sep));
     const baseName = anchor.name.replace(/\.(spine-json|atlas|json|png|webp|jpg|jpeg)$/i, '');
-    console.log(`[siblings] anchor=${anchor.name} dir=${dir} base=${baseName}`);
+    console.log(`[siblings] anchor="${anchor.name}" base="${baseName}" dir="${dir}"`);
 
+    let readFile: any;
     try {
-      const { readDir, readFile } = await import('@tauri-apps/plugin-fs');
-      const entries = await readDir(dir);
-      const presentNames = new Set(files.map(f => f.name.toLowerCase()));
-      const candidates: { name: string; path: string }[] = [];
+      const fsMod = await import('@tauri-apps/plugin-fs');
+      readFile = fsMod.readFile;
+    } catch (e) {
+      console.warn('[siblings] cannot load plugin-fs:', e);
+      return files;
+    }
 
-      // Find files with matching basename + interesting extensions
-      const wantedExts = /\.(spine-json|atlas|png|webp|jpg|jpeg)$/i;
-      for (const e of entries) {
-        if (!e.isFile || !e.name) continue;
-        if (!wantedExts.test(e.name)) continue;
-        if (presentNames.has(e.name.toLowerCase())) continue;
-        // Match by basename — strip extension and check prefix
-        const entryBase = e.name.replace(/\.(spine-json|atlas|json|png|webp|jpg|jpeg)$/i, '');
-        if (entryBase === baseName) {
-          candidates.push({ name: e.name, path: dir + sep + e.name });
-        }
-      }
+    const presentNames = new Set(files.map(f => f.name.toLowerCase()));
 
-      // Also: if atlas references "../sheet.png" pattern, search parent dir too
-      // Done via auto-resolve in loadSpineProject — no extra work here.
+    // Try candidates: basename + each known Spine-related extension
+    // Search both SAME dir AND PARENT dir (atlas often refs "../sheet.png")
+    const exts = ['.spine-json', '.atlas', '.png', '.webp', '.jpg', '.jpeg'];
+    const searchDirs = [dir, parentDir].filter(d => d.length > 1);
 
-      console.log(`[siblings] found ${candidates.length} candidate(s):`, candidates.map(c => c.name));
-
-      for (const c of candidates) {
+    for (const searchDir of searchDirs) {
+      for (const ext of exts) {
+        const candidateName = baseName + ext;
+        if (presentNames.has(candidateName.toLowerCase())) continue;
+        const candidatePath = searchDir + sep + candidateName;
         try {
-          const bytes = await readFile(c.path);
-          const blob = new Blob([bytes], { type: guessMime(c.name) });
-          const f = new File([blob], c.name, { type: blob.type });
-          (f as any)._tauriPath = c.path;
+          const bytes = await readFile(candidatePath);
+          const blob = new Blob([bytes], { type: guessMime(candidateName) });
+          const f = new File([blob], candidateName, { type: blob.type });
+          (f as any)._tauriPath = candidatePath;
           files.push(f);
-          console.log(`[siblings] ✅ auto-added ${c.name} (${bytes.byteLength}B)`);
-        } catch (e) {
-          console.warn(`[siblings] failed to read ${c.path}:`, e);
+          presentNames.add(candidateName.toLowerCase());
+          console.log(`[siblings] ✅ found ${candidateName} in ${searchDir} (${bytes.byteLength}B)`);
+        } catch {
+          // not found — silent skip (most candidates won't exist)
         }
       }
-    } catch (err) {
-      console.warn('[siblings] discovery failed:', err);
     }
 
     return files;
