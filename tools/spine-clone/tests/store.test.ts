@@ -19,9 +19,9 @@ describe('DocumentStore — initial state', () => {
     const s = makeStore();
     expect(s.selection.type).toBe('none');
   });
-  it('current animation defaults to first available', () => {
+  it('current animation defaults to undefined (setup pose)', () => {
     const s = makeStore();
-    expect(s.currentAnimation).toBe('idle');
+    expect(s.currentAnimation).toBeUndefined();
   });
   it('time starts at 0, not playing', () => {
     const s = makeStore();
@@ -50,15 +50,22 @@ describe('DocumentStore — selection', () => {
 });
 
 describe('DocumentStore — time', () => {
-  it('clamps time to [0, duration]', () => {
+  it('clamps time to [0, duration] after selecting animation', () => {
     const s = makeStore();
+    s.setCurrentAnimation('idle');  // duration 2s
     s.setTime(-5);
     expect(s.currentTimeSec).toBe(0);
     s.setTime(100);
     expect(s.currentTimeSec).toBe(2);  // idle duration
   });
+  it('time stays at 0 when no animation (setup pose)', () => {
+    const s = makeStore();
+    s.setTime(1.5);
+    expect(s.currentTimeSec).toBe(0);  // clamped because duration is 0
+  });
   it('changing animation resets time to 0', () => {
     const s = makeStore();
+    s.setCurrentAnimation('idle');
     s.setTime(1.5);
     expect(s.currentTimeSec).toBe(1.5);
     s.setCurrentAnimation('walk');
@@ -84,6 +91,7 @@ describe('DocumentStore — bone editing', () => {
 describe('DocumentStore — subscriptions', () => {
   it('returns unsubscribe function', () => {
     const s = makeStore();
+    s.setCurrentAnimation('idle');  // so time can advance past 0
     const fn = vi.fn();
     const off = s.on('time-changed', fn);
     s.setTime(0.5);

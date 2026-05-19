@@ -48,7 +48,10 @@ export class DocumentStore {
       skeleton: initial.skeleton,
       atlas: initial.atlas,
       selection: { type: 'none' },
-      currentAnimation: Object.keys(initial.skeleton.animations)[0],
+      // Don't auto-select an animation — Spine "icon" anims (duration 0) often
+      // HIDE most slots at t=0, making the skeleton appear empty. Default to
+      // setup pose (no animation) so the user sees the natural skeleton state.
+      currentAnimation: undefined,
       currentTimeSec: 0,
       playing: false,
     };
@@ -75,7 +78,8 @@ export class DocumentStore {
     this.state.skeleton = skeleton;
     this.state.atlas = atlas;
     this.state.selection = { type: 'none' };
-    this.state.currentAnimation = Object.keys(skeleton.animations)[0];
+    // Setup pose default — see constructor comment
+    this.state.currentAnimation = undefined;
     this.state.currentTimeSec = 0;
     this.state.playing = false;
     this.emit('project-changed');

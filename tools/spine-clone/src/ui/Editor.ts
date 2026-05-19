@@ -1045,6 +1045,15 @@ export class Editor {
     const list = document.getElementById('animation-list') as HTMLUListElement;
     list.innerHTML = '';
     const cur = this.store.currentAnimation;
+
+    // Setup Pose entry (no animation — show skeleton at default state)
+    const setupLi = document.createElement('li');
+    setupLi.className = 'tree-item';
+    if (!cur) setupLi.classList.add('selected');
+    setupLi.innerHTML = `🦴 <em>Setup Pose</em> <span class="tag">default</span>`;
+    setupLi.onclick = () => this.selectSetupPose();
+    list.appendChild(setupLi);
+
     Object.keys(this.store.skeleton.animations).forEach(name => {
       const li = document.createElement('li');
       li.className = 'tree-item';
@@ -1054,6 +1063,18 @@ export class Editor {
       li.onclick = () => this.selectAndPlayAnimation(name);
       list.appendChild(li);
     });
+  }
+
+  /** Select "Setup Pose" — clear current animation, show skeleton at defaults. */
+  private selectSetupPose() {
+    console.log('[anim] setup pose');
+    if (this.store.playing) {
+      this.store.setPlaying(false);
+      if (this.playbackRaf) { cancelAnimationFrame(this.playbackRaf); this.playbackRaf = null; }
+      (document.getElementById('btn-play') as HTMLElement).textContent = '▶';
+    }
+    this.store.setCurrentAnimation(undefined);
+    if (this.mode !== 'pose') this.setMode('pose');
   }
 
   /**
