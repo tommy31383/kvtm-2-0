@@ -943,7 +943,9 @@ export class Editor {
     regions.forEach(r => {
       const li = document.createElement('li');
       li.className = 'tree-item';
-      li.innerHTML = `<span style="color:#60a5fa;">▭</span> ${r.name} <span class="tag">${r.width}×${r.height}</span>`;
+      const rotIcon = r.rotate ? '<span style="color:#a855f7;" title="rotated 90° in atlas">↻</span> ' : '';
+      const color = r.rotate ? '#a855f7' : '#60a5fa';
+      li.innerHTML = `<span style="color:${color};">▭</span> ${rotIcon}${r.name} <span class="tag">${r.width}×${r.height}</span>`;
       li.onclick = () => {
         this.atlasView?.selectRegion(r.name);
       };

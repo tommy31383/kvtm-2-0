@@ -83,25 +83,32 @@ export class AtlasView {
     this.events.onRegionSelected?.(name);
   }
 
-  /** Draw all atlas regions as colored rectangles + labels. */
+  /** Draw all atlas regions as colored rectangles + labels.
+   *  Rotated regions (rotate=true / 90°) occupy h×w in the atlas, not w×h —
+   *  Spine packers rotate sprites 90° to fit tighter. We swap dimensions for
+   *  display so rect matches the actual area in the sheet. */
   private redrawRects() {
     this.rectsLayer.removeChildren();
     if (!this.atlas.pages.length) return;
     const page = this.atlas.pages[0];
     for (const r of page.regions) {
       const isSelected = r.name === this.selectedName;
+      // Effective atlas-space dimensions accounting for rotation
+      const aw = r.rotate ? r.height : r.width;
+      const ah = r.rotate ? r.width  : r.height;
+
       const g = new Graphics();
-      g.rect(r.x, r.y, r.width, r.height);
+      g.rect(r.x, r.y, aw, ah);
       g.stroke({
-        color: isSelected ? 0xFFD700 : 0x60a5fa,
+        color: isSelected ? 0xFFD700 : (r.rotate ? 0xa855f7 : 0x60a5fa),  // purple if rotated
         width: isSelected ? 2 : 1,
         alpha: isSelected ? 1.0 : 0.7,
       });
       if (isSelected) {
-        g.rect(r.x, r.y, r.width, r.height).fill({ color: 0xFFD700, alpha: 0.08 });
+        g.rect(r.x, r.y, aw, ah).fill({ color: 0xFFD700, alpha: 0.08 });
         // Corner handles
         const hs = 4;
-        [[r.x, r.y], [r.x + r.width, r.y], [r.x, r.y + r.height], [r.x + r.width, r.y + r.height]]
+        [[r.x, r.y], [r.x + aw, r.y], [r.x, r.y + ah], [r.x + aw, r.y + ah]]
           .forEach(([cx, cy]) => {
             g.rect(cx - hs, cy - hs, hs * 2, hs * 2).fill({ color: 0xFFD700 });
           });
@@ -190,10 +197,11 @@ export class AtlasView {
   private hitTest(px: number, py: number): AtlasRegion | null {
     if (!this.atlas.pages.length) return null;
     const page = this.atlas.pages[0];
-    // Reverse iterate so topmost (last drawn) wins
     for (let i = page.regions.length - 1; i >= 0; i--) {
       const r = page.regions[i];
-      if (px >= r.x && px <= r.x + r.width && py >= r.y && py <= r.y + r.height) {
+      const aw = r.rotate ? r.height : r.width;
+      const ah = r.rotate ? r.width  : r.height;
+      if (px >= r.x && px <= r.x + aw && py >= r.y && py <= r.y + ah) {
         return r;
       }
     }
