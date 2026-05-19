@@ -140,8 +140,9 @@ export class Editor {
   }
 
   // ── Mode switch ─────────────────────────────────────────────
+  // Always rebuilds — caller decides when to call. Don't optimize away the
+  // rebuild because that breaks "reload after new skeleton imported".
   setMode(mode: Mode) {
-    if (this.mode === mode && (this.poseRenderer || this.atlasView)) return;
     this.mode = mode;
     // Tear down current view
     if (this.poseRenderer) {
