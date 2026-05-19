@@ -21,6 +21,7 @@ import { exportToSpineJson } from '../io/spineExport.js';
 import { parseSpineJson } from '../io/spineImport.js';
 import { parseAtlas } from '../io/atlasParser.js';
 import { openFilePicker, saveTextFile, isTauri } from '../io/fileApi.js';
+import { evaluatePose } from '../core/pose.js';
 import type {
   Atlas, RegionAttachment, Bone, Slot,
 } from '../core/types.js';
@@ -526,8 +527,9 @@ export class Editor {
   }
 
   /**
-   * Compute skeleton bounds from bone setup-pose positions + attachment sizes,
-   * zoom + pan worldContainer so it fits the canvas.
+   * Compute skeleton bounds from bone WORLD positions (evaluated through the
+   * pose pipeline) + attachment dimensions. More reliable than Pixi getBounds
+   * which can return degenerate values for skeletons with many invisible slots.
    */
   private fitToView() {
     if (!this.poseRenderer) return;
@@ -535,35 +537,43 @@ export class Editor {
     const W = host.clientWidth, H = host.clientHeight;
     if (W < 10 || H < 10) return;
 
-    // Reset world transform first so getBounds returns LOCAL bounds
-    this.worldContainer.scale.set(1);
-    this.worldContainer.x = 0;
-    this.worldContainer.y = 0;
+    // Evaluate pose at current time to get world transforms for each bone
+    const animName = this.store.currentAnimation;
+    const t = this.store.currentTimeSec;
+    const pose = evaluatePose(this.store.skeleton, animName, t);
 
-    // Force a re-render at current time to compute fresh bone positions
-    this.poseRenderer.render(this.store.currentAnimation, this.store.currentTimeSec);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let boneCount = 0;
+    for (const bone of this.store.skeleton.bones) {
+      const w = pose.bones[bone.name];
+      if (!w) continue;
+      boneCount++;
+      // Bone origin position
+      const bx = w.tx, by = w.ty;
+      if (bx < minX) minX = bx;
+      if (by < minY) minY = by;
+      if (bx > maxX) maxX = bx;
+      if (by > maxY) maxY = by;
+    }
+    // Pad bounds with typical attachment size (so sprites don't get clipped)
+    const attPad = 80;
+    minX -= attPad; minY -= attPad; maxX += attPad; maxY += attPad;
 
-    // Use Pixi's getBounds() on renderer root — covers all bones + attachments
-    const b = this.poseRenderer.root.getBounds();
-    const rb: any = (b as any).rectangle ?? b;
-    let minX = rb.x ?? rb.minX ?? 0;
-    let minY = rb.y ?? rb.minY ?? 0;
-    let bw = rb.width  ?? ((rb.maxX ?? 0) - minX);
-    let bh = rb.height ?? ((rb.maxY ?? 0) - minY);
-
-    if (!isFinite(minX) || !isFinite(bw) || bw < 1 || bh < 1) {
-      console.warn(`[fitToView] degenerate bounds:`, b);
-      // Fallback: just center at default scale
+    if (!isFinite(minX) || boneCount === 0) {
+      console.warn(`[fitToView] no valid bone positions`);
+      this.worldContainer.scale.set(1);
       this.worldContainer.x = W / 2;
       this.worldContainer.y = H / 2;
       return;
     }
 
-    const pad = 1.2;
+    const bw = Math.max(1, maxX - minX);
+    const bh = Math.max(1, maxY - minY);
+    const pad = 1.1;
     const scale = Math.min(W / (bw * pad), H / (bh * pad));
     const clampedScale = Math.max(0.05, Math.min(3, scale));
-    const centerX = minX + bw / 2;
-    const centerY = minY + bh / 2;
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
     this.worldContainer.scale.set(clampedScale);
     this.worldContainer.x = W / 2 - centerX * clampedScale;
     this.worldContainer.y = H / 2 - centerY * clampedScale;
@@ -573,7 +583,7 @@ export class Editor {
     if (slider) slider.value = String(clampedScale);
     if (valEl)  valEl.textContent = clampedScale.toFixed(2);
 
-    console.log(`[fitToView] bounds (${minX.toFixed(0)},${minY.toFixed(0)}) size ${bw.toFixed(0)}×${bh.toFixed(0)} → scale=${clampedScale.toFixed(2)} pan=(${this.worldContainer.x.toFixed(0)},${this.worldContainer.y.toFixed(0)})`);
+    console.log(`[fitToView] ${boneCount} bones, world bounds X[${minX.toFixed(0)}..${maxX.toFixed(0)}] Y[${minY.toFixed(0)}..${maxY.toFixed(0)}] size ${bw.toFixed(0)}×${bh.toFixed(0)} → scale=${clampedScale.toFixed(2)}`);
   }
 
   private togglePlay() {
