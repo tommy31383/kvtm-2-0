@@ -72,6 +72,10 @@ export class PixiRenderer {
 
     this.root = new Container();
     this.root.label = 'skeleton-root';
+    // Spine uses Y-up coords (positive Y = above root). Pixi uses Y-down.
+    // Flip the entire skeleton tree's Y to convert. Each sprite then
+    // counter-flips its own Y so the texture content displays right-side up.
+    this.root.scale.y = -1;
 
     this.buildAtlasTextures();
     this.buildBoneTree();
@@ -203,6 +207,10 @@ export class PixiRenderer {
       const renderH = (att.height && att.height > 0) ? att.height : tex.height;
       sprite.width  = renderW * (att.scaleX || 1);
       sprite.height = renderH * (att.scaleY || 1);
+      // Counter parent's Y-flip so texture content displays right-side up.
+      // (root.scale.y = -1 → bone+slot tree flipped Y; sprite needs scale.y
+      // negated to undo flip locally for content rendering)
+      sprite.scale.y = -Math.abs(sprite.scale.y);
       // Combine Spine attachment rotation + atlas pack rotation.
       // Atlas-rotated regions (rotate=true) were packed 90° CW, so the
       // texture data is 90° rotated — counter with -90° on the sprite.
