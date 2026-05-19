@@ -203,18 +203,40 @@ export class Editor {
         alert(`Lỗi ${label}: ${err?.message ?? err}`);
       }
     };
-    // TEST button — proves dialog plugin works end-to-end
+    // TEST button — dump bone positions + check render state
     document.getElementById('btn-test-dialog')!.onclick = wrap('TEST', async () => {
-      console.log('TEST: calling openFilePicker with multiple=true');
-      const files = await openFilePicker({
-        multiple: true,
-        title: '🔧 TEST — pick ANY file(s) to confirm dialog opens',
-      });
-      console.log(`TEST: picker returned ${files.length} file(s)`);
-      files.forEach((f, i) => {
-        console.log(`  [${i}] ${f.name} · ${f.size}B · type="${f.type}" · path=${(f as any)._tauriPath ?? '?'}`);
-      });
-      alert(`Picked ${files.length} file(s):\n` + files.map(f => `- ${f.name} (${f.size}B)`).join('\n'));
+      const sk = this.store.skeleton;
+      console.log(`=== DIAGNOSTIC: ${sk.name} ===`);
+      console.log(`bones=${sk.bones.length} slots=${sk.slots.length} regions=${this.store.atlas.pages[0]?.regions.length ?? 0}`);
+      console.log(`sheetTexture: ${this.sheetTexture ? this.sheetTexture.width+'x'+this.sheetTexture.height : 'NONE'}`);
+      console.log(`mode=${this.mode} worldContainer scale=${this.worldContainer.scale.x.toFixed(2)} pos=(${this.worldContainer.x.toFixed(0)},${this.worldContainer.y.toFixed(0)})`);
+
+      // Evaluate pose + dump 10 bone positions
+      const pose = evaluatePose(sk, this.store.currentAnimation, this.store.currentTimeSec);
+      const positions: Array<[string, number, number]> = [];
+      for (const bone of sk.bones) {
+        const w = pose.bones[bone.name];
+        positions.push([bone.name, w.tx, w.ty]);
+      }
+      console.log(`first 10 bone world positions:`);
+      positions.slice(0, 10).forEach(([n, x, y]) => console.log(`  ${n}: (${x.toFixed(1)}, ${y.toFixed(1)})`));
+
+      // Check renderer state
+      if (this.poseRenderer) {
+        const rr = this.poseRenderer as any;
+        const bc = rr.boneContainers as Map<string, any>;
+        console.log(`renderer has ${bc.size} bone containers, ${(rr.slotSprites as Map<string,any>).size} sprites`);
+        const visSlots = Array.from(rr.slotSprites.entries() as any).filter(([_, sp]: any) => sp.visible);
+        console.log(`visible sprites: ${visSlots.length}`);
+        visSlots.slice(0, 5).forEach(([name, sp]: any) => {
+          console.log(`  slot "${name}" sprite at local (${sp.x.toFixed(1)}, ${sp.y.toFixed(1)}) size ${sp.width.toFixed(1)}×${sp.height.toFixed(1)} visible=${sp.visible} alpha=${sp.alpha} tex=${sp.texture.label ?? '?'} texSize=${sp.texture.width}×${sp.texture.height}`);
+        });
+        console.log(`slot attachments active:`);
+        const sa = pose.slotAttachments;
+        Object.entries(sa).slice(0, 10).forEach(([name, val]) => console.log(`  ${name} → ${val ?? '(null)'}`));
+      } else {
+        console.log('NO poseRenderer');
+      }
     });
     document.getElementById('btn-new')!.onclick        = wrap('New',          () => this.newProject());
     document.getElementById('btn-load-image')!.onclick = wrap('Load Image',   () => this.pickAndLoadImage());
