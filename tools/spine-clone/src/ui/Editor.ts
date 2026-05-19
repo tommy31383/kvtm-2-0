@@ -54,10 +54,11 @@ export class Editor {
     this.bindMode();
     this.bindHierarchyActions();
     this.bindPlayback();
+    this.setupDragDrop();
     this.subscribeStore();
     this.renderAll();
     this.setMode('pose');
-    this.setStatus('Ready. 🖼 Load Image để bắt đầu cắt regions, 📂 Open để mở project có sẵn, hoặc 🎁 Demo để load test sprite.');
+    this.setStatus('Ready. 📥 Kéo file thả vào canvas, hoặc 🦴 Open Spine / 🖼 Load Image / 🎁 Demo.');
   }
 
   // ── Pixi setup ──────────────────────────────────────────────
@@ -183,6 +184,143 @@ export class Editor {
     document.getElementById('btn-delete-item')!.onclick = () => this.deleteSelected();
     document.getElementById('btn-add-anim')!.onclick = () => this.addAnimation();
     document.getElementById('btn-delete-anim')!.onclick = () => this.deleteSelectedAnimation();
+  }
+
+  /**
+   * Drag-drop support: user kéo file từ Explorer thả vào canvas → auto-load.
+   * Smart dispatch:
+   *   - 1 file image      → loadImageFromFile (set as atlas sheet)
+   *   - 1 file .json/.spine-json (no atlas) → try as spine-clone project,
+   *     fallback to Spine JSON
+   *   - 2+ files with .atlas or .spine-json → loadSpineProject (full bundle)
+   *   - multiple images → first becomes atlas, rest ignored (Phase 4: multi-page)
+   *
+   * Drop zone covers both #canvas-host (visible target) and the document body
+   * (fallback so user doesn't miss).
+   */
+  private setupDragDrop() {
+    const host = document.getElementById('canvas-host') as HTMLElement;
+
+    const prevent = (e: DragEvent) => { e.preventDefault(); e.stopPropagation(); };
+    let dragDepth = 0;
+
+    // Use document-level listeners so drop works anywhere in the window
+    document.addEventListener('dragenter', e => {
+      prevent(e);
+      dragDepth++;
+      host.classList.add('drag-over');
+    });
+    document.addEventListener('dragover', e => {
+      prevent(e);
+      // Set dropEffect so cursor shows the right icon
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    });
+    document.addEventListener('dragleave', e => {
+      prevent(e);
+      dragDepth--;
+      if (dragDepth <= 0) {
+        dragDepth = 0;
+        host.classList.remove('drag-over');
+      }
+    });
+    document.addEventListener('drop', e => {
+      prevent(e);
+      dragDepth = 0;
+      host.classList.remove('drag-over');
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      if (files.length) this.handleDroppedFiles(files);
+    });
+  }
+
+  /**
+   * Classify dropped files + dispatch to the right loader. Order of checks
+   * matters — most specific first.
+   */
+  private async handleDroppedFiles(files: File[]) {
+    const images = files.filter(f => f.type.startsWith('image/') ||
+      /\.(png|webp|jpg|jpeg|gif)$/i.test(f.name));
+    const atlases = files.filter(f => /\.atlas$/i.test(f.name));
+    const spineJsons = files.filter(f => /\.spine-json$/i.test(f.name));
+    const customJsons = files.filter(f => /\.spineclone\.json$/i.test(f.name));
+    const plainJsons = files.filter(f =>
+      /\.json$/i.test(f.name) &&
+      !/\.spine-json$/i.test(f.name) &&
+      !/\.spineclone\.json$/i.test(f.name)
+    );
+
+    const fileNames = files.map(f => f.name).join(', ');
+    this.setStatus(`📥 Dropped ${files.length} file(s): ${fileNames}`);
+
+    // 1) Spine bundle (.atlas + .spine-json or .json + image)
+    if (atlases.length || spineJsons.length) {
+      await this.loadSpineProject(files);
+      return;
+    }
+
+    // 2) Single custom project file
+    if (customJsons.length === 1 && files.length === 1) {
+      await this.loadProjectFromFile(customJsons[0]);
+      return;
+    }
+
+    // 3) Plain .json — could be spine-clone or Spine JSON. Sniff content.
+    if (plainJsons.length === 1 && files.length === 1) {
+      await this.loadGenericJson(plainJsons[0]);
+      return;
+    }
+
+    // 4) .json + image bundle → try spine
+    if (plainJsons.length && images.length) {
+      await this.loadSpineProject(files);
+      return;
+    }
+
+    // 5) Single image → set as atlas sheet (keep current skeleton)
+    if (images.length === 1 && files.length === 1) {
+      await this.loadImageFromFile(images[0]);
+      return;
+    }
+
+    // 6) Multiple images, no JSON → use first as sheet
+    if (images.length >= 1 && atlases.length === 0 && spineJsons.length === 0 && plainJsons.length === 0) {
+      await this.loadImageFromFile(images[0]);
+      if (images.length > 1) {
+        this.setStatus(`⚠️ Loaded "${images[0].name}". Multi-image support coming Phase 4 (multi-page atlas).`);
+      }
+      return;
+    }
+
+    this.setStatus(`❌ Unknown file combination: ${images.length} img, ${atlases.length} atlas, ${spineJsons.length} spine-json, ${plainJsons.length} json`);
+  }
+
+  /**
+   * Try to parse a single .json file as either spine-clone project OR Spine
+   * 4.x JSON skeleton (sniff first then dispatch).
+   */
+  private async loadGenericJson(file: File) {
+    const text = await file.text();
+    try {
+      const obj = JSON.parse(text);
+      if (obj?.schema === 'spine-clone-project') {
+        await this.loadProjectFromFile(file);
+        return;
+      }
+      if (Array.isArray(obj?.bones)) {
+        // Spine 4.x JSON — load skeleton-only (no atlas yet)
+        const { parseSpineJson } = await import('../io/spineImport.js');
+        const skeleton = parseSpineJson(text);
+        skeleton.name = file.name.replace(/\.(spine-json|json)$/i, '');
+        this.sheetTexture = undefined;
+        this.store.setProject(skeleton, { pages: [] });
+        this.setProjectName(skeleton.name);
+        this.setMode('pose');
+        this.setStatus(`🦴 Loaded skeleton "${skeleton.name}" · ${skeleton.bones.length} bone. ⚠️ Drop .atlas + image kế tiếp để có texture.`);
+        return;
+      }
+      throw new Error('Unknown JSON format (not spine-clone-project, not Spine 4.x)');
+    } catch (err: any) {
+      this.setStatus('❌ ' + (err?.message || String(err)));
+    }
   }
 
   private bindPlayback() {

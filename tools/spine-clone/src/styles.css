@@ -177,8 +177,33 @@ body { display: grid; grid-template-rows: 44px 1fr 26px; }
   background-position: 0 0, 0 10px, 10px -10px, -10px 0;
   background-color: var(--bg-0);
   overflow: hidden;
+  transition: outline 0.15s, background-color 0.15s;
 }
 #canvas-host canvas { display: block; }
+#canvas-host.drag-over {
+  outline: 3px dashed var(--gold);
+  outline-offset: -3px;
+  background-color: rgba(255, 215, 0, 0.04);
+}
+#canvas-host::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  font-size: 24px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+#canvas-host.drag-over::after {
+  content: '📥  Drop file vào đây để load';
+  opacity: 1;
+  background: rgba(12, 15, 21, 0.7);
+}
 
 #canvas-tools {
   padding: 8px 14px;
