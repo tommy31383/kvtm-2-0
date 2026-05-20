@@ -308,6 +308,26 @@ export class Editor {
       // Ignore when user is typing in inputs
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      // Undo / Redo — Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        const k = e.key.toLowerCase();
+        if (k === 'z' && !e.shiftKey) {
+          if (this.store.undo()) {
+            this.setStatus(`↶ Undo: ${this.store.history.redoLabel ?? ''}`);
+          }
+          e.preventDefault();
+          return;
+        }
+        if ((k === 'y') || (k === 'z' && e.shiftKey)) {
+          if (this.store.redo()) {
+            this.setStatus(`↷ Redo: ${this.store.history.undoLabel ?? ''}`);
+          }
+          e.preventDefault();
+          return;
+        }
+      }
+
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       const key = e.key;

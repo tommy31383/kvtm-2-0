@@ -10,7 +10,19 @@
 // Future: undo/redo via Command pattern (Phase 2 enhancement). Each mutator
 // method will create a Command and push to history stack.
 
-import type { Skeleton, Atlas } from '../core/types.js';
+import type { Skeleton, Atlas, Bone, CurveType } from '../core/types.js';
+import { CommandHistory } from './CommandHistory.js';
+import { SetBoneCommand } from './commands/SetBoneCommand.js';
+import { InsertKeyframeCommand } from './commands/InsertKeyframeCommand.js';
+import { DeleteKeyframeCommand } from './commands/DeleteKeyframeCommand.js';
+import { MoveKeyframeCommand } from './commands/MoveKeyframeCommand.js';
+import { SetKeyframeValueCommand } from './commands/SetKeyframeValueCommand.js';
+import { SetKeyframeCurveCommand } from './commands/SetKeyframeCurveCommand.js';
+import { PasteKeyframesCommand, type PasteEntry } from './commands/PasteKeyframesCommand.js';
+import {
+  CreateAnimationCommand, DeleteAnimationCommand, RenameAnimationCommand,
+} from './commands/AnimationCommands.js';
+import type { TimelineRef, TimelineValue, AnyKey } from './commands/timelineRef.js';
 
 export type Selection =
   | { type: 'none' }
@@ -42,6 +54,7 @@ type Listener = () => void;
 export class DocumentStore {
   private state: DocumentState;
   private listeners = new Map<StoreEvent, Set<Listener>>();
+  readonly history = new CommandHistory();
 
   constructor(initial: { skeleton: Skeleton; atlas: Atlas }) {
     this.state = {
@@ -82,6 +95,9 @@ export class DocumentStore {
     this.state.currentAnimation = undefined;
     this.state.currentTimeSec = 0;
     this.state.playing = false;
+    // Loading a new project invalidates undo history — old commands reference
+    // bones/keys that no longer exist.
+    this.history.clear();
     this.emit('project-changed');
     this.emit('selection-changed');
     this.emit('animation-changed');
@@ -118,14 +134,68 @@ export class DocumentStore {
 
   /**
    * Update a bone property (e.g. setBone('arm', { rotation: 45 })).
-   * Mutates in place + emits bone-changed. Phase 2 undo/redo will replace
-   * direct mutation with Command pattern.
+   * Routed through CommandHistory → undoable via Ctrl+Z. Successive edits to
+   * the same bone+field within the coalesce window collapse into one undo unit.
    */
-  setBone(boneName: string, patch: Partial<import('../core/types.js').Bone>) {
+  setBone(boneName: string, patch: Partial<Bone>) {
+    this.history.execute(this, new SetBoneCommand(boneName, patch));
+  }
+
+  /**
+   * Direct mutation — bypasses history. Only Command.do()/undo() should call
+   * this. External callers should use setBone() (undoable).
+   */
+  _applyBonePatch(boneName: string, patch: Partial<Bone>) {
     const bone = this.state.skeleton.bones.find(b => b.name === boneName);
     if (!bone) throw new Error(`bone not found: ${boneName}`);
     Object.assign(bone, patch);
     this.emit('bone-changed');
+  }
+
+  undo(): boolean { return this.history.undo(this); }
+  redo(): boolean { return this.history.redo(this); }
+
+  // ── Keyframe API (undoable) ─────────────────────────────────
+  insertKeyframe(ref: TimelineRef, key: AnyKey) {
+    this.history.execute(this, new InsertKeyframeCommand(ref, key));
+  }
+  deleteKeyframe(ref: TimelineRef, time: number) {
+    this.history.execute(this, new DeleteKeyframeCommand(ref, time));
+  }
+  moveKeyframe(ref: TimelineRef, fromTime: number, toTime: number) {
+    this.history.execute(this, new MoveKeyframeCommand(ref, fromTime, toTime));
+  }
+  setKeyframeValue(ref: TimelineRef, time: number, value: TimelineValue) {
+    this.history.execute(this, new SetKeyframeValueCommand(ref, time, value));
+  }
+  setKeyframeCurve(ref: TimelineRef, time: number, curve: CurveType | undefined) {
+    this.history.execute(this, new SetKeyframeCurveCommand(ref, time, curve));
+  }
+  pasteKeyframes(entries: PasteEntry[], baseTime: number) {
+    this.history.execute(this, new PasteKeyframesCommand(entries, baseTime));
+  }
+
+  // ── Animation CRUD API (undoable) ───────────────────────────
+  createAnimation(name: string) {
+    this.history.execute(this, new CreateAnimationCommand(name));
+  }
+  deleteAnimation(name: string) {
+    this.history.execute(this, new DeleteAnimationCommand(name));
+  }
+  renameAnimation(fromName: string, toName: string) {
+    this.history.execute(this, new RenameAnimationCommand(fromName, toName));
+  }
+
+  // ── Internal hooks for commands ─────────────────────────────
+  /** Used by keyframe/animation commands to broadcast change. */
+  _emitAnimationChanged(): void {
+    this.emit('animation-changed');
+    this.emit('time-changed');
+  }
+  /** Used by AnimationCommands to set current animation without recursion. */
+  _setCurrentAnimationInternal(name: string | undefined): void {
+    this.state.currentAnimation = name;
+    this.state.currentTimeSec = 0;
   }
 
   // ── Subscription API ────────────────────────────────────────

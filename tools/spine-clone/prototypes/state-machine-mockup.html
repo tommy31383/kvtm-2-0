@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Spine Clone — State Machine Editor (Mockup)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font: 13px -apple-system, "Segoe UI", sans-serif;
+    background: #1a1a1f; color: #e8e8ec;
+    height: 100vh; overflow: hidden;
+    display: grid; grid-template-columns: 220px 1fr 280px; grid-template-rows: 40px 1fr 180px;
+    grid-template-areas:
+      "topbar topbar topbar"
+      "anims  canvas  inspector"
+      "anims  timeline inspector";
+  }
+  /* TOPBAR */
+  .topbar {
+    grid-area: topbar; background: #25252c; border-bottom: 1px solid #333;
+    display: flex; align-items: center; padding: 0 16px; gap: 12px;
+  }
+  .topbar h1 { font-size: 14px; font-weight: 600; color: #ffb347; }
+  .topbar .tabs { display: flex; gap: 4px; margin-left: 24px; }
+  .tab {
+    padding: 6px 14px; border-radius: 4px; cursor: pointer; color: #999;
+    border: 1px solid transparent;
+  }
+  .tab.active { background: #34343c; color: #fff; border-color: #4a4a55; }
+  .tab:hover:not(.active) { background: #2c2c34; color: #ccc; }
+  .topbar .right { margin-left: auto; display: flex; gap: 8px; }
+  .btn {
+    padding: 5px 12px; background: #34343c; border: 1px solid #4a4a55;
+    border-radius: 4px; color: #e8e8ec; cursor: pointer; font: inherit;
+  }
+  .btn:hover { background: #3e3e48; }
+  .btn-primary { background: #ffb347; color: #1a1a1f; border-color: #ffb347; }
+  .btn-primary:hover { background: #ffc874; }
+
+  /* LEFT — animations / states list */
+  .anims {
+    grid-area: anims; background: #1f1f25; border-right: 1px solid #333;
+    overflow-y: auto; padding: 12px 0;
+  }
+  .section-title {
+    padding: 8px 16px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px; color: #888;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .section-title .add-btn {
+    width: 18px; height: 18px; border-radius: 3px; background: #34343c;
+    border: 0; color: #aaa; cursor: pointer; font-size: 14px; line-height: 1;
+  }
+  .section-title .add-btn:hover { background: #ffb347; color: #1a1a1f; }
+  .item-list { padding: 4px 8px; }
+  .item {
+    padding: 6px 12px; border-radius: 4px; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    color: #ccc; margin-bottom: 2px;
+  }
+  .item:hover { background: #2c2c34; }
+  .item.active { background: #3a2c1f; color: #ffb347; }
+  .item .dot { width: 6px; height: 6px; border-radius: 50%; background: #666; }
+  .item.active .dot { background: #ffb347; }
+  .item.entry .dot { background: #4ade80; }
+  .item.any .dot { background: #f472b6; }
+
+  /* CANVAS — state machine graph */
+  .canvas {
+    grid-area: canvas; background: #16161b;
+    background-image:
+      radial-gradient(circle, #2a2a32 1px, transparent 1px),
+      radial-gradient(circle, #1f1f25 1px, transparent 1px);
+    background-size: 20px 20px, 20px 20px;
+    background-position: 0 0, 10px 10px;
+    position: relative; overflow: hidden;
+  }
+  .node {
+    position: absolute; min-width: 140px;
+    background: #2c2c36; border: 2px solid #4a4a55; border-radius: 8px;
+    padding: 10px 14px; cursor: grab; user-select: none;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .node:hover { border-color: #6a6a78; }
+  .node.selected { border-color: #ffb347; box-shadow: 0 4px 18px rgba(255,179,71,0.3); }
+  .node.entry { background: #1f3a2a; border-color: #4ade80; }
+  .node.any { background: #3a1f2e; border-color: #f472b6; }
+  .node-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .node-anim { font-size: 11px; color: #999; }
+  .node-icon { width: 14px; height: 14px; }
+
+  .port {
+    position: absolute; width: 12px; height: 12px; border-radius: 50%;
+    background: #ffb347; border: 2px solid #1a1a1f;
+    top: 50%; transform: translateY(-50%); cursor: crosshair;
+  }
+  .port.in { left: -8px; }
+  .port.out { right: -8px; }
+
+  svg.wires { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  .wire { fill: none; stroke: #ffb347; stroke-width: 2; opacity: 0.7; }
+  .wire.active { stroke: #4ade80; stroke-width: 3; opacity: 1; }
+  .wire-label {
+    fill: #ccc; font-size: 11px;
+    paint-order: stroke; stroke: #16161b; stroke-width: 4;
+  }
+
+  .canvas-toolbar {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(37,37,44,0.9); border: 1px solid #4a4a55; border-radius: 6px;
+    padding: 6px; display: flex; gap: 4px; z-index: 10;
+  }
+  .canvas-toolbar button {
+    width: 28px; height: 28px; border: 0; background: transparent;
+    color: #ccc; cursor: pointer; border-radius: 4px; font-size: 14px;
+  }
+  .canvas-toolbar button:hover { background: #3a3a44; }
+  .canvas-toolbar button.active { background: #ffb347; color: #1a1a1f; }
+
+  .preview-pane {
+    position: absolute; bottom: 12px; left: 12px;
+    background: rgba(37,37,44,0.9); border: 1px solid #4a4a55; border-radius: 8px;
+    padding: 12px 16px; z-index: 10; min-width: 200px;
+  }
+  .preview-pane h4 { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 8px; }
+  .preview-pane .current-state {
+    font-size: 16px; font-weight: 600; color: #4ade80; margin-bottom: 6px;
+  }
+  .preview-pane .play-controls { display: flex; gap: 6px; margin-top: 8px; }
+  .preview-pane .play-controls button {
+    flex: 1; padding: 4px 8px; background: #34343c; border: 1px solid #4a4a55;
+    border-radius: 4px; color: #e8e8ec; cursor: pointer; font: inherit;
+  }
+  .preview-pane .play-controls button:hover { background: #3e3e48; }
+
+  /* INSPECTOR — right panel */
+  .inspector {
+    grid-area: inspector; background: #1f1f25; border-left: 1px solid #333;
+    overflow-y: auto; padding: 0;
+  }
+  .insp-tabs {
+    display: flex; border-bottom: 1px solid #333; background: #25252c;
+  }
+  .insp-tab {
+    flex: 1; padding: 10px; text-align: center; cursor: pointer;
+    color: #999; border-bottom: 2px solid transparent;
+    font-size: 12px; font-weight: 500;
+  }
+  .insp-tab.active { color: #ffb347; border-bottom-color: #ffb347; }
+  .insp-content { padding: 14px 16px; }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block; font-size: 11px; text-transform: uppercase;
+    color: #888; margin-bottom: 4px; letter-spacing: 0.5px;
+  }
+  .field input, .field select {
+    width: 100%; padding: 7px 10px; background: #2a2a32;
+    border: 1px solid #3a3a44; border-radius: 4px; color: #e8e8ec;
+    font: inherit;
+  }
+  .field input:focus, .field select:focus { outline: 1px solid #ffb347; }
+
+  /* Variables panel */
+  .var-row {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0;
+    border-bottom: 1px solid #2a2a32;
+  }
+  .var-row .type-tag {
+    padding: 2px 6px; border-radius: 3px; font-size: 10px;
+    background: #34343c; color: #aaa; font-weight: 600;
+  }
+  .var-row .type-tag.float { background: #1f2e4a; color: #6aa6f0; }
+  .var-row .type-tag.bool { background: #1f3a2a; color: #4ade80; }
+  .var-row .type-tag.int { background: #3a1f2e; color: #f472b6; }
+  .var-name { flex: 1; font-weight: 500; }
+  .var-value { font-family: monospace; font-size: 12px; color: #ffb347; }
+
+  /* Transition condition editor */
+  .cond-row {
+    display: flex; align-items: center; gap: 6px; padding: 8px;
+    background: #2a2a32; border-radius: 4px; margin-bottom: 6px;
+  }
+  .cond-row select, .cond-row input {
+    background: #1f1f25; border: 1px solid #3a3a44;
+    padding: 4px 8px; border-radius: 3px; color: #e8e8ec; font: inherit;
+  }
+  .cond-row .remove { color: #f47266; cursor: pointer; padding: 0 4px; }
+
+  /* TIMELINE — bottom strip */
+  .timeline {
+    grid-area: timeline; background: #1f1f25; border-top: 1px solid #333;
+    padding: 12px 16px; overflow: hidden;
+  }
+  .timeline h4 {
+    font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 8px;
+  }
+  .runtime-log {
+    background: #16161b; border: 1px solid #2a2a32; border-radius: 4px;
+    padding: 8px 12px; height: 130px; overflow-y: auto;
+    font-family: "Consolas", monospace; font-size: 11px; line-height: 1.6;
+  }
+  .log-line { color: #888; }
+  .log-line .ts { color: #555; }
+  .log-line .state-enter { color: #4ade80; }
+  .log-line .transition { color: #ffb347; }
+  .log-line .var-change { color: #6aa6f0; }
+  .log-line .condition { color: #f472b6; }
+
+  /* Tooltips for explanation */
+  .help-tooltip {
+    position: fixed; background: #2c2c36; border: 1px solid #4a4a55;
+    padding: 10px 12px; border-radius: 6px; font-size: 12px;
+    max-width: 280px; z-index: 100; pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>◆ Spine Clone</h1>
+  <div class="tabs">
+    <div class="tab">Atlas</div>
+    <div class="tab">Skeleton</div>
+    <div class="tab">Timeline</div>
+    <div class="tab active">State Machine</div>
+  </div>
+  <div class="right">
+    <button class="btn">▶ Preview</button>
+    <button class="btn-primary btn">Save</button>
+  </div>
+</div>
+
+<!-- LEFT: states + machines -->
+<div class="anims">
+  <div class="section-title">
+    State Machines
+    <button class="add-btn" title="New machine">+</button>
+  </div>
+  <div class="item-list">
+    <div class="item active">
+      <span class="dot"></span> Character_FSM
+    </div>
+    <div class="item">
+      <span class="dot"></span> Weapon_FSM
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top: 16px;">
+    States
+    <button class="add-btn" title="New state">+</button>
+  </div>
+  <div class="item-list">
+    <div class="item entry"><span class="dot"></span> Entry</div>
+    <div class="item active"><span class="dot"></span> Idle</div>
+    <div class="item"><span class="dot"></span> Walk</div>
+    <div class="item"><span class="dot"></span> Run</div>
+    <div class="item"><span class="dot"></span> Jump</div>
+    <div class="item"><span class="dot"></span> Attack</div>
+    <div class="item any"><span class="dot"></span> Any State</div>
+  </div>
+
+  <div class="section-title" style="margin-top: 16px;">
+    Animations
+  </div>
+  <div class="item-list">
+    <div class="item"><span class="dot"></span> idle_loop</div>
+    <div class="item"><span class="dot"></span> walk_cycle</div>
+    <div class="item"><span class="dot"></span> run_cycle</div>
+    <div class="item"><span class="dot"></span> jump_up</div>
+    <div class="item"><span class="dot"></span> slash_combo</div>
+  </div>
+</div>
+
+<!-- CENTER: graph canvas -->
+<div class="canvas" id="canvas">
+  <div class="canvas-toolbar">
+    <button title="Select (V)" class="active">▣</button>
+    <button title="Pan (H)">✋</button>
+    <button title="Add Transition (T)">↛</button>
+    <button title="Zoom Fit (F)">⊡</button>
+  </div>
+
+  <svg class="wires" id="wires">
+    <!-- Wires drawn via JS -->
+  </svg>
+
+  <!-- Nodes -->
+  <div class="node entry" style="left: 60px; top: 110px;">
+    <div class="node-title">▶ Entry</div>
+    <div class="port out"></div>
+  </div>
+
+  <div class="node selected" style="left: 280px; top: 100px;" data-state="Idle">
+    <div class="node-title">⊙ Idle</div>
+    <div class="node-anim">idle_loop · loop</div>
+    <div class="port in"></div>
+    <div class="port out"></div>
+  </div>
+
+  <div class="node" style="left: 530px; top: 60px;" data-state="Walk">
+    <div class="node-title">⊙ Walk</div>
+    <div class="node-anim">walk_cycle · loop</div>
+    <div class="port in"></div>
+    <div class="port out"></div>
+  </div>
+
+  <div class="node" style="left: 760px; top: 100px;" data-state="Run">
+    <div class="node-title">⊙ Run</div>
+    <div class="node-anim">run_cycle · loop</div>
+    <div class="port in"></div>
+    <div class="port out"></div>
+  </div>
+
+  <div class="node" style="left: 530px; top: 220px;" data-state="Jump">
+    <div class="node-title">⊙ Jump</div>
+    <div class="node-anim">jump_up · once</div>
+    <div class="port in"></div>
+    <div class="port out"></div>
+  </div>
+
+  <div class="node any" style="left: 280px; top: 320px;" data-state="Any">
+    <div class="node-title">★ Any State</div>
+    <div class="node-anim">global transitions</div>
+    <div class="port out"></div>
+  </div>
+
+  <div class="node" style="left: 760px; top: 280px;" data-state="Attack">
+    <div class="node-title">⊙ Attack</div>
+    <div class="node-anim">slash_combo · once</div>
+    <div class="port in"></div>
+    <div class="port out"></div>
+  </div>
+
+  <div class="preview-pane">
+    <h4>Runtime Preview</h4>
+    <div class="current-state" id="current-state">▶ Idle</div>
+    <div style="font-size: 11px; color: #999;">Speed: <span id="speed-display">0.0</span></div>
+    <div class="play-controls">
+      <button onclick="setVar('speed', 0)">Stop</button>
+      <button onclick="setVar('speed', 0.4)">Walk</button>
+      <button onclick="setVar('speed', 0.9)">Run</button>
+      <button onclick="triggerJump()">Jump</button>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT: inspector -->
+<div class="inspector">
+  <div class="insp-tabs">
+    <div class="insp-tab active" data-tab="state">State</div>
+    <div class="insp-tab" data-tab="trans">Transition</div>
+    <div class="insp-tab" data-tab="vars">Variables</div>
+  </div>
+
+  <div class="insp-content" id="tab-state">
+    <div class="field">
+      <label>Name</label>
+      <input type="text" value="Idle" />
+    </div>
+    <div class="field">
+      <label>Animation</label>
+      <select>
+        <option>idle_loop</option>
+        <option>walk_cycle</option>
+        <option>run_cycle</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Loop mode</label>
+      <select>
+        <option>Loop</option>
+        <option>Once</option>
+        <option>Hold last frame</option>
+        <option>Ping-pong</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Speed multiplier</label>
+      <input type="number" value="1.0" step="0.1" />
+    </div>
+    <div class="field">
+      <label>Blend duration (default)</label>
+      <input type="number" value="0.2" step="0.05" />
+    </div>
+  </div>
+
+  <div class="insp-content" id="tab-trans" style="display:none;">
+    <div class="field">
+      <label>From → To</label>
+      <input type="text" value="Idle → Walk" readonly />
+    </div>
+    <div class="field">
+      <label>Duration (mix)</label>
+      <input type="number" value="0.15" step="0.05" />
+    </div>
+    <div class="field">
+      <label>Has Exit Time</label>
+      <select>
+        <option>No (immediate)</option>
+        <option>Yes (wait for anim %)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Conditions (AND)</label>
+      <div class="cond-row">
+        <select><option>speed</option><option>jumping</option><option>health</option></select>
+        <select><option>&gt;</option><option>&lt;</option><option>==</option></select>
+        <input type="text" value="0.1" style="width: 60px;" />
+        <span class="remove">×</span>
+      </div>
+      <div class="cond-row">
+        <select><option>jumping</option></select>
+        <select><option>==</option></select>
+        <input type="text" value="false" style="width: 60px;" />
+        <span class="remove">×</span>
+      </div>
+      <button class="btn" style="width:100%; margin-top:6px;">+ Add condition</button>
+    </div>
+  </div>
+
+  <div class="insp-content" id="tab-vars" style="display:none;">
+    <div class="var-row">
+      <span class="type-tag float">FLOAT</span>
+      <span class="var-name">speed</span>
+      <span class="var-value" id="var-speed">0.00</span>
+    </div>
+    <div class="var-row">
+      <span class="type-tag bool">BOOL</span>
+      <span class="var-name">jumping</span>
+      <span class="var-value" id="var-jumping">false</span>
+    </div>
+    <div class="var-row">
+      <span class="type-tag int">INT</span>
+      <span class="var-name">health</span>
+      <span class="var-value" id="var-health">100</span>
+    </div>
+    <div class="var-row">
+      <span class="type-tag bool">BOOL</span>
+      <span class="var-name">isAlive</span>
+      <span class="var-value" id="var-isAlive">true</span>
+    </div>
+    <div class="var-row">
+      <span class="type-tag float">FLOAT</span>
+      <span class="var-name">aimAngle</span>
+      <span class="var-value" id="var-aimAngle">0.00</span>
+    </div>
+
+    <button class="btn" style="width:100%; margin-top:14px;">+ Add Variable</button>
+
+    <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid #2a2a32;">
+      <h4 style="font-size:11px; text-transform:uppercase; color:#888; margin-bottom:8px;">Triggers</h4>
+      <div class="var-row">
+        <span class="type-tag" style="background:#3a2c1f; color:#ffb347;">TRIG</span>
+        <span class="var-name">onAttack</span>
+        <button class="btn" style="padding: 2px 8px; font-size:11px;" onclick="triggerAttack()">Fire</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TIMELINE / RUNTIME LOG -->
+<div class="timeline">
+  <h4>Runtime Log <span style="float:right; color:#666;">(state changes + transitions)</span></h4>
+  <div class="runtime-log" id="log">
+    <div class="log-line"><span class="ts">[0.00s]</span> Machine initialized: <span class="state-enter">Entry → Idle</span></div>
+  </div>
+</div>
+
+<div class="help-tooltip" id="tooltip"></div>
+
+<script>
+  // === Wire drawing ===
+  const TRANSITIONS = [
+    { from: { x: 200, y: 130 }, to: { x: 280, y: 130 }, label: '' },                // Entry → Idle
+    { from: { x: 420, y: 125 }, to: { x: 530, y: 90 },  label: 'speed > 0.1' },     // Idle → Walk
+    { from: { x: 670, y: 90 },  to: { x: 760, y: 130 }, label: 'speed > 0.7' },     // Walk → Run
+    { from: { x: 760, y: 100 }, to: { x: 670, y: 95 },  label: 'speed < 0.5' },     // Run → Walk
+    { from: { x: 530, y: 100 }, to: { x: 420, y: 130 }, label: 'speed < 0.1' },     // Walk → Idle
+    { from: { x: 420, y: 350 }, to: { x: 530, y: 250 }, label: 'jumping == true' }, // Any → Jump
+    { from: { x: 420, y: 350 }, to: { x: 760, y: 310 }, label: 'trigger onAttack' },// Any → Attack
+  ];
+
+  function drawWires(activeIdx = -1) {
+    const svg = document.getElementById('wires');
+    svg.innerHTML = '';
+    TRANSITIONS.forEach((t, i) => {
+      const dx = (t.to.x - t.from.x) * 0.5;
+      const path = `M ${t.from.x} ${t.from.y} C ${t.from.x + dx} ${t.from.y}, ${t.to.x - dx} ${t.to.y}, ${t.to.x} ${t.to.y}`;
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      el.setAttribute('d', path);
+      el.setAttribute('class', i === activeIdx ? 'wire active' : 'wire');
+      el.setAttribute('marker-end', 'url(#arrowhead)');
+      svg.appendChild(el);
+
+      if (t.label) {
+        const mid = { x: (t.from.x + t.to.x) / 2, y: (t.from.y + t.to.y) / 2 - 8 };
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', mid.x);
+        txt.setAttribute('y', mid.y);
+        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('class', 'wire-label');
+        txt.textContent = t.label;
+        svg.appendChild(txt);
+      }
+    });
+
+    // arrowhead marker
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    defs.innerHTML = `<marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#ffb347" />
+    </marker>`;
+    svg.appendChild(defs);
+  }
+  drawWires();
+
+  // === Runtime state machine simulation ===
+  const VARS = { speed: 0, jumping: false, health: 100, isAlive: true, aimAngle: 0 };
+  let currentState = 'Idle';
+  const t0 = performance.now();
+
+  function ts() { return ((performance.now() - t0) / 1000).toFixed(2); }
+
+  function log(html) {
+    const log = document.getElementById('log');
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    line.innerHTML = `<span class="ts">[${ts()}s]</span> ${html}`;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function setState(name, transIdx) {
+    if (currentState === name) return;
+    log(`<span class="transition">${currentState} → ${name}</span>`);
+    currentState = name;
+    document.getElementById('current-state').textContent = '▶ ' + name;
+    drawWires(transIdx);
+
+    // highlight node
+    document.querySelectorAll('.node').forEach(n => n.classList.remove('selected'));
+    const node = document.querySelector(`.node[data-state="${name}"]`);
+    if (node) node.classList.add('selected');
+
+    setTimeout(() => drawWires(), 800);
+  }
+
+  function evalTransitions() {
+    // Order matters: Any State transitions checked first
+    if (VARS.jumping) { setState('Jump', 5); return; }
+
+    if (currentState === 'Idle' && VARS.speed > 0.1) setState('Walk', 1);
+    else if (currentState === 'Walk' && VARS.speed > 0.7) setState('Run', 2);
+    else if (currentState === 'Walk' && VARS.speed < 0.1) setState('Idle', 4);
+    else if (currentState === 'Run' && VARS.speed < 0.5) setState('Walk', 3);
+    else if (currentState === 'Jump' && !VARS.jumping) setState('Idle', -1);
+  }
+
+  function setVar(name, value) {
+    VARS[name] = value;
+    log(`<span class="var-change">var ${name} = ${value}</span>`);
+    const el = document.getElementById('var-' + name);
+    if (el) el.textContent = typeof value === 'number' ? value.toFixed(2) : value;
+    if (name === 'speed') document.getElementById('speed-display').textContent = value.toFixed(1);
+    evalTransitions();
+  }
+
+  function triggerJump() {
+    setVar('jumping', true);
+    setTimeout(() => setVar('jumping', false), 1500);
+  }
+
+  function triggerAttack() {
+    log(`<span class="condition">trigger fired: onAttack</span>`);
+    setState('Attack', 6);
+    setTimeout(() => {
+      if (VARS.speed > 0.1) setState('Walk', -1);
+      else setState('Idle', -1);
+    }, 1500);
+  }
+
+  // === Inspector tabs ===
+  document.querySelectorAll('.insp-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.insp-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      ['state', 'trans', 'vars'].forEach(name => {
+        document.getElementById('tab-' + name).style.display = name === tab.dataset.tab ? '' : 'none';
+      });
+    });
+  });
+
+  // === Tooltip explanations ===
+  const TIPS = {
+    '.node.entry': 'Entry node — the state machine starts here on activation.',
+    '.node.any': 'Any State — transitions from here apply globally, regardless of current state. Used for interrupts like death, hit reactions, or triggered attacks.',
+    '.wire-label': 'Transition condition — when this expression evaluates true, the state machine transitions along this wire.',
+    '.var-row': 'Variable — runtime values driven by game code. Conditions reference these to decide transitions.',
+  };
+  // (Tooltip implementation kept simple — hover hint visible via dev console in real build)
+
+  // === Help info on first load ===
+  log(`<span style="color:#888;">Mockup loaded. Try the buttons in the Runtime Preview panel.</span>`);
+  log(`<span style="color:#888;">Click "Walk" → speed=0.4 → triggers Idle→Walk transition.</span>`);
+</script>
+
+</body>
+</html>
