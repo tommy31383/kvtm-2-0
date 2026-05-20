@@ -221,6 +221,12 @@ export class Editor {
         alert(`Lỗi ${label}: ${err?.message ?? err}`);
       }
     };
+    // Reload — refresh the WebView page (re-import all source files + HMR pull)
+    document.getElementById('btn-reload')!.onclick = () => {
+      console.log('[Editor] reloading window...');
+      location.reload();
+    };
+
     // TEST button — dump bone positions + check render state
     document.getElementById('btn-test-dialog')!.onclick = wrap('TEST', async () => {
       const sk = this.store.skeleton;
