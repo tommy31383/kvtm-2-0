@@ -300,17 +300,45 @@ export class Editor {
     document.getElementById('btn-select-region')!.onclick = () => this.setAtlasTool('select');
 
     // Keyboard shortcuts
-    //   B = Draw region (Box tool)
-    //   V = Select tool
-    //   1 = Pose mode  |  2 = Atlas mode
-    //   F = Fit to view  |  Space = Play/Pause animation
+    //   Tools: B = Draw region   V = Select tool
+    //   Modes: 1 = Pose          2 = Atlas
+    //   Pose:  F = Fit            Space = Play/Pause
+    //   Atlas: Delete = remove region  Arrows = nudge (Shift = ×10)
     document.addEventListener('keydown', e => {
       // Ignore when user is typing in inputs
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-      switch (e.key.toLowerCase()) {
+      const key = e.key;
+      const keyLower = key.toLowerCase();
+
+      // Atlas-mode specific: Delete + arrows for region editing
+      if (this.mode === 'atlas') {
+        if (key === 'Delete' || key === 'Backspace') {
+          const removed = this.atlasView?.deleteSelected();
+          if (removed) {
+            this.setStatus(`🗑 Deleted region "${removed}"`);
+            this.renderModuleList();
+          }
+          e.preventDefault();
+          return;
+        }
+        if (key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown') {
+          const step = e.shiftKey ? 10 : 1;
+          let dx = 0, dy = 0;
+          if (key === 'ArrowLeft')  dx = -step;
+          if (key === 'ArrowRight') dx =  step;
+          if (key === 'ArrowUp')    dy = -step;
+          if (key === 'ArrowDown')  dy =  step;
+          this.atlasView?.nudgeSelected(dx, dy);
+          this.renderProperties();
+          e.preventDefault();
+          return;
+        }
+      }
+
+      switch (keyLower) {
         case 'b':
           if (this.mode === 'atlas') { this.setAtlasTool('draw'); e.preventDefault(); }
           break;

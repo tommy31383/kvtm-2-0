@@ -31,6 +31,11 @@ export class AtlasView {
   private dragMode: 'create' | 'move' | 'resize' | null = null;
   private dragTarget: AtlasRegion | null = null;
   private dragOffset = { x: 0, y: 0 };
+  // Resize: which corner (dx,dy ∈ {-1, +1}) + the rect's original bounds
+  private resizeCorner: { dx: number; dy: number } | null = null;
+  private resizeStartRect: { x: number; y: number; w: number; h: number } | null = null;
+  // Hit-radius for corner handle (in source-pixel coords)
+  private static readonly HANDLE_RADIUS = 6;
 
   constructor(_app: Application, atlas: Atlas, events: AtlasViewEvents = {}) {
     this.atlas = atlas;
@@ -50,7 +55,35 @@ export class AtlasView {
     this.root.on('pointermove', this.onPointerMove);
     this.root.on('pointerup', this.onPointerUp);
     this.root.on('pointerupoutside', this.onPointerUp);
+    // Hover cursor updates (resize handle vs move vs draw)
+    this.root.on('globalpointermove', this.onPointerHover);
   }
+
+  private onPointerHover = (ev: FederatedPointerEvent) => {
+    if (this.dragStart) return;  // dragging — let drag logic own cursor
+    const p = ev.getLocalPosition(this.root);
+    const canvas = (this.root as any).renderer?.canvas as HTMLCanvasElement | undefined;
+    const targetCanvas = canvas ?? document.querySelector('#canvas-host canvas') as HTMLCanvasElement | null;
+    if (!targetCanvas) return;
+
+    // Check resize handle of selected
+    if (this.selectedName) {
+      const sel = this.atlas.pages[0]?.regions.find(r => r.name === this.selectedName);
+      if (sel) {
+        const corner = this.hitCorner(p.x, p.y, sel);
+        if (corner) {
+          // NW/SE → diagonal,  NE/SW → other diagonal
+          targetCanvas.style.cursor = (corner.dx * corner.dy > 0) ? 'nwse-resize' : 'nesw-resize';
+          return;
+        }
+      }
+    }
+    // Hover over a region → move; tool=draw on empty → crosshair
+    const r = this.hitTest(p.x, p.y);
+    if (r) targetCanvas.style.cursor = 'move';
+    else if (this.tool === 'draw') targetCanvas.style.cursor = 'crosshair';
+    else targetCanvas.style.cursor = 'default';
+  };
 
   /** Swap the sheet texture (when user loads a new image). */
   setSheet(tex: Texture | undefined) {
@@ -122,6 +155,24 @@ export class AtlasView {
     const p = ev.getLocalPosition(this.root);
     this.dragStart = { x: p.x, y: p.y };
 
+    // Always check corner of CURRENTLY-SELECTED region first (regardless of
+    // current tool) — corner drag = resize.
+    if (this.selectedName) {
+      const sel = this.atlas.pages[0]?.regions.find(r => r.name === this.selectedName);
+      if (sel) {
+        const corner = this.hitCorner(p.x, p.y, sel);
+        if (corner) {
+          this.dragMode = 'resize';
+          this.dragTarget = sel;
+          this.resizeCorner = corner;
+          const aw = sel.rotate ? sel.height : sel.width;
+          const ah = sel.rotate ? sel.width  : sel.height;
+          this.resizeStartRect = { x: sel.x, y: sel.y, w: aw, h: ah };
+          return;
+        }
+      }
+    }
+
     if (this.tool === 'draw') {
       // Start a NEW region drag
       this.dragMode = 'create';
@@ -131,7 +182,6 @@ export class AtlasView {
       const r = this.hitTest(p.x, p.y);
       if (r) {
         this.selectRegion(r.name);
-        // TODO: corner detection for resize mode (Phase 3)
         this.dragMode = 'move';
         this.dragTarget = r;
         this.dragOffset = { x: p.x - r.x, y: p.y - r.y };
@@ -141,6 +191,25 @@ export class AtlasView {
       }
     }
   };
+
+  /** Returns which corner of region is under cursor, else null. */
+  private hitCorner(px: number, py: number, r: AtlasRegion): { dx: number; dy: number } | null {
+    const aw = r.rotate ? r.height : r.width;
+    const ah = r.rotate ? r.width  : r.height;
+    const HR = AtlasView.HANDLE_RADIUS;
+    const corners = [
+      { dx: -1, dy: -1, x: r.x,        y: r.y        },
+      { dx:  1, dy: -1, x: r.x + aw,   y: r.y        },
+      { dx: -1, dy:  1, x: r.x,        y: r.y + ah   },
+      { dx:  1, dy:  1, x: r.x + aw,   y: r.y + ah   },
+    ];
+    for (const c of corners) {
+      if (Math.abs(px - c.x) < HR && Math.abs(py - c.y) < HR) {
+        return { dx: c.dx, dy: c.dy };
+      }
+    }
+    return null;
+  }
 
   private onPointerMove = (ev: FederatedPointerEvent) => {
     if (!this.dragStart) return;
@@ -159,6 +228,36 @@ export class AtlasView {
       this.dragTarget.x = Math.round(p.x - this.dragOffset.x);
       this.dragTarget.y = Math.round(p.y - this.dragOffset.y);
       this.events.onRegionEdited?.(this.dragTarget.name, { x: this.dragTarget.x, y: this.dragTarget.y });
+      this.redrawRects();
+    } else if (this.dragMode === 'resize' && this.dragTarget && this.resizeCorner && this.resizeStartRect) {
+      const sr = this.resizeStartRect;
+      const c = this.resizeCorner;
+      // dx is movement of left/right edge, dy of top/bottom edge based on corner
+      const ddx = p.x - this.dragStart!.x;
+      const ddy = p.y - this.dragStart!.y;
+      let nx = sr.x, ny = sr.y, nw = sr.w, nh = sr.h;
+      if (c.dx < 0) { nx = sr.x + ddx; nw = sr.w - ddx; }
+      else          {                  nw = sr.w + ddx; }
+      if (c.dy < 0) { ny = sr.y + ddy; nh = sr.h - ddy; }
+      else          {                  nh = sr.h + ddy; }
+      // Min size 4×4
+      if (nw < 4) { nw = 4; nx = c.dx < 0 ? sr.x + sr.w - 4 : sr.x; }
+      if (nh < 4) { nh = 4; ny = c.dy < 0 ? sr.y + sr.h - 4 : sr.y; }
+      // Write back. For rotated regions, atlas-space dimensions are swapped:
+      // aw → height, ah → width.
+      this.dragTarget.x = Math.round(nx);
+      this.dragTarget.y = Math.round(ny);
+      if (this.dragTarget.rotate) {
+        this.dragTarget.height = Math.round(nw);
+        this.dragTarget.width  = Math.round(nh);
+      } else {
+        this.dragTarget.width  = Math.round(nw);
+        this.dragTarget.height = Math.round(nh);
+      }
+      this.events.onRegionEdited?.(this.dragTarget.name, {
+        x: this.dragTarget.x, y: this.dragTarget.y,
+        width: this.dragTarget.width, height: this.dragTarget.height,
+      });
       this.redrawRects();
     }
   };
@@ -192,7 +291,34 @@ export class AtlasView {
     this.dragStart = null;
     this.dragMode = null;
     this.dragTarget = null;
+    this.resizeCorner = null;
+    this.resizeStartRect = null;
   };
+
+  /** Move selected region by (dx, dy) source-pixels (arrow keys). */
+  nudgeSelected(dx: number, dy: number) {
+    if (!this.selectedName) return;
+    const r = this.atlas.pages[0]?.regions.find(r => r.name === this.selectedName);
+    if (!r) return;
+    r.x += dx;
+    r.y += dy;
+    this.events.onRegionEdited?.(r.name, { x: r.x, y: r.y });
+    this.redrawRects();
+  }
+
+  /** Delete the currently selected region. Returns the deleted name or null. */
+  deleteSelected(): string | null {
+    if (!this.selectedName) return null;
+    const page = this.atlas.pages[0];
+    if (!page) return null;
+    const idx = page.regions.findIndex(r => r.name === this.selectedName);
+    if (idx < 0) return null;
+    const deletedName = page.regions[idx].name;
+    page.regions.splice(idx, 1);
+    this.selectedName = null;
+    this.redrawRects();
+    return deletedName;
+  }
 
   private hitTest(px: number, py: number): AtlasRegion | null {
     if (!this.atlas.pages.length) return null;
