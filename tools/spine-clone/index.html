@@ -21,8 +21,8 @@
         <button id="btn-export-spine" title="Export Spine 4.x JSON (compat any spine-runtime)">📤 Export Spine</button>
       </div>
       <div id="mode-switcher">
-        <button id="btn-mode-atlas" class="mode-btn">🎨 Atlas</button>
-        <button id="btn-mode-pose" class="mode-btn active">🦴 Pose</button>
+        <button id="btn-mode-atlas" class="mode-btn" title="Atlas mode (phím 2)">🎨 Atlas <kbd class="hint">2</kbd></button>
+        <button id="btn-mode-pose" class="mode-btn active" title="Pose mode (phím 1)">🦴 Pose <kbd class="hint">1</kbd></button>
       </div>
     </header>
 
@@ -58,10 +58,14 @@
         <div id="canvas-host"></div>
         <div id="canvas-tools">
           <div id="atlas-tools" style="display:none;">
-            <span class="muted">Atlas mode:</span>
-            <button id="btn-draw-region" class="sm-btn active">📐 Draw Region</button>
-            <button id="btn-select-region" class="sm-btn">↖ Select</button>
-            <span class="muted">| Drag chuột trên ảnh để tạo region mới</span>
+            <span class="muted">Atlas tools:</span>
+            <button id="btn-draw-region" class="tool-btn active" title="Vẽ region mới (phím B)">
+              📐 Draw <kbd>B</kbd>
+            </button>
+            <button id="btn-select-region" class="tool-btn" title="Chọn / di chuyển region (phím V)">
+              ↖ Select <kbd>V</kbd>
+            </button>
+            <span class="muted">· Drag chuột trên ảnh để tạo region</span>
           </div>
           <div id="pose-tools">
             <label>Time

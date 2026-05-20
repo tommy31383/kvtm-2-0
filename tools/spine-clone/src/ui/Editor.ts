@@ -292,6 +292,39 @@ export class Editor {
     document.getElementById('btn-mode-pose')!.onclick = () => this.setMode('pose');
     document.getElementById('btn-draw-region')!.onclick = () => this.setAtlasTool('draw');
     document.getElementById('btn-select-region')!.onclick = () => this.setAtlasTool('select');
+
+    // Keyboard shortcuts
+    //   B = Draw region (Box tool)
+    //   V = Select tool
+    //   1 = Pose mode  |  2 = Atlas mode
+    //   F = Fit to view  |  Space = Play/Pause animation
+    document.addEventListener('keydown', e => {
+      // Ignore when user is typing in inputs
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'b':
+          if (this.mode === 'atlas') { this.setAtlasTool('draw'); e.preventDefault(); }
+          break;
+        case 'v':
+          if (this.mode === 'atlas') { this.setAtlasTool('select'); e.preventDefault(); }
+          break;
+        case '1':
+          this.setMode('pose'); e.preventDefault();
+          break;
+        case '2':
+          this.setMode('atlas'); e.preventDefault();
+          break;
+        case 'f':
+          if (this.mode === 'pose') { this.fitToView(); e.preventDefault(); }
+          break;
+        case ' ':
+          if (this.mode === 'pose') { this.togglePlay(); e.preventDefault(); }
+          break;
+      }
+    });
   }
 
   private bindHierarchyActions() {
