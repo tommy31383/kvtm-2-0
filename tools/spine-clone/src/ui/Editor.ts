@@ -255,7 +255,6 @@ export class Editor {
     document.getElementById('btn-load-image')!.onclick = wrap('Load Image',   () => this.pickAndLoadImage());
     document.getElementById('btn-load-spine')!.onclick = wrap('Open Spine',   () => this.pickAndLoadSpine());
     document.getElementById('btn-load-project')!.onclick = wrap('Open',       () => this.pickAndLoadProject());
-    document.getElementById('btn-load-sample')!.onclick  = wrap('Demo',       () => this.loadDemo());
     document.getElementById('btn-save')!.onclick         = wrap('Save',       () => this.saveProject());
     document.getElementById('btn-export-spine')!.onclick = wrap('Export Spine', () => this.exportSpine());
     console.log('[Editor] toolbar bound · isTauri =', isTauri());
@@ -681,31 +680,6 @@ export class Editor {
     }
   }
 
-  /** Load a generic demo sprite sheet so user can test workflow immediately. */
-  private async loadDemo() {
-    this.setStatus('⏳ Loading demo sprite...');
-    try {
-      const tex = await Assets.load<Texture>('/sample-assets/sample_sprite.webp');
-      this.sheetTexture = tex;
-      const skeleton = makeEmptySkeleton('demo');
-      const atlas: Atlas = {
-        pages: [{
-          name: 'sample_sprite.webp',
-          width: tex.width,
-          height: tex.height,
-          format: 'RGBA8888',
-          filter: ['Linear', 'Linear'],
-          regions: [],
-        }],
-      };
-      this.store.setProject(skeleton, atlas);
-      this.setProjectName(skeleton.name);
-      this.setMode('atlas');
-      this.setStatus(`🎁 Demo sheet ${tex.width}×${tex.height} loaded. Drag chuột trên ảnh để cắt region.`);
-    } catch (err: any) {
-      this.setStatus('❌ ' + (err?.message || String(err)));
-    }
-  }
 
   /**
    * Load a Spine project from user-selected files. Expects user to multi-select:
