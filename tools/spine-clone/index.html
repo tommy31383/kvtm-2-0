@@ -92,6 +92,21 @@
       </aside>
     </main>
 
+    <section id="timeline-section" class="timeline-section">
+      <div id="timeline-toolbar">
+        <span id="timeline-anim-name" class="muted">No animation</span>
+        <button id="timeline-add-key" title="Insert keyframe at playhead (K)">+ Key</button>
+        <button id="timeline-del-key" title="Delete selected keys (Del)">✕</button>
+        <button id="timeline-zoom-out" title="Zoom out">−</button>
+        <button id="timeline-zoom-in" title="Zoom in">+</button>
+        <button id="timeline-zoom-fit" title="Zoom fit">⊡</button>
+        <span class="timeline-spacer"></span>
+        <span id="timeline-undo-label" class="muted"></span>
+      </div>
+      <div id="timeline-host"></div>
+      <div id="curve-editor-host" class="curve-editor-host"></div>
+    </section>
+
     <footer id="app-footer">
       <span id="status-msg" class="muted">Ready</span>
       <span id="status-stats" class="muted"></span>

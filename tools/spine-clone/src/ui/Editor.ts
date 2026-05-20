@@ -15,6 +15,8 @@
 import { Application, Container, Texture } from 'pixi.js';
 import { DocumentStore } from '../store/DocumentStore.js';
 import { AtlasView } from './AtlasView.js';
+import { TimelinePanel } from './TimelinePanel.js';
+import { CurveEditorPanel } from './CurveEditorPanel.js';
 import { serializeProject, parseProject } from '../io/customFormat.js';
 import { exportToSpineJson } from '../io/spineExport.js';
 import { parseSpineJson } from '../io/spineImport.js';
@@ -90,6 +92,8 @@ export class Editor {
   private playbackRaf: number | null = null;
   private playbackStartMs = 0;
   private playbackStartTimeSec = 0;
+  private timelinePanel: TimelinePanel | null = null;
+  private curveEditor: CurveEditorPanel | null = null;
 
   constructor() {
     // Start with an empty project
@@ -108,6 +112,7 @@ export class Editor {
     this.bindPlayback();
     this.setupDragDrop();
     this.subscribeStore();
+    this.initTimelinePanels();
     this.renderAll();
     this.setMode('pose');
     this.setStatus('Ready. 📥 Kéo file thả vào canvas, hoặc 🦴 Open Spine / 🖼 Load Image / 🎁 Demo.');
@@ -626,6 +631,58 @@ export class Editor {
     } catch (err: any) {
       this.setStatus('❌ ' + (err?.message || String(err)));
     }
+  }
+
+  private initTimelinePanels() {
+    const tlHost = document.getElementById('timeline-host');
+    const ceHost = document.getElementById('curve-editor-host');
+    if (!tlHost || !ceHost) return;
+
+    this.timelinePanel = new TimelinePanel(tlHost, this.store);
+    this.curveEditor = new CurveEditorPanel(ceHost, this.store);
+
+    // Bridge: when timeline selection changes, surface single-key selection to curve editor
+    this.timelinePanel.on('selection-changed', () => {
+      const sel = this.timelinePanel!.getSelectedKeyRefs();
+      if (sel.length === 1) this.curveEditor!.setActive(sel[0]);
+      else this.curveEditor!.setActive(null);
+    });
+
+    // Toolbar buttons
+    document.getElementById('timeline-add-key')?.addEventListener('click', () => this.timelinePanel?.insertKeyAtPlayhead());
+    document.getElementById('timeline-del-key')?.addEventListener('click', () => this.timelinePanel?.deleteSelectedKeys());
+    document.getElementById('timeline-zoom-in')?.addEventListener('click', () => this.timelinePanel?.zoomIn());
+    document.getElementById('timeline-zoom-out')?.addEventListener('click', () => this.timelinePanel?.zoomOut());
+    document.getElementById('timeline-zoom-fit')?.addEventListener('click', () => this.timelinePanel?.zoomFit());
+
+    // Update animation name label
+    const nameLabel = document.getElementById('timeline-anim-name');
+    if (nameLabel) {
+      const update = () => {
+        const n = this.store.currentAnimation ?? '(setup pose)';
+        nameLabel.textContent = n;
+      };
+      this.store.on('animation-changed', update);
+      update();
+    }
+
+    // K hotkey → insert keyframe at playhead
+    document.addEventListener('keydown', e => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key.toLowerCase() === 'k') {
+        this.timelinePanel?.insertKeyAtPlayhead();
+        e.preventDefault();
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && this.mode === 'pose') {
+        // Only delete keys if timeline has selection (avoid clashing with atlas mode delete)
+        const sel = this.timelinePanel?.getSelectedKeyRefs();
+        if (sel && sel.length > 0) {
+          this.timelinePanel?.deleteSelectedKeys();
+          e.preventDefault();
+        }
+      }
+    });
   }
 
   private bindPlayback() {

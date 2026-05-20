@@ -377,3 +377,73 @@ body { display: grid; grid-template-rows: 44px 1fr 26px; }
 #debug-log .log-ok  { color: #10b981; }
 #debug-log .log-info { color: var(--blue); }
 #debug-log .log-time { color: var(--muted); margin-right: 6px; }
+
+/* ─────── Timeline & Curve Editor (Phase 3) ─────── */
+.timeline-section {
+  display: flex; flex-direction: column;
+  border-top: 1px solid var(--border);
+  background: var(--bg-1);
+  max-height: 320px;
+  min-height: 120px;
+}
+#timeline-toolbar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+#timeline-toolbar button {
+  background: var(--bg-3); color: var(--text);
+  border: 1px solid var(--border);
+  padding: 3px 10px; font-size: 11px;
+  cursor: pointer; border-radius: 3px;
+  font-family: inherit;
+}
+#timeline-toolbar button:hover { border-color: var(--gold); color: var(--gold); }
+#timeline-anim-name { font-weight: 600; color: var(--gold); margin-right: 8px; }
+.timeline-spacer { flex: 1; }
+#timeline-host {
+  flex: 1; position: relative;
+  background: var(--bg-0);
+  overflow: hidden;
+}
+#timeline-host canvas {
+  display: block; width: 100%; height: 100%;
+  cursor: default;
+}
+.curve-editor-host {
+  display: none;
+  border-top: 1px solid var(--border);
+  background: var(--bg-2);
+  padding: 8px 12px;
+  max-height: 220px;
+  overflow: auto;
+}
+.curve-editor-host.active { display: flex; gap: 14px; }
+.curve-editor-canvas-wrap {
+  background: var(--bg-0); border: 1px solid var(--border); border-radius: 4px;
+  padding: 6px;
+}
+.curve-editor-canvas-wrap canvas { display: block; cursor: crosshair; }
+.curve-editor-controls { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 200px; }
+.curve-editor-controls h4 {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--muted); margin: 4px 0 2px;
+}
+.curve-editor-controls .row {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px;
+}
+.curve-preset-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+}
+.curve-preset-grid button {
+  background: var(--bg-3); color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 6px; font-size: 10px;
+  cursor: pointer; border-radius: 3px;
+  font-family: inherit;
+}
+.curve-preset-grid button:hover { border-color: var(--gold); color: var(--gold); }
+.curve-preset-grid button.active { background: var(--gold); color: var(--bg-0); }
