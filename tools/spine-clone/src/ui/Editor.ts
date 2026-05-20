@@ -12,7 +12,7 @@
 // so edits in atlas mode (e.g. creating regions) reflect immediately when
 // switching back to pose mode (e.g. as new attachment options).
 
-import { Application, Container, Texture, Assets } from 'pixi.js';
+import { Application, Container, Texture } from 'pixi.js';
 import { DocumentStore } from '../store/DocumentStore.js';
 import { AtlasView } from './AtlasView.js';
 import { serializeProject, parseProject } from '../io/customFormat.js';
@@ -656,8 +656,16 @@ export class Editor {
   private async loadImageFromFile(file: File) {
     this.setStatus(`⏳ Loading ${file.name}...`);
     try {
+      // Use HTMLImageElement + Texture.from (Pixi Assets can't auto-detect
+      // blob: URLs without file extension)
       const url = URL.createObjectURL(file);
-      const tex = await Assets.load<Texture>(url);
+      const imgEl = new Image();
+      await new Promise<void>((resolve, reject) => {
+        imgEl.onload = () => resolve();
+        imgEl.onerror = () => reject(new Error(`Image decode failed: ${file.name}`));
+        imgEl.src = url;
+      });
+      const tex = Texture.from(imgEl);
       this.sheetTexture = tex;
       // Replace or create the first atlas page
       const atlas = this.store.atlas;
