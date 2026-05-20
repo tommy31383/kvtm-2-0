@@ -14,13 +14,14 @@
 
 import { Application, Container, Texture, Assets } from 'pixi.js';
 import { DocumentStore } from '../store/DocumentStore.js';
-import { PixiRenderer } from '../render/PixiRenderer.js';
 import { AtlasView } from './AtlasView.js';
 import { serializeProject, parseProject } from '../io/customFormat.js';
 import { exportToSpineJson } from '../io/spineExport.js';
 import { parseSpineJson } from '../io/spineImport.js';
 import { parseAtlas } from '../io/atlasParser.js';
 import { openFilePicker, saveTextFile, isTauri } from '../io/fileApi.js';
+import { loadSpineFromText } from '../render/SpineRenderer.js';
+import type { Spine } from '@esotericsoftware/spine-pixi-v8';
 import { evaluatePose } from '../core/pose.js';
 import type {
   Atlas, RegionAttachment, Bone, Slot,
@@ -78,7 +79,12 @@ export class Editor {
   private app!: Application;
   private worldContainer!: Container;
   private mode: Mode = 'pose';
-  private poseRenderer: PixiRenderer | null = null;
+  // Official Spine display object (replaces our home-grown PixiRenderer).
+  // Wraps spine-pixi-v8 runtime which handles bones, meshes, IK, mixing, etc.
+  private spine: Spine | null = null;
+  // Loaded source files kept so we can re-instantiate Spine when needed
+  private loadedAtlasText: string | null = null;
+  private loadedSkeletonText: string | null = null;
   private atlasView: AtlasView | null = null;
   private sheetTexture: Texture | undefined;
   private playbackRaf: number | null = null;
@@ -145,10 +151,10 @@ export class Editor {
   setMode(mode: Mode) {
     this.mode = mode;
     // Tear down current view
-    if (this.poseRenderer) {
-      this.worldContainer.removeChild(this.poseRenderer.root);
-      this.poseRenderer.destroy();
-      this.poseRenderer = null;
+    if (this.spine) {
+      this.worldContainer.removeChild(this.spine);
+      this.spine.destroy();
+      this.spine = null;
     }
     if (this.atlasView) {
       this.worldContainer.removeChild(this.atlasView.root);
@@ -158,17 +164,28 @@ export class Editor {
 
     // Build the appropriate view
     if (mode === 'pose') {
-      // Always build renderer — even without texture, show bone gizmos +
-      // placeholder rectangles where sprites would go. User can drop the
-      // atlas + image later to add textures.
-      this.poseRenderer = new PixiRenderer(
-        this.app, this.store.skeleton, this.store.atlas, this.sheetTexture,
-        { showBoneGizmos: true },
-      );
-      this.worldContainer.addChild(this.poseRenderer.root);
-      this.poseRenderer.render(this.store.currentAnimation, this.store.currentTimeSec);
-      // Auto-fit so skeleton fills viewport (handles large coordinate ranges)
-      requestAnimationFrame(() => this.fitToView());
+      // Use official spine-pixi runtime — handles bones, meshes, IK, mixing.
+      // Needs all 3: skeleton JSON text + atlas text + sheet texture.
+      if (this.loadedSkeletonText && this.loadedAtlasText && this.sheetTexture) {
+        try {
+          const result = loadSpineFromText(
+            this.loadedSkeletonText,
+            this.loadedAtlasText,
+            this.sheetTexture,
+          );
+          this.spine = result.spine;
+          this.worldContainer.addChild(this.spine);
+          // Apply current animation (or setup pose if none)
+          this.applyCurrentAnimation();
+          // Auto-fit so skeleton fills viewport
+          requestAnimationFrame(() => this.fitToView());
+        } catch (err: any) {
+          console.error('[setMode] spine-pixi load failed:', err);
+          this.setStatus('❌ spine-pixi load failed: ' + (err?.message ?? err));
+        }
+      } else {
+        console.log('[setMode] pose: skeleton/atlas/texture not all loaded — skipping spine render');
+      }
     } else {
       this.atlasView = new AtlasView(this.app, this.store.atlas, {
         onRegionCreated: r => this.handleRegionCreated(r),
@@ -222,21 +239,16 @@ export class Editor {
       console.log(`first 10 bone world positions:`);
       positions.slice(0, 10).forEach(([n, x, y]) => console.log(`  ${n}: (${x.toFixed(1)}, ${y.toFixed(1)})`));
 
-      // Check renderer state
-      if (this.poseRenderer) {
-        const rr = this.poseRenderer as any;
-        const bc = rr.boneContainers as Map<string, any>;
-        console.log(`renderer has ${bc.size} bone containers, ${(rr.slotSprites as Map<string,any>).size} sprites`);
-        const visSlots = Array.from(rr.slotSprites.entries() as any).filter(([_, sp]: any) => sp.visible);
-        console.log(`visible sprites: ${visSlots.length}`);
-        visSlots.slice(0, 5).forEach(([name, sp]: any) => {
-          console.log(`  slot "${name}" sprite at local (${sp.x.toFixed(1)}, ${sp.y.toFixed(1)}) size ${sp.width.toFixed(1)}×${sp.height.toFixed(1)} visible=${sp.visible} alpha=${sp.alpha} tex=${sp.texture.label ?? '?'} texSize=${sp.texture.width}×${sp.texture.height}`);
-        });
-        console.log(`slot attachments active:`);
-        const sa = pose.slotAttachments;
-        Object.entries(sa).slice(0, 10).forEach(([name, val]) => console.log(`  ${name} → ${val ?? '(null)'}`));
+      // Check spine-pixi runtime state
+      if (this.spine) {
+        const sd = this.spine.skeleton.data;
+        console.log(`spine-pixi: skeleton "${sd.name ?? 'unnamed'}", ${sd.bones.length} bones, ${sd.slots.length} slots, ${sd.animations.length} anims`);
+        console.log(`  current track: ${this.spine.state.tracks[0]?.animation?.name ?? '(empty)'} t=${this.spine.state.tracks[0]?.trackTime?.toFixed(2) ?? '?'}s`);
+        const b: any = this.spine.getBounds();
+        const rb = b.rectangle ?? b;
+        console.log(`  bounds: (${rb.x?.toFixed(0) ?? '?'}, ${rb.y?.toFixed(0) ?? '?'}) ${rb.width?.toFixed(0) ?? '?'}×${rb.height?.toFixed(0) ?? '?'}`);
       } else {
-        console.log('NO poseRenderer');
+        console.log('spine-pixi runtime: not loaded');
       }
     });
     document.getElementById('btn-new')!.onclick        = wrap('New',          () => this.newProject());
@@ -542,7 +554,7 @@ export class Editor {
     });
     scaleSlider.addEventListener('input', () => {
       const sc = parseFloat(scaleSlider.value);
-      if (this.poseRenderer) this.poseRenderer.root.scale.set(sc);
+      this.worldContainer.scale.set(sc);
       (document.getElementById('scale-val') as HTMLElement).textContent = sc.toFixed(2);
     });
     playBtn.addEventListener('click', () => this.togglePlay());
@@ -558,65 +570,44 @@ export class Editor {
    * properly.
    */
   private fitToView() {
-    if (!this.poseRenderer) return;
+    if (!this.spine) return;
     const host = document.getElementById('canvas-host') as HTMLDivElement;
     const W = host.clientWidth, H = host.clientHeight;
     if (W < 10 || H < 10) return;
 
-    const animName = this.store.currentAnimation;
-    const t = this.store.currentTimeSec;
-    const pose = evaluatePose(this.store.skeleton, animName, t);
-    const skin = this.store.skeleton.skins[0];
+    // Reset world transform so getBounds returns the spine display's natural
+    // dimensions (in its local Pixi coord space). Then derive scale + pan.
+    this.worldContainer.scale.set(1);
+    this.worldContainer.x = 0;
+    this.worldContainer.y = 0;
 
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    let pointCount = 0;
-    const expand = (x: number, y: number) => {
-      if (x < minX) minX = x;
-      if (y < minY) minY = y;
-      if (x > maxX) maxX = x;
-      if (y > maxY) maxY = y;
-      pointCount++;
-    };
+    // Force spine to update world transforms (Pixi may not have ticked yet)
+    try {
+      this.spine.update(0);
+    } catch {}
 
-    // Add bone origins
-    for (const bone of this.store.skeleton.bones) {
-      const w = pose.bones[bone.name];
-      if (w) expand(w.tx, w.ty);
-    }
-
-    // Add slot attachment extents (the actual visible content)
-    for (const slot of this.store.skeleton.slots) {
-      const attName = pose.slotAttachments[slot.name];
-      if (!attName) continue;
-      const att = skin?.attachments[slot.name]?.[attName] as any;
-      if (!att || att.type !== 'region') continue;
-      const w = pose.bones[slot.bone];
-      if (!w) continue;
-      const halfW = ((att.width || 32) * (att.scaleX || 1)) / 2;
-      const halfH = ((att.height || 32) * (att.scaleY || 1)) / 2;
-      // Sprite center at bone world + attachment local offset
-      const cx = w.tx + (att.x || 0) * w.a + (att.y || 0) * w.c;
-      const cy = w.ty + (att.x || 0) * w.b + (att.y || 0) * w.d;
-      // 4 corners (conservative AABB without rotation; OK as approximation)
-      expand(cx - halfW, cy - halfH);
-      expand(cx + halfW, cy + halfH);
-    }
-
-    if (!isFinite(minX) || pointCount === 0) {
-      console.warn(`[fitToView] no valid bounds`);
+    // Pixi v8 getBounds returns Bounds object with x/y/width/height
+    const b = this.spine.getBounds();
+    const rb: any = (b as any).rectangle ?? b;
+    const minX = rb.x ?? rb.minX ?? 0;
+    const minY = rb.y ?? rb.minY ?? 0;
+    const bw = Math.max(1, rb.width  ?? ((rb.maxX ?? 0) - minX));
+    const bh = Math.max(1, rb.height ?? ((rb.maxY ?? 0) - minY));
+    if (!isFinite(minX) || bw < 2 || bh < 2) {
+      console.warn(`[fitToView] no valid bounds (bw=${bw}, bh=${bh})`);
       this.worldContainer.scale.set(1);
       this.worldContainer.x = W / 2;
       this.worldContainer.y = H / 2;
       return;
     }
 
-    const bw = Math.max(1, maxX - minX);
-    const bh = Math.max(1, maxY - minY);
     const pad = 1.1;
     const scale = Math.min(W / (bw * pad), H / (bh * pad));
     const clampedScale = Math.max(0.05, Math.min(3, scale));
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
+    const centerX = minX + bw / 2;
+    const centerY = minY + bh / 2;
+    const maxX = minX + bw;
+    const maxY = minY + bh;
     this.worldContainer.scale.set(clampedScale);
     this.worldContainer.x = W / 2 - centerX * clampedScale;
     this.worldContainer.y = H / 2 - centerY * clampedScale;
@@ -626,7 +617,7 @@ export class Editor {
     if (slider) slider.value = String(clampedScale);
     if (valEl)  valEl.textContent = clampedScale.toFixed(2);
 
-    console.log(`[fitToView] ${pointCount} points, bounds X[${minX.toFixed(0)}..${maxX.toFixed(0)}] Y[${minY.toFixed(0)}..${maxY.toFixed(0)}] size ${bw.toFixed(0)}×${bh.toFixed(0)} → scale=${clampedScale.toFixed(2)}`);
+    console.log(`[fitToView] bounds X[${minX.toFixed(0)}..${maxX.toFixed(0)}] Y[${minY.toFixed(0)}..${maxY.toFixed(0)}] size ${bw.toFixed(0)}×${bh.toFixed(0)} → scale=${clampedScale.toFixed(2)}`);
   }
 
   private togglePlay() {
@@ -739,9 +730,13 @@ export class Editor {
       // Parse skeleton (always) + atlas (optional)
       const skelText = await skelFile.text();
       const skeleton = parseSpineJson(skelText);
-      const atlas = atlasFile
-        ? parseAtlas(await atlasFile.text())
+      const atlasTextLocal = atlasFile ? await atlasFile.text() : null;
+      const atlas = atlasTextLocal
+        ? parseAtlas(atlasTextLocal)
         : { pages: [] };
+      // Stash raw texts for spine-pixi runtime (used by setMode('pose'))
+      this.loadedSkeletonText = skelText;
+      this.loadedAtlasText = atlasTextLocal;
       console.log(`[loadSpine] skeleton: ${skeleton.bones.length} bones, ${skeleton.slots.length} slots`);
       console.log(`[loadSpine] atlas: ${atlas.pages.length} pages, ${atlas.pages[0]?.regions.length ?? 0} regions`);
 
@@ -977,14 +972,21 @@ export class Editor {
     this.store.on('animation-changed', () => {
       this.renderAnimList();
       this.updateTimeSlider();
-      this.poseRenderer?.render(this.store.currentAnimation, this.store.currentTimeSec);
+      // Push new animation to spine-pixi runtime
+      this.applyCurrentAnimation();
     });
     this.store.on('time-changed', () => {
       this.updateTimeSlider();
-      this.poseRenderer?.render(this.store.currentAnimation, this.store.currentTimeSec);
+      // Manual time scrub: set spine track time + apply (only when not auto-playing)
+      if (this.spine && !this.store.playing) {
+        const track = this.spine.state.tracks[0];
+        if (track && this.store.currentAnimation) {
+          track.trackTime = this.store.currentTimeSec;
+          this.spine.update(0);
+        }
+      }
     });
     this.store.on('bone-changed', () => {
-      this.poseRenderer?.render(this.store.currentAnimation, this.store.currentTimeSec);
       this.renderProperties();
     });
   }
@@ -1083,6 +1085,27 @@ export class Editor {
       li.onclick = () => this.selectAndPlayAnimation(name);
       list.appendChild(li);
     });
+  }
+
+  /**
+   * Push the store's currentAnimation to the spine-pixi runtime.
+   * Setup Pose (undefined) → setEmptyAnimation + setToSetupPose
+   * Otherwise → setAnimation(track=0, name, loop=true)
+   */
+  private applyCurrentAnimation() {
+    if (!this.spine) return;
+    const animName = this.store.currentAnimation;
+    if (animName) {
+      try {
+        this.spine.state.setAnimation(0, animName, true);
+      } catch (err) {
+        console.warn('[applyCurrentAnimation] failed:', err);
+      }
+    } else {
+      // Setup pose: clear any track + reset skeleton
+      this.spine.state.setEmptyAnimation(0, 0);
+      (this.spine.skeleton as any).setToSetupPose?.();
+    }
   }
 
   /** Select "Setup Pose" — clear current animation, show skeleton at defaults. */
