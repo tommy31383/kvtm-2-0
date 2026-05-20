@@ -43,6 +43,12 @@ export interface PoseSnapshot {
 }
 
 // ── Local transform from setup pose + animation override ────────
+//
+// Spine uses Y-up + rotations CCW. Pixi uses Y-down + rotations CW.
+// We negate Y (translation) and rotation in the output so Pixi renders the
+// skeleton in its natural orientation without further Y-flip on containers.
+//
+// Sprites and bones are positioned consistently — no double-flip issues.
 export function evaluateLocalTransform(
   bone: Bone,
   anim: Animation | undefined,
@@ -66,7 +72,8 @@ export function evaluateLocalTransform(
       scaleY *= s.y;
     }
   }
-  return { x, y, rotation, scaleX, scaleY };
+  // Convert Spine (Y-up, CCW rot) → Pixi (Y-down, CW rot)
+  return { x, y: -y, rotation: -rotation, scaleX, scaleY };
 }
 
 // ── Matrix helpers ─────────────────────────────────────────────

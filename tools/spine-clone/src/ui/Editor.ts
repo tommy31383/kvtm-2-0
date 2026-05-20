@@ -619,8 +619,7 @@ export class Editor {
     const centerY = (minY + maxY) / 2;
     this.worldContainer.scale.set(clampedScale);
     this.worldContainer.x = W / 2 - centerX * clampedScale;
-    // Y-flip on poseRenderer.root: visual y = -skeleton y → invert pan sign
-    this.worldContainer.y = H / 2 + centerY * clampedScale;
+    this.worldContainer.y = H / 2 - centerY * clampedScale;
 
     const slider = document.getElementById('scale-slider') as HTMLInputElement;
     const valEl  = document.getElementById('scale-val') as HTMLElement;

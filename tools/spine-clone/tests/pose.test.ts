@@ -75,25 +75,26 @@ describe('decomposeMatrix', () => {
   });
 });
 
-describe('evaluateLocalTransform', () => {
-  it('returns setup pose when no animation', () => {
+describe('evaluateLocalTransform (Spine→Pixi: Y-flip, rot-negate)', () => {
+  it('returns setup pose when no animation (X preserved, Y negated)', () => {
     const lt = evaluateLocalTransform(childBone, undefined, 0);
     expect(lt.x).toBe(10);
-    expect(lt.rotation).toBe(0);
+    expect(lt.y).toBeCloseTo(0);
+    expect(lt.rotation).toBeCloseTo(0);
   });
-  it('applies translate timeline as offset', () => {
+  it('applies translate timeline as offset (Y output is negated)', () => {
     const anim: Animation = {
       name: 'walk', duration: 1,
       bones: {
-        arm: { translate: [{ time: 0, value: { x: 5, y: 0 } }, { time: 1, value: { x: 5, y: 0 } }] }
+        arm: { translate: [{ time: 0, value: { x: 5, y: 10 } }, { time: 1, value: { x: 5, y: 10 } }] }
       },
       slots: {},
     };
     const lt = evaluateLocalTransform(childBone, anim, 0.5);
-    // setup x=10 + anim offset x=5 = 15
-    expect(lt.x).toBe(15);
+    expect(lt.x).toBe(15);  // 10 + 5 (X passthrough)
+    expect(lt.y).toBe(-10); // 0 + 10 = 10, negated for Y-down
   });
-  it('applies rotate timeline additively', () => {
+  it('rotate negated (Spine CCW → Pixi CW)', () => {
     const anim: Animation = {
       name: 'spin', duration: 1,
       bones: {
@@ -102,7 +103,8 @@ describe('evaluateLocalTransform', () => {
       slots: {},
     };
     const lt = evaluateLocalTransform(childBone, anim, 0.5);
-    expect(lt.rotation).toBeCloseTo(45);  // halfway through 0..90
+    // halfway = 45° in Spine CCW, output negated = -45° in Pixi CW
+    expect(lt.rotation).toBeCloseTo(-45);
   });
 });
 
