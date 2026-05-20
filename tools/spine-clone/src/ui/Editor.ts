@@ -550,9 +550,12 @@ export class Editor {
   }
 
   /**
-   * Compute skeleton bounds from bone WORLD positions (evaluated through the
-   * pose pipeline) + attachment dimensions. More reliable than Pixi getBounds
-   * which can return degenerate values for skeletons with many invisible slots.
+   * Compute skeleton + attachment bounds, zoom + pan worldContainer to fit.
+   *
+   * Strategy: walk every visible slot at current pose, compute its world
+   * transform via parent bone matrix + attachment offset/size. Accounts for
+   * actual sprite extent (not just bone origin), so layout fills the canvas
+   * properly.
    */
   private fitToView() {
     if (!this.poseRenderer) return;
@@ -560,30 +563,47 @@ export class Editor {
     const W = host.clientWidth, H = host.clientHeight;
     if (W < 10 || H < 10) return;
 
-    // Evaluate pose at current time to get world transforms for each bone
     const animName = this.store.currentAnimation;
     const t = this.store.currentTimeSec;
     const pose = evaluatePose(this.store.skeleton, animName, t);
+    const skin = this.store.skeleton.skins[0];
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    let boneCount = 0;
+    let pointCount = 0;
+    const expand = (x: number, y: number) => {
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+      pointCount++;
+    };
+
+    // Add bone origins
     for (const bone of this.store.skeleton.bones) {
       const w = pose.bones[bone.name];
-      if (!w) continue;
-      boneCount++;
-      // Bone origin position
-      const bx = w.tx, by = w.ty;
-      if (bx < minX) minX = bx;
-      if (by < minY) minY = by;
-      if (bx > maxX) maxX = bx;
-      if (by > maxY) maxY = by;
+      if (w) expand(w.tx, w.ty);
     }
-    // Pad bounds with typical attachment size (so sprites don't get clipped)
-    const attPad = 80;
-    minX -= attPad; minY -= attPad; maxX += attPad; maxY += attPad;
 
-    if (!isFinite(minX) || boneCount === 0) {
-      console.warn(`[fitToView] no valid bone positions`);
+    // Add slot attachment extents (the actual visible content)
+    for (const slot of this.store.skeleton.slots) {
+      const attName = pose.slotAttachments[slot.name];
+      if (!attName) continue;
+      const att = skin?.attachments[slot.name]?.[attName] as any;
+      if (!att || att.type !== 'region') continue;
+      const w = pose.bones[slot.bone];
+      if (!w) continue;
+      const halfW = ((att.width || 32) * (att.scaleX || 1)) / 2;
+      const halfH = ((att.height || 32) * (att.scaleY || 1)) / 2;
+      // Sprite center at bone world + attachment local offset
+      const cx = w.tx + (att.x || 0) * w.a + (att.y || 0) * w.c;
+      const cy = w.ty + (att.x || 0) * w.b + (att.y || 0) * w.d;
+      // 4 corners (conservative AABB without rotation; OK as approximation)
+      expand(cx - halfW, cy - halfH);
+      expand(cx + halfW, cy + halfH);
+    }
+
+    if (!isFinite(minX) || pointCount === 0) {
+      console.warn(`[fitToView] no valid bounds`);
       this.worldContainer.scale.set(1);
       this.worldContainer.x = W / 2;
       this.worldContainer.y = H / 2;
@@ -599,8 +619,7 @@ export class Editor {
     const centerY = (minY + maxY) / 2;
     this.worldContainer.scale.set(clampedScale);
     this.worldContainer.x = W / 2 - centerX * clampedScale;
-    // Y-flip on poseRenderer.root means visual y = -skeleton y.
-    // Pan offset uses visual center, which is -skeleton_centerY.
+    // Y-flip on poseRenderer.root: visual y = -skeleton y → invert pan sign
     this.worldContainer.y = H / 2 + centerY * clampedScale;
 
     const slider = document.getElementById('scale-slider') as HTMLInputElement;
@@ -608,7 +627,7 @@ export class Editor {
     if (slider) slider.value = String(clampedScale);
     if (valEl)  valEl.textContent = clampedScale.toFixed(2);
 
-    console.log(`[fitToView] ${boneCount} bones, world bounds X[${minX.toFixed(0)}..${maxX.toFixed(0)}] Y[${minY.toFixed(0)}..${maxY.toFixed(0)}] size ${bw.toFixed(0)}×${bh.toFixed(0)} → scale=${clampedScale.toFixed(2)}`);
+    console.log(`[fitToView] ${pointCount} points, bounds X[${minX.toFixed(0)}..${maxX.toFixed(0)}] Y[${minY.toFixed(0)}..${maxY.toFixed(0)}] size ${bw.toFixed(0)}×${bh.toFixed(0)} → scale=${clampedScale.toFixed(2)}`);
   }
 
   private togglePlay() {
