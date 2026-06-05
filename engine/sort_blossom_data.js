@@ -11,481 +11,2086 @@
   'use strict';
 
   const SORT_BLOSSOM_LEVELS = [
+{
+  "id": 1,
+  "name": "Hoa Hồng Đầu Tiên",
+  "pots": [
     {
-      id: 1,
-      name: "Hoa Hồng Đầu Tiên",
-      pots: [
-      { active: ["R", null, null], queue: ["R", "R"] },
-      { active: [null, null, null], queue: [] }
+      "active": [
+        "R",
+        null,
+        null
       ],
-      moveLimit: 8,
-      starThresholds: [4, 6, 8],
-      tutorial: true,
-      schemaVersion: 2,
+      "queue": [
+        "R",
+        "R"
+      ]
     },
-
     {
-      id: 2,
-      name: "Buổi Sáng Êm Ả",
-      pots: [
-      { active: ["R", "P", "R"], queue: ["P", "R", "P"] },
-      { active: ["P", "R", "P"], queue: ["R", "P", "R"] },
-      { active: [null, null, null], queue: [] }
+      "active": [
+        null,
+        null,
+        null
       ],
-      moveLimit: 14,
-      starThresholds: [8, 11, 14],
-      tutorial: true,
-      schemaVersion: 2,
-    },
-
-    {
-      id: 3,
-      name: "Ba Sắc Hoa",
-      pots: [
-      { active: ["R", "P", "R"], queue: [] },
-      { active: ["R", "Y", "Y"], queue: [] },
-      { active: ["P", "P", "Y"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 12,
-      starThresholds: [7, 9, 12],
-      tutorial: true,
-      schemaVersion: 2,
-    },
-
-    {
-      id: 4,
-      name: "Vườn Bạch Cúc",
-      pots: [
-      { active: ["R", "Y", "R"], queue: [] },
-      { active: ["R", "Y", "Y"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 8,
-      starThresholds: [4, 6, 8],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 5,
-      name: "Hoa Anh Đào",
-      pots: [
-      { active: ["P", "P", "R"], queue: [] },
-      { active: ["R", "R", "P"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 8,
-      starThresholds: [4, 6, 8],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 6,
-      name: "Cúc Họa Mi",
-      pots: [
-      { active: ["P", "Y", "P"], queue: [] },
-      { active: ["P", "Y", "Y"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 8,
-      starThresholds: [4, 6, 8],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 7,
-      name: "Tam Sắc Bình Minh",
-      pots: [
-      { active: ["Y", "P", "Y"], queue: [] },
-      { active: ["R", "R", "P"], queue: [] },
-      { active: ["Y", "R", "P"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 10,
-      starThresholds: [6, 8, 10],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 8,
-      name: "Cánh Đồng Tulip",
-      pots: [
-      { active: ["P", "Y", "Y"], queue: [] },
-      { active: ["P", "P", "R"], queue: [] },
-      { active: ["Y", "R", "R"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 9,
-      starThresholds: [5, 7, 9],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 9,
-      name: "Vườn Hoa Sớm",
-      pots: [
-      { active: ["Y", "R", "R"], queue: ["P", "R"] },
-      { active: ["P", "P", "R"], queue: ["Y", "P"] },
-      { active: ["R", "R", "Y"], queue: ["P"] },
-      { active: ["Y", "P", "Y"], queue: ["Y"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 20,
-      starThresholds: [11, 13, 17],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 10,
-      name: "Khu Vườn Bí Mật",
-      pots: [
-      { active: ["R", "Y", "Y"], queue: ["P", "P", "Y"] },
-      { active: ["P", "Y", "P"], queue: ["P", "R", "R"] },
-      { active: ["R", "Y", "R"], queue: ["R", "Y", "P"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 20,
-      starThresholds: [11, 13, 17],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 11,
-      name: "Hoa Cẩm Chướng",
-      pots: [
-      { active: ["P", "Y", "Y"], queue: [] },
-      { active: ["R", "R", null], queue: [] },
-      { active: ["Y", "P", null], queue: [] },
-      { active: ["P", "R", null], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 9,
-      starThresholds: [5, 7, 9],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 12,
-      name: "Vườn Trên Cao",
-      pots: [
-      { active: ["Y", "Y", "R"], queue: ["P", "Y"] },
-      { active: ["P", "R", "R"], queue: ["Y", "R"] },
-      { active: ["P", "R", "P"], queue: ["P"] },
-      { active: ["Y", "R", "Y"], queue: ["P"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 18,
-      starThresholds: [10, 12, 15],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 13,
-      name: "Bốn Mùa Hoa",
-      pots: [
-      { active: ["P", "V", "R"], queue: [] },
-      { active: ["Y", "Y", "V"], queue: [] },
-      { active: ["Y", "P", "R"], queue: [] },
-      { active: ["R", "P", "V"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 18,
-      starThresholds: [10, 12, 15],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 14,
-      name: "Hoa Tử Đinh Hương",
-      pots: [
-      { active: ["R", "P", "R"], queue: [] },
-      { active: ["R", "P", "Y"], queue: [] },
-      { active: ["V", "V", "Y"], queue: [] },
-      { active: ["Y", "P", "V"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 15,
-      starThresholds: [8, 10, 12],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 15,
-      name: "Vườn Phượng",
-      pots: [
-      { active: ["R", "R", "P"], queue: ["V", "P"] },
-      { active: ["R", "Y", "Y"], queue: ["Y", "P"] },
-      { active: ["P", "P", "V"], queue: ["Y", "V"] },
-      { active: ["R", "R", "V"], queue: ["P", "Y"] },
-      { active: ["V", "V", "R"], queue: ["Y"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 33,
-      starThresholds: [18, 23, 29],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 16,
-      name: "Hoa Lavender",
-      pots: [
-      { active: ["Y", "R", "R"], queue: ["V", "P", "Y"] },
-      { active: ["Y", "Y", "V"], queue: ["P", "R", "R"] },
-      { active: ["Y", "Y", "P"], queue: ["V", "P", "P"] },
-      { active: ["V", "P", "V"], queue: ["V", "R", "R"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 25,
-      starThresholds: [14, 17, 22],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 17,
-      name: "Vườn Cẩm Tú Cầu",
-      pots: [
-      { active: ["Y", "Y", "R"], queue: ["P", "R"] },
-      { active: ["Y", "V", "Y"], queue: ["P", "R"] },
-      { active: ["P", "P", "V"], queue: ["R", "Y"] },
-      { active: ["R", "V", "V"], queue: ["R", "Y"] },
-      { active: ["P", "V", "P"], queue: ["V"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 38,
-      starThresholds: [21, 26, 33],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 18,
-      name: "Hoa Trắng Tinh Khôi",
-      pots: [
-      { active: ["Y", "R", "W"], queue: [] },
-      { active: ["P", "W", "Y"], queue: [] },
-      { active: ["P", "P", "V"], queue: [] },
-      { active: ["V", "V", "R"], queue: [] },
-      { active: ["R", "Y", "W"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 20,
-      starThresholds: [11, 13, 17],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 19,
-      name: "Vườn Mây",
-      pots: [
-      { active: ["W", "P", "R"], queue: [] },
-      { active: ["V", "P", "Y"], queue: [] },
-      { active: ["W", "W", "R"], queue: [] },
-      { active: ["Y", "Y", "P"], queue: [] },
-      { active: ["V", "R", "V"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 17,
-      starThresholds: [9, 11, 14],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 20,
-      name: "Lá Mùa Thu",
-      pots: [
-      { active: ["P", "Y", "P"], queue: ["V", "Y"] },
-      { active: ["R", "R", "W"], queue: ["R", "Y"] },
-      { active: ["V", "P", "P"], queue: ["P", "W"] },
-      { active: ["V", "V", "R"], queue: ["Y", "W"] },
-      { active: ["V", "V", "P"], queue: ["Y", "Y"] },
-      { active: ["W", "W", "R"], queue: ["R", "W"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 44,
-      starThresholds: [24, 30, 38],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 21,
-      name: "Vườn Bạch Liên",
-      pots: [
-      { active: ["P", "R", "P"], queue: ["V", "Y", "W"] },
-      { active: ["P", "V", "V"], queue: ["Y", "R", "W"] },
-      { active: ["W", "W", "R"], queue: ["Y", "V", "P"] },
-      { active: ["R", "R", "V"], queue: ["Y", "W", "Y"] },
-      { active: ["P", "P", "W"], queue: ["Y", "V", "R"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 46,
-      starThresholds: [25, 32, 40],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 22,
-      name: "Đỉnh Cao Năm Sắc",
-      pots: [
-      { active: ["Y", "Y", "V"], queue: ["W", "Y"] },
-      { active: ["W", "V", "R"], queue: ["Y", "P"] },
-      { active: ["R", "P", "R"], queue: ["W", "V"] },
-      { active: ["P", "R", "R"], queue: ["V", "P"] },
-      { active: ["P", "P", "W"], queue: ["R", "W"] },
-      { active: ["W", "V", "V"], queue: ["Y", "Y"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 46,
-      starThresholds: [25, 32, 40],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 23,
-      name: "Hoàng Hôn Cam",
-      pots: [
-      { active: ["V", "P", "W"], queue: [] },
-      { active: ["R", "Y", "R"], queue: [] },
-      { active: ["R", "O", "O"], queue: [] },
-      { active: ["Y", "W", "W"], queue: [] },
-      { active: ["O", "Y", "V"], queue: [] },
-      { active: ["P", "V", "P"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 20,
-      starThresholds: [11, 13, 17],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 24,
-      name: "Vườn Lửa",
-      pots: [
-      { active: ["R", "V", "W"], queue: [] },
-      { active: ["Y", "O", "V"], queue: [] },
-      { active: ["O", "V", "Y"], queue: [] },
-      { active: ["R", "Y", "O"], queue: [] },
-      { active: ["W", "W", "P"], queue: [] },
-      { active: ["P", "R", "P"], queue: [] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 29,
-      starThresholds: [16, 20, 25],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 25,
-      name: "Lễ Hội Sắc Màu",
-      pots: [
-      { active: ["P", "P", "W"], queue: ["V", "W", "Y"] },
-      { active: ["Y", "P", "W"], queue: ["R", "R"] },
-      { active: ["P", "O", "O"], queue: ["V", "W"] },
-      { active: ["R", "R", "W"], queue: ["O", "O"] },
-      { active: ["R", "V", "R"], queue: ["V", "Y"] },
-      { active: ["O", "O", "V"], queue: ["Y", "Y"] },
-      { active: ["P", "P", "W"], queue: ["Y", "V"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 59,
-      starThresholds: [32, 41, 52],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 26,
-      name: "Vườn Phượng Hoàng",
-      pots: [
-      { active: ["P", "P", "Y"], queue: ["Y", "V", "R"] },
-      { active: ["Y", "Y", "W"], queue: ["V", "V", "O"] },
-      { active: ["O", "O", "P"], queue: ["W", "R", "R"] },
-      { active: ["R", "P", "V"], queue: ["W", "W", "O"] },
-      { active: ["Y", "P", "P"], queue: ["R", "W", "V"] },
-      { active: ["O", "O", "W"], queue: ["R", "V", "Y"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 69,
-      starThresholds: [37, 47, 60],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 27,
-      name: "Cầu Vồng Hoa",
-      pots: [
-      { active: ["O", "W", "R"], queue: ["Y", "P", "P"] },
-      { active: ["W", "V", "V"], queue: ["V", "W"] },
-      { active: ["O", "O", "W"], queue: ["W", "R"] },
-      { active: ["R", "R", "V"], queue: ["P", "Y"] },
-      { active: ["V", "O", "O"], queue: ["Y", "W"] },
-      { active: ["V", "P", "P"], queue: ["R", "P"] },
-      { active: ["Y", "Y", "O"], queue: ["R", "Y"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 65,
-      starThresholds: [35, 45, 57],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 28,
-      name: "Đêm Hội Hoa",
-      pots: [
-      { active: ["R", "V", "R"], queue: ["R", "P", "P", "O", "O"] },
-      { active: ["W", "O", "O"], queue: ["V", "V", "W", "Y", "P"] },
-      { active: ["W", "W", "V"], queue: ["Y", "O", "O", "P", "R"] },
-      { active: ["R", "R", "P"], queue: ["W", "V", "R", "P", "O"] },
-      { active: ["Y", "V", "V"], queue: ["W", "V", "V", "Y", "Y"] },
-      { active: ["W", "Y", "Y"], queue: ["O", "R", "W", "P"] },
-      { active: ["Y", "Y", "P"], queue: ["O", "W", "P", "R"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 122,
-      starThresholds: [65, 84, 106],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 29,
-      name: "Vũ Điệu Sắc Hoa",
-      pots: [
-      { active: ["V", "V", "W"], queue: ["P", "P", "P", "Y"] },
-      { active: ["O", "O", "W"], queue: ["R", "V", "R", "Y"] },
-      { active: ["R", "R", "O"], queue: ["V", "Y", "Y", "W"] },
-      { active: ["Y", "Y", "P"], queue: ["R", "R", "W", "P"] },
-      { active: ["O", "Y", "Y"], queue: ["V", "V", "W", "O"] },
-      { active: ["O", "O", "R"], queue: ["W", "W", "P", "R"] },
-      { active: ["P", "P", "V"], queue: ["O", "R", "O"] },
-      { active: ["V", "V", "P"], queue: ["Y", "W", "W"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 107,
-      starThresholds: [57, 73, 93],
-      schemaVersion: 2,
-    },
-
-    {
-      id: 30,
-      name: "Bậc Thầy Vườn Hoa",
-      pots: [
-      { active: ["R", "R", "W"], queue: ["P", "O", "O", "R", "Y", "V"] },
-      { active: ["V", "O", "V"], queue: ["P", "P", "P", "W", "W", "Y"] },
-      { active: ["Y", "Y", "P"], queue: ["W", "Y", "Y", "Y", "W", "W"] },
-      { active: ["V", "V", "R"], queue: ["W", "V", "O", "Y", "R", "P"] },
-      { active: ["Y", "Y", "R"], queue: ["W", "O", "O", "P", "V", "V"] },
-      { active: ["R", "V", "V"], queue: ["O", "O", "O", "R", "R", "W"] },
-      { active: ["P", "P", "O"], queue: ["Y", "O", "R", "P", "P", "W"] },
-      { active: ["P", "R", "R"], queue: ["W", "O", "W", "Y", "V", "V"] },
-      { active: [null, null, null], queue: [] }
-      ],
-      moveLimit: 160,
-      starThresholds: [85, 110, 139],
-      schemaVersion: 2,
+      "queue": []
     }
+  ],
+  "moveLimit": 8,
+  "starThresholds": [
+    4,
+    6,
+    8
+  ],
+  "tutorial": true,
+  "schemaVersion": 2
+},
+{
+  "id": 2,
+  "name": "Buổi Sáng Êm Ả",
+  "pots": [
+    {
+      "active": [
+        "R",
+        "P",
+        "R"
+      ],
+      "queue": [
+        "P",
+        "R",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "R",
+        "P"
+      ],
+      "queue": [
+        "R",
+        "P",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 14,
+  "starThresholds": [
+    8,
+    11,
+    14
+  ],
+  "tutorial": true,
+  "schemaVersion": 2
+},
+{
+  "id": 3,
+  "name": "Ba Sắc Hoa",
+  "pots": [
+    {
+      "active": [
+        "R",
+        "P",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "R",
+        "Y",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "P",
+        "P",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 12,
+  "starThresholds": [
+    7,
+    9,
+    12
+  ],
+  "tutorial": true,
+  "schemaVersion": 2
+},
+{
+  "id": 4,
+  "name": "Vườn Bạch Cúc",
+  "pots": [
+    {
+      "active": [
+        "R",
+        "Y",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "R",
+        "Y",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 8,
+  "starThresholds": [
+    4,
+    6,
+    8
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 5,
+  "name": "Hoa Anh Đào",
+  "pots": [
+    {
+      "active": [
+        "P",
+        "P",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "R",
+        "R",
+        "P"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 8,
+  "starThresholds": [
+    4,
+    6,
+    8
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 6,
+  "name": "Cúc Họa Mi",
+  "pots": [
+    {
+      "active": [
+        "P",
+        "Y",
+        "P"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "P",
+        "Y",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 8,
+  "starThresholds": [
+    4,
+    6,
+    8
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 7,
+  "name": "Tam Sắc Bình Minh",
+  "pots": [
+    {
+      "active": [
+        "Y",
+        "P",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "R",
+        "R",
+        "P"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "Y",
+        "R",
+        "P"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 10,
+  "starThresholds": [
+    6,
+    8,
+    10
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 8,
+  "name": "Cánh Đồng Tulip",
+  "pots": [
+    {
+      "active": [
+        "P",
+        "Y",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "P",
+        "P",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "Y",
+        "R",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 9,
+  "starThresholds": [
+    5,
+    7,
+    9
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 9,
+  "name": "Vườn Hoa Sớm",
+  "pots": [
+    {
+      "active": [
+        "Y",
+        "R",
+        "R"
+      ],
+      "queue": [
+        "P",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "P",
+        "R"
+      ],
+      "queue": [
+        "Y",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "R",
+        "Y"
+      ],
+      "queue": [
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "P",
+        "Y"
+      ],
+      "queue": [
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 20,
+  "starThresholds": [
+    11,
+    13,
+    17
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 10,
+  "name": "Khu Vườn Bí Mật",
+  "pots": [
+    {
+      "active": [
+        "R",
+        "Y",
+        "Y"
+      ],
+      "queue": [
+        "P",
+        "P",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "Y",
+        "P"
+      ],
+      "queue": [
+        "P",
+        "R",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "Y",
+        "R"
+      ],
+      "queue": [
+        "R",
+        "Y",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 32,
+  "starThresholds": [
+    12,
+    16,
+    22
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 11,
+  "name": "Hoa Cẩm Chướng",
+  "pots": [
+    {
+      "active": [
+        "P",
+        "Y",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "R",
+        "R",
+        null
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "Y",
+        "P",
+        null
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "P",
+        "R",
+        null
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 9,
+  "starThresholds": [
+    5,
+    7,
+    9
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 12,
+  "name": "Vườn Trên Cao",
+  "pots": [
+    {
+      "active": [
+        "Y",
+        "Y",
+        "R"
+      ],
+      "queue": [
+        "P",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "R",
+        "R"
+      ],
+      "queue": [
+        "Y",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "R",
+        "P"
+      ],
+      "queue": [
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "R",
+        "Y"
+      ],
+      "queue": [
+        "P"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 18,
+  "starThresholds": [
+    10,
+    12,
+    15
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 13,
+  "name": "Bốn Mùa Hoa",
+  "pots": [
+    {
+      "active": [
+        "P",
+        "V",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "Y",
+        "Y",
+        "V"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "Y",
+        "P",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "R",
+        "P",
+        "V"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 18,
+  "starThresholds": [
+    10,
+    12,
+    15
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 14,
+  "name": "Hoa Tử Đinh Hương",
+  "pots": [
+    {
+      "active": [
+        "R",
+        "P",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "R",
+        "P",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "V",
+        "V",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "Y",
+        "P",
+        "V"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 15,
+  "starThresholds": [
+    8,
+    10,
+    12
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 15,
+  "name": "Vườn Phượng",
+  "pots": [
+    {
+      "active": [
+        "R",
+        "R",
+        "P"
+      ],
+      "queue": [
+        "V",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "Y",
+        "Y"
+      ],
+      "queue": [
+        "Y",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "P",
+        "V"
+      ],
+      "queue": [
+        "Y",
+        "V"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "R",
+        "V"
+      ],
+      "queue": [
+        "P",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "V",
+        "V",
+        "R"
+      ],
+      "queue": [
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 33,
+  "starThresholds": [
+    18,
+    23,
+    29
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 16,
+  "name": "Hoa Lavender",
+  "pots": [
+    {
+      "active": [
+        "Y",
+        "R",
+        "R"
+      ],
+      "queue": [
+        "V",
+        "P",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "Y",
+        "V"
+      ],
+      "queue": [
+        "P",
+        "R",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "Y",
+        "P"
+      ],
+      "queue": [
+        "V",
+        "P",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "V",
+        "P",
+        "V"
+      ],
+      "queue": [
+        "V",
+        "R",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 45,
+  "starThresholds": [
+    15,
+    19,
+    25
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 17,
+  "name": "Vườn Cẩm Tú Cầu",
+  "pots": [
+    {
+      "active": [
+        "Y",
+        "Y",
+        "R"
+      ],
+      "queue": [
+        "P",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "V",
+        "Y"
+      ],
+      "queue": [
+        "P",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "P",
+        "V"
+      ],
+      "queue": [
+        "R",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "V",
+        "V"
+      ],
+      "queue": [
+        "R",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "V",
+        "P"
+      ],
+      "queue": [
+        "V"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 38,
+  "starThresholds": [
+    21,
+    26,
+    33
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 18,
+  "name": "Hoa Trắng Tinh Khôi",
+  "pots": [
+    {
+      "active": [
+        "Y",
+        "R",
+        "W"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "P",
+        "W",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "P",
+        "P",
+        "V"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "V",
+        "V",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "R",
+        "Y",
+        "W"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 20,
+  "starThresholds": [
+    11,
+    13,
+    17
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 19,
+  "name": "Vườn Mây",
+  "pots": [
+    {
+      "active": [
+        "W",
+        "P",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "V",
+        "P",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "W",
+        "W",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "Y",
+        "Y",
+        "P"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "V",
+        "R",
+        "V"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 30,
+  "starThresholds": [
+    10,
+    13,
+    18
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 20,
+  "name": "Lá Mùa Thu",
+  "pots": [
+    {
+      "active": [
+        "P",
+        "Y",
+        "P"
+      ],
+      "queue": [
+        "V",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "R",
+        "W"
+      ],
+      "queue": [
+        "R",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "V",
+        "P",
+        "P"
+      ],
+      "queue": [
+        "P",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "V",
+        "V",
+        "R"
+      ],
+      "queue": [
+        "Y",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "V",
+        "V",
+        "P"
+      ],
+      "queue": [
+        "Y",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "W",
+        "W",
+        "R"
+      ],
+      "queue": [
+        "R",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 44,
+  "starThresholds": [
+    24,
+    30,
+    38
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 21,
+  "name": "Vườn Bạch Liên",
+  "pots": [
+    {
+      "active": [
+        "P",
+        "R",
+        "P"
+      ],
+      "queue": [
+        "V",
+        "Y",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "V",
+        "V"
+      ],
+      "queue": [
+        "Y",
+        "R",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "W",
+        "W",
+        "R"
+      ],
+      "queue": [
+        "Y",
+        "V",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "R",
+        "V"
+      ],
+      "queue": [
+        "Y",
+        "W",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "P",
+        "W"
+      ],
+      "queue": [
+        "Y",
+        "V",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 46,
+  "starThresholds": [
+    25,
+    32,
+    40
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 22,
+  "name": "Đỉnh Cao Năm Sắc",
+  "pots": [
+    {
+      "active": [
+        "Y",
+        "Y",
+        "V"
+      ],
+      "queue": [
+        "W",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "W",
+        "V",
+        "R"
+      ],
+      "queue": [
+        "Y",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "P",
+        "R"
+      ],
+      "queue": [
+        "W",
+        "V"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "R",
+        "R"
+      ],
+      "queue": [
+        "V",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "P",
+        "W"
+      ],
+      "queue": [
+        "R",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "W",
+        "V",
+        "V"
+      ],
+      "queue": [
+        "Y",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 46,
+  "starThresholds": [
+    25,
+    32,
+    40
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 23,
+  "name": "Hoàng Hôn Cam",
+  "pots": [
+    {
+      "active": [
+        "V",
+        "P",
+        "W"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "R",
+        "Y",
+        "R"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "R",
+        "O",
+        "O"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "Y",
+        "W",
+        "W"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "O",
+        "Y",
+        "V"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "P",
+        "V",
+        "P"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 38,
+  "starThresholds": [
+    12,
+    15,
+    20
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 24,
+  "name": "Vườn Lửa",
+  "pots": [
+    {
+      "active": [
+        "R",
+        "V",
+        "W"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "Y",
+        "O",
+        "V"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "O",
+        "V",
+        "Y"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "R",
+        "Y",
+        "O"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "W",
+        "W",
+        "P"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        "P",
+        "R",
+        "P"
+      ],
+      "queue": []
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 29,
+  "starThresholds": [
+    16,
+    20,
+    25
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 25,
+  "name": "Lễ Hội Sắc Màu",
+  "pots": [
+    {
+      "active": [
+        "P",
+        "P",
+        "W"
+      ],
+      "queue": [
+        "V",
+        "W",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "P",
+        "W"
+      ],
+      "queue": [
+        "R",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "O",
+        "O"
+      ],
+      "queue": [
+        "V",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "R",
+        "W"
+      ],
+      "queue": [
+        "O",
+        "O"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "V",
+        "R"
+      ],
+      "queue": [
+        "V",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "O",
+        "O",
+        "V"
+      ],
+      "queue": [
+        "Y",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "P",
+        "W"
+      ],
+      "queue": [
+        "Y",
+        "V"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 59,
+  "starThresholds": [
+    32,
+    41,
+    52
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 26,
+  "name": "Vườn Phượng Hoàng",
+  "pots": [
+    {
+      "active": [
+        "P",
+        "P",
+        "Y"
+      ],
+      "queue": [
+        "Y",
+        "V",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "Y",
+        "W"
+      ],
+      "queue": [
+        "V",
+        "V",
+        "O"
+      ]
+    },
+    {
+      "active": [
+        "O",
+        "O",
+        "P"
+      ],
+      "queue": [
+        "W",
+        "R",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "P",
+        "V"
+      ],
+      "queue": [
+        "W",
+        "W",
+        "O"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "P",
+        "P"
+      ],
+      "queue": [
+        "R",
+        "W",
+        "V"
+      ]
+    },
+    {
+      "active": [
+        "O",
+        "O",
+        "W"
+      ],
+      "queue": [
+        "R",
+        "V",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 69,
+  "starThresholds": [
+    37,
+    47,
+    60
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 27,
+  "name": "Cầu Vồng Hoa",
+  "pots": [
+    {
+      "active": [
+        "O",
+        "W",
+        "R"
+      ],
+      "queue": [
+        "Y",
+        "P",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "W",
+        "V",
+        "V"
+      ],
+      "queue": [
+        "V",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "O",
+        "O",
+        "W"
+      ],
+      "queue": [
+        "W",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "R",
+        "V"
+      ],
+      "queue": [
+        "P",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "V",
+        "O",
+        "O"
+      ],
+      "queue": [
+        "Y",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "V",
+        "P",
+        "P"
+      ],
+      "queue": [
+        "R",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "Y",
+        "O"
+      ],
+      "queue": [
+        "R",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 65,
+  "starThresholds": [
+    35,
+    45,
+    57
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 28,
+  "name": "Đêm Hội Hoa",
+  "pots": [
+    {
+      "active": [
+        "R",
+        "V",
+        "R"
+      ],
+      "queue": [
+        "R",
+        "P",
+        "P",
+        "O",
+        "O"
+      ]
+    },
+    {
+      "active": [
+        "W",
+        "O",
+        "O"
+      ],
+      "queue": [
+        "V",
+        "V",
+        "W",
+        "Y",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "W",
+        "W",
+        "V"
+      ],
+      "queue": [
+        "Y",
+        "O",
+        "O",
+        "P",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "R",
+        "P"
+      ],
+      "queue": [
+        "W",
+        "V",
+        "R",
+        "P",
+        "O"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "V",
+        "V"
+      ],
+      "queue": [
+        "W",
+        "V",
+        "V",
+        "Y",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "W",
+        "Y",
+        "Y"
+      ],
+      "queue": [
+        "O",
+        "R",
+        "W",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "Y",
+        "P"
+      ],
+      "queue": [
+        "O",
+        "W",
+        "P",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 122,
+  "starThresholds": [
+    65,
+    84,
+    106
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 29,
+  "name": "Vũ Điệu Sắc Hoa",
+  "pots": [
+    {
+      "active": [
+        "V",
+        "V",
+        "W"
+      ],
+      "queue": [
+        "P",
+        "P",
+        "P",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "O",
+        "O",
+        "W"
+      ],
+      "queue": [
+        "R",
+        "V",
+        "R",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "R",
+        "O"
+      ],
+      "queue": [
+        "V",
+        "Y",
+        "Y",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "Y",
+        "P"
+      ],
+      "queue": [
+        "R",
+        "R",
+        "W",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "O",
+        "Y",
+        "Y"
+      ],
+      "queue": [
+        "V",
+        "V",
+        "W",
+        "O"
+      ]
+    },
+    {
+      "active": [
+        "O",
+        "O",
+        "R"
+      ],
+      "queue": [
+        "W",
+        "W",
+        "P",
+        "R"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "P",
+        "V"
+      ],
+      "queue": [
+        "O",
+        "R",
+        "O"
+      ]
+    },
+    {
+      "active": [
+        "V",
+        "V",
+        "P"
+      ],
+      "queue": [
+        "Y",
+        "W",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 107,
+  "starThresholds": [
+    57,
+    73,
+    93
+  ],
+  "schemaVersion": 2
+},
+{
+  "id": 30,
+  "name": "Bậc Thầy Vườn Hoa",
+  "pots": [
+    {
+      "active": [
+        "R",
+        "R",
+        "W"
+      ],
+      "queue": [
+        "P",
+        "O",
+        "O",
+        "R",
+        "Y",
+        "V"
+      ]
+    },
+    {
+      "active": [
+        "V",
+        "O",
+        "V"
+      ],
+      "queue": [
+        "P",
+        "P",
+        "P",
+        "W",
+        "W",
+        "Y"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "Y",
+        "P"
+      ],
+      "queue": [
+        "W",
+        "Y",
+        "Y",
+        "Y",
+        "W",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "V",
+        "V",
+        "R"
+      ],
+      "queue": [
+        "W",
+        "V",
+        "O",
+        "Y",
+        "R",
+        "P"
+      ]
+    },
+    {
+      "active": [
+        "Y",
+        "Y",
+        "R"
+      ],
+      "queue": [
+        "W",
+        "O",
+        "O",
+        "P",
+        "V",
+        "V"
+      ]
+    },
+    {
+      "active": [
+        "R",
+        "V",
+        "V"
+      ],
+      "queue": [
+        "O",
+        "O",
+        "O",
+        "R",
+        "R",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "P",
+        "O"
+      ],
+      "queue": [
+        "Y",
+        "O",
+        "R",
+        "P",
+        "P",
+        "W"
+      ]
+    },
+    {
+      "active": [
+        "P",
+        "R",
+        "R"
+      ],
+      "queue": [
+        "W",
+        "O",
+        "W",
+        "Y",
+        "V",
+        "V"
+      ]
+    },
+    {
+      "active": [
+        null,
+        null,
+        null
+      ],
+      "queue": []
+    }
+  ],
+  "moveLimit": 160,
+  "starThresholds": [
+    85,
+    110,
+    139
+  ],
+  "schemaVersion": 2
+}
 
   ];
 
   function loadLevels() {
     try {
-      const raw = (typeof localStorage !== 'undefined') && localStorage.getItem('kvtm2_levels_v2');
+      const raw = (typeof localStorage !== "undefined") && localStorage.getItem("kvtm2_levels_v2");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length) return parsed;
@@ -494,11 +2099,11 @@
     return SORT_BLOSSOM_LEVELS;
   }
   function saveLevels(levels) {
-    try { localStorage.setItem('kvtm2_levels_v2', JSON.stringify(levels)); return true; } catch { return false; }
+    try { localStorage.setItem("kvtm2_levels_v2", JSON.stringify(levels)); return true; } catch { return false; }
   }
   function defaultLevels() { return JSON.parse(JSON.stringify(SORT_BLOSSOM_LEVELS)); }
 
   const api = { SORT_BLOSSOM_LEVELS, loadLevels, saveLevels, defaultLevels };
-  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
   else global.SortBlossomData = api;
-})(typeof window !== 'undefined' ? window : globalThis);
+})(typeof window !== "undefined" ? window : globalThis);
