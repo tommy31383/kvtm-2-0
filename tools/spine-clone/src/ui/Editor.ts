@@ -17,6 +17,7 @@ import { DocumentStore } from '../store/DocumentStore.js';
 import { AtlasView } from './AtlasView.js';
 import { TimelinePanel } from './TimelinePanel.js';
 import { CurveEditorPanel } from './CurveEditorPanel.js';
+import { PixiRenderer } from '../render/PixiRenderer.js';
 import { serializeProject, parseProject } from '../io/customFormat.js';
 import { exportToSpineJson } from '../io/spineExport.js';
 import { parseSpineJson } from '../io/spineImport.js';
@@ -94,6 +95,8 @@ export class Editor {
   private playbackStartTimeSec = 0;
   private timelinePanel: TimelinePanel | null = null;
   private curveEditor: CurveEditorPanel | null = null;
+  /** Fallback bone-gizmo renderer when spine-pixi runtime isn't loaded. */
+  private fallbackRenderer: PixiRenderer | null = null;
 
   constructor() {
     // Start with an empty project
@@ -161,6 +164,11 @@ export class Editor {
       this.spine.destroy();
       this.spine = null;
     }
+    if (this.fallbackRenderer) {
+      this.worldContainer.removeChild(this.fallbackRenderer.root);
+      this.fallbackRenderer.destroy();
+      this.fallbackRenderer = null;
+    }
     if (this.atlasView) {
       this.worldContainer.removeChild(this.atlasView.root);
       this.atlasView.destroy();
@@ -189,7 +197,20 @@ export class Editor {
           this.setStatus('❌ spine-pixi load failed: ' + (err?.message ?? err));
         }
       } else {
-        console.log('[setMode] pose: skeleton/atlas/texture not all loaded — skipping spine render');
+        // Fallback: no Spine runtime files → use PixiRenderer to draw bones as
+        // gizmo lines so the user can SEE the skeleton they're building from
+        // scratch. Skeletons created via "+ Bone" without imported assets fall
+        // through here.
+        this.fallbackRenderer = new PixiRenderer(
+          this.app,
+          this.store.skeleton,
+          this.store.atlas,
+          this.sheetTexture,
+          { showBoneGizmos: true },
+        );
+        this.worldContainer.addChild(this.fallbackRenderer.root);
+        this.fallbackRenderer.render(this.store.currentAnimation, this.store.currentTimeSec);
+        requestAnimationFrame(() => this.fitToView());
       }
     } else {
       this.atlasView = new AtlasView(this.app, this.store.atlas, {
@@ -695,13 +716,92 @@ export class Editor {
       const t = parseFloat(timeSlider.value) / 1000;
       this.store.setTime(t);
     });
+    const scaleVal = document.getElementById('scale-val') as HTMLElement;
+    const updateScaleUI = () => {
+      const sc = this.worldContainer.scale.x;
+      // Slider range is 0.05..3; clamp display value to slider when within range
+      if (sc >= 0.05 && sc <= 3) scaleSlider.value = String(sc);
+      scaleVal.textContent = sc.toFixed(2);
+    };
     scaleSlider.addEventListener('input', () => {
       const sc = parseFloat(scaleSlider.value);
       this.worldContainer.scale.set(sc);
-      (document.getElementById('scale-val') as HTMLElement).textContent = sc.toFixed(2);
+      scaleVal.textContent = sc.toFixed(2);
     });
     playBtn.addEventListener('click', () => this.togglePlay());
-    fitBtn.addEventListener('click', () => this.fitToView());
+    fitBtn.addEventListener('click', () => { this.fitToView(); updateScaleUI(); });
+
+    // ── Mouse wheel zoom (centered on cursor) + drag pan ──
+    const host = document.getElementById('canvas-host') as HTMLDivElement;
+    const MIN_S = 0.05, MAX_S = 10;
+
+    host.addEventListener('wheel', e => {
+      e.preventDefault();
+      const rect = host.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const oldS = this.worldContainer.scale.x;
+      const factor = e.deltaY > 0 ? 1 / 1.12 : 1.12;
+      let newS = oldS * factor;
+      newS = Math.max(MIN_S, Math.min(MAX_S, newS));
+      if (newS === oldS) return;
+      // Zoom centered on cursor: keep the world point under cursor stationary.
+      // worldPt = (mx - container.x) / oldS  →  container.x = mx - worldPt * newS
+      const wx = (mx - this.worldContainer.x) / oldS;
+      const wy = (my - this.worldContainer.y) / oldS;
+      this.worldContainer.scale.set(newS);
+      this.worldContainer.x = mx - wx * newS;
+      this.worldContainer.y = my - wy * newS;
+      updateScaleUI();
+    }, { passive: false });
+
+    // Pan: middle mouse drag OR space+left drag
+    let panning = false;
+    let panStart = { x: 0, y: 0, cx: 0, cy: 0 };
+    let spaceDown = false;
+    // Set cursor on BOTH the host div AND the Pixi canvas — the canvas has its
+    // own cursor that overrides the parent's. Also set body during drag so the
+    // cursor stays consistent even if the mouse leaves the canvas.
+    const setCursor = (c: string) => {
+      host.style.cursor = c;
+      const cv = host.querySelector('canvas') as HTMLCanvasElement | null;
+      if (cv) cv.style.cursor = c;
+      document.body.style.cursor = c;
+    };
+    window.addEventListener('keydown', e => {
+      if (e.code === 'Space' && !e.repeat) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        spaceDown = true;
+        setCursor('grab');
+        e.preventDefault();  // stop Space from triggering Play/Pause while panning
+      }
+    });
+    window.addEventListener('keyup', e => {
+      if (e.code === 'Space') {
+        spaceDown = false;
+        if (!panning) setCursor('');
+      }
+    });
+    host.addEventListener('mousedown', e => {
+      const isMiddle = e.button === 1;
+      const isSpaceLeft = e.button === 0 && spaceDown;
+      if (!isMiddle && !isSpaceLeft) return;
+      e.preventDefault();
+      panning = true;
+      panStart = { x: e.clientX, y: e.clientY, cx: this.worldContainer.x, cy: this.worldContainer.y };
+      setCursor('grabbing');
+    });
+    window.addEventListener('mousemove', e => {
+      if (!panning) return;
+      this.worldContainer.x = panStart.cx + (e.clientX - panStart.x);
+      this.worldContainer.y = panStart.cy + (e.clientY - panStart.y);
+    });
+    window.addEventListener('mouseup', () => {
+      if (!panning) return;
+      panning = false;
+      setCursor(spaceDown ? 'grab' : '');
+    });
   }
 
   /**
@@ -713,8 +813,29 @@ export class Editor {
    * properly.
    */
   private fitToView() {
-    if (!this.spine) return;
     const host = document.getElementById('canvas-host') as HTMLDivElement;
+
+    // Fallback renderer path: derive bounds from bone world positions + length.
+    if (!this.spine && this.fallbackRenderer) {
+      const W = host.clientWidth, H = host.clientHeight;
+      if (W < 10 || H < 10) return;
+      this.worldContainer.scale.set(1);
+      this.worldContainer.x = 0;
+      this.worldContainer.y = 0;
+      const b = this.fallbackRenderer.root.getBounds();
+      const rb: any = (b as any).rectangle ?? b;
+      const minX = rb.x ?? 0, minY = rb.y ?? 0;
+      const bw = Math.max(1, rb.width ?? 0), bh = Math.max(1, rb.height ?? 0);
+      if (bw < 2 || bh < 2) { this.recenter(); return; }
+      const pad = 1.2;
+      const scale = Math.max(0.05, Math.min(3, Math.min(W / (bw * pad), H / (bh * pad))));
+      this.worldContainer.scale.set(scale);
+      this.worldContainer.x = W / 2 - (minX + bw / 2) * scale;
+      this.worldContainer.y = H / 2 - (minY + bh / 2) * scale;
+      return;
+    }
+
+    if (!this.spine) return;
     const W = host.clientWidth, H = host.clientHeight;
     if (W < 10 || H < 10) return;
 
@@ -1015,9 +1136,13 @@ export class Editor {
     const sel = this.store.selection;
     const parentName = sel.type === 'bone' ? sel.name : 'root';
     const baseName = `bone_${this.store.skeleton.bones.length}`;
+    // Spawn child bones offset along parent's tip so they form a visible chain.
+    // Default length 60px is big enough to read on screen at 1x zoom.
+    const parentBone = this.store.skeleton.bones.find(b => b.name === parentName);
+    const spawnX = parentBone?.length && parentBone.length > 0 ? parentBone.length : 60;
     const newBone: Bone = {
-      name: baseName, parent: parentName, length: 30,
-      x: 30, y: 0, rotation: 0, scaleX: 1, scaleY: 1,
+      name: baseName, parent: parentName, length: 60,
+      x: spawnX, y: 0, rotation: 0, scaleX: 1, scaleY: 1,
     };
     this.store.skeleton.bones.push(newBone);
     this.renderHierarchy();
@@ -1111,9 +1236,17 @@ export class Editor {
           this.spine.update(0);
         }
       }
+      // Fallback renderer: re-pose to new time
+      this.fallbackRenderer?.render(this.store.currentAnimation, this.store.currentTimeSec);
     });
     this.store.on('bone-changed', () => {
       this.renderProperties();
+      // Live bone TRS edit → re-pose fallback renderer
+      this.fallbackRenderer?.render(this.store.currentAnimation, this.store.currentTimeSec);
+    });
+    this.store.on('animation-changed', () => {
+      // Animation switch → re-pose at t=0
+      this.fallbackRenderer?.render(this.store.currentAnimation, this.store.currentTimeSec);
     });
   }
 

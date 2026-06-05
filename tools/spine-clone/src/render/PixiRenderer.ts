@@ -98,6 +98,27 @@ export class PixiRenderer {
     }
   }
 
+  /**
+   * Draw a Spine-style bone gizmo: a wedge from origin → length tip + origin
+   * dot. Length 0 (or unset) → just the origin dot.
+   */
+  private drawBoneGizmo(g: Graphics, length: number): void {
+    g.clear();
+    const col = this.options.boneColor;
+    if (length > 0) {
+      // Wedge: triangular body from origin to tip — width tapers from 4px at
+      // base to 0 at tip (Spine convention so direction is visible).
+      const w = Math.max(3, Math.min(6, length * 0.15));
+      g.poly([0, -w / 2, length, 0, 0, w / 2]).fill({ color: col, alpha: 0.55 });
+      g.stroke({ color: col, width: 1, alpha: 0.9 });
+      // Tip dot
+      g.circle(length, 0, 2).fill({ color: 0xffffff });
+    }
+    // Origin dot (always)
+    g.circle(0, 0, 4).fill({ color: col, alpha: 0.9 });
+    g.circle(0, 0, 1.5).fill({ color: 0xffffff });
+  }
+
   /** Look up region metadata (for rotation flag) by name. */
   private findRegion(name: string) {
     for (const page of this.atlas.pages) {
@@ -118,8 +139,7 @@ export class PixiRenderer {
 
       if (this.options.showBoneGizmos) {
         const g = new Graphics();
-        g.circle(0, 0, 4).fill({ color: this.options.boneColor, alpha: 0.8 });
-        g.circle(0, 0, 1.5).fill({ color: 0xffffff });
+        this.drawBoneGizmo(g, b.length || 0);
         c.addChild(g);
         this.boneGizmos.set(b.name, g);
       }
@@ -238,7 +258,7 @@ export class PixiRenderer {
   render(animName: string | undefined, t: number) {
     const anim = animName ? this.skeleton.animations[animName] : undefined;
 
-    // 1. Update bone local transforms
+    // 1. Update bone local transforms + redraw gizmo if length changed
     for (const bone of this.skeleton.bones) {
       const c = this.boneContainers.get(bone.name);
       if (!c) continue;
@@ -247,6 +267,8 @@ export class PixiRenderer {
       c.y = local.y;
       c.rotation = (local.rotation * Math.PI) / 180;
       c.scale.set(local.scaleX, local.scaleY);
+      const g = this.boneGizmos.get(bone.name);
+      if (g) this.drawBoneGizmo(g, bone.length || 0);
     }
 
     // 2. Update slot attachments from animation
