@@ -2185,20 +2185,10 @@ const Hub = (() => {
     return DECOR_TASKS.filter(t => t.slot === slotNum && done.includes(t.id)).length;
   }
 
-  // Build the garden SVG — Cozy Cottage Exterior scene
-  // Memoized by serialized decorTasksDone state — skips template literal eval
-  // + DOM parse on hub re-entry when no decor task was completed in between.
-  let _gardenCache = { key: null, html: null };
-  function buildGardenSVG(containerEl) {
-    const done = Save.get().hub.decorTasksDone || [];
-    const cacheKey = done.join(',');
-    if (_gardenCache.key === cacheKey && _gardenCache.html) {
-      containerEl.innerHTML = _gardenCache.html;
-      return;
-    }
-    const slotDone = [1,2,3,4,5].map(s => isSlotDone(s));
-    const slotProg = [1,2,3,4,5].map(s => slotProgress(s));
-
+  // A1 architecture: initGardenSVG renders DOM once; renderGardenSlots() only
+  // updates opacity on existing elements — no innerHTML rebuild per task.
+  function initGardenSVG(containerEl) {
+    if (document.getElementById('garden-main-svg')) return;
     const svg = `
 <svg viewBox="0 0 390 340" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;" preserveAspectRatio="xMidYMid slice" id="garden-main-svg">
   <defs>
@@ -2352,95 +2342,105 @@ const Hub = (() => {
   <line x1="216" y1="189" x2="252" y2="189" stroke="#3a2a1c" stroke-width="1.5"/>
 
   <!-- ══ SLOT 1 GATE (front gate) ══ -->
-  <g id="slot1-before" class="slot-layer" opacity="${slotDone[0] ? '0' : '1'}">
-    <!-- Old broken gate: two posts, broken plank -->
+  <g id="slot1-before" class="slot-layer" opacity="1">
     <rect x="90" y="240" width="8" height="32" fill="#8a5a3a" stroke="#3a2a1c" stroke-width="2" rx="2"/>
     <rect x="115" y="240" width="8" height="32" fill="#8a5a3a" stroke="#3a2a1c" stroke-width="2" rx="2"/>
     <line x1="90" y1="250" x2="118" y2="256" stroke="#8a5a3a" stroke-width="3"/>
     <text x="98" y="282" fill="#6b5642" font-size="14" font-family="serif" opacity="0.6">🚪</text>
   </g>
-  <g id="slot1-after" class="slot-layer" opacity="${slotDone[0] ? '1' : '0'}">
-    <!-- Arch gate done -->
+  <g id="slot1-after" class="slot-layer" opacity="0">
     <rect x="88" y="234" width="9" height="36" fill="#6b5642" stroke="#3a2a1c" stroke-width="2" rx="3"/>
     <rect x="116" y="234" width="9" height="36" fill="#6b5642" stroke="#3a2a1c" stroke-width="2" rx="3"/>
     <path d="M88,238 Q102,220 125,238" fill="none" stroke="#3a2a1c" stroke-width="2.5"/>
-    ${slotProg[0]>=3?`<circle cx="90" cy="235" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>
-    <circle cx="122" cy="235" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>`:``}
-    ${slotProg[0]>=5?`<ellipse cx="104" cy="224" rx="14" ry="10" fill="#8aa872" stroke="#3a2a1c" stroke-width="1.5"/>`:``}
+    <g id="gd-gate-lanterns" class="slot-layer" opacity="0">
+      <circle cx="90" cy="235" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>
+      <circle cx="122" cy="235" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>
+    </g>
+    <g id="gd-gate-vines" class="slot-layer" opacity="0">
+      <ellipse cx="104" cy="224" rx="14" ry="10" fill="#8aa872" stroke="#3a2a1c" stroke-width="1.5"/>
+    </g>
   </g>
 
   <!-- ══ SLOT 2 HEDGE ══ -->
-  <g id="slot2-before" class="slot-layer" opacity="${slotDone[1] ? '0' : '1'}">
-    <!-- Scraggly bushes left -->
+  <g id="slot2-before" class="slot-layer" opacity="1">
     <ellipse cx="65" cy="258" rx="18" ry="12" fill="#6e8a52" opacity="0.7" stroke="#3a2a1c" stroke-width="1.5"/>
     <ellipse cx="82" cy="254" rx="15" ry="11" fill="#6e8a52" opacity="0.6" stroke="#3a2a1c" stroke-width="1.5"/>
   </g>
-  <g id="slot2-after" class="slot-layer" opacity="${slotDone[1] ? '1' : '0'}">
-    <!-- Topiary hedge done -->
+  <g id="slot2-after" class="slot-layer" opacity="0">
     ${[[52,255,16],[70,250,18],[88,255,16],[106,252,14]].map(([cx,cy,r])=>
       `<ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${Math.round(r*0.7)}" fill="url(#bushGrad)" stroke="#3a2a1c" stroke-width="2"/>`).join('')}
-    ${slotProg[1]>=4?[[58,244],[76,240],[94,244]].map(([cx,cy])=>
-      `<circle cx="${cx}" cy="${cy}" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>`).join(''):``}
+    <g id="gd-hedge-l-flowers" class="slot-layer" opacity="0">
+      ${[[58,244],[76,240],[94,244]].map(([cx,cy])=>
+        `<circle cx="${cx}" cy="${cy}" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>`).join('')}
+    </g>
   </g>
 
   <!-- ══ SLOT 3 FLOWER BED ══ -->
-  <g id="slot3-before" class="slot-layer" opacity="${slotDone[2] ? '0' : '1'}">
-    <!-- Dry soil patch -->
+  <g id="slot3-before" class="slot-layer" opacity="1">
     <ellipse cx="195" cy="265" rx="22" ry="8" fill="#b8a884" stroke="#3a2a1c" stroke-width="1.5" opacity="0.7"/>
   </g>
-  <g id="slot3-after" class="slot-layer" opacity="${slotDone[2] ? '1' : '0'}">
-    <!-- Flower bed blooming -->
+  <g id="slot3-after" class="slot-layer" opacity="0">
     <ellipse cx="195" cy="266" rx="24" ry="9" fill="#8aa872" stroke="#3a2a1c" stroke-width="2"/>
-    ${slotProg[2]>=1?`<circle cx="195" cy="262" r="3" fill="#a8c888" stroke="#3a2a1c" stroke-width="1"/>`:``}
-    ${slotProg[2]>=2?[[186,260],[195,257],[204,260]].map(([cx,cy])=>
-      `<circle cx="${cx}" cy="${cy}" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>`).join(''):``}
-    ${slotProg[2]>=4?[[190,254],[200,252]].map(([cx,cy])=>
-      `<circle cx="${cx}" cy="${cy}" r="4" fill="#e3b25a" stroke="#3a2a1c" stroke-width="1.5"/>`).join(''):``}
+    <g id="gd-bed-sprout" class="slot-layer" opacity="0">
+      <circle cx="195" cy="262" r="3" fill="#a8c888" stroke="#3a2a1c" stroke-width="1"/>
+    </g>
+    <g id="gd-bed-pinks" class="slot-layer" opacity="0">
+      ${[[186,260],[195,257],[204,260]].map(([cx,cy])=>
+        `<circle cx="${cx}" cy="${cy}" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>`).join('')}
+    </g>
+    <g id="gd-bed-yellows" class="slot-layer" opacity="0">
+      ${[[190,254],[200,252]].map(([cx,cy])=>
+        `<circle cx="${cx}" cy="${cy}" r="4" fill="#e3b25a" stroke="#3a2a1c" stroke-width="1.5"/>`).join('')}
+    </g>
   </g>
 
   <!-- ══ SLOT 4 PATH / WELL ══ -->
-  <g id="slot4-before" class="slot-layer" opacity="${slotDone[3] ? '0' : '1'}">
-    <!-- Old broken well post -->
+  <g id="slot4-before" class="slot-layer" opacity="1">
     <rect x="310" y="248" width="10" height="22" fill="#8a5a3a" stroke="#3a2a1c" stroke-width="1.5" opacity="0.6"/>
     <text x="303" y="282" fill="#6b5642" font-size="14" opacity="0.5">⛲</text>
   </g>
-  <g id="slot4-after" class="slot-layer" opacity="${slotDone[3] ? '1' : '0'}">
-    <!-- Well done -->
+  <g id="slot4-after" class="slot-layer" opacity="0">
     <rect x="303" y="245" width="30" height="20" fill="url(#wallGrad)" stroke="#3a2a1c" stroke-width="2" rx="3"/>
     <path d="M298,248 L318,238 L338,248" fill="#6b5642" stroke="#3a2a1c" stroke-width="2"/>
     <rect x="316" y="236" width="4" height="12" fill="#6b5642" stroke="#3a2a1c" stroke-width="1.5"/>
     <ellipse cx="318" cy="265" rx="16" ry="8" fill="#c8d4dc" stroke="#3a2a1c" stroke-width="2"/>
-    ${slotProg[3]>=4?`<circle cx="318" cy="262" r="4" fill="#7a92a8" stroke="#3a2a1c" stroke-width="1.5" opacity="0.7"/>`:``}
+    <g id="gd-well-water" class="slot-layer" opacity="0">
+      <circle cx="318" cy="262" r="4" fill="#7a92a8" stroke="#3a2a1c" stroke-width="1.5" opacity="0.7"/>
+    </g>
   </g>
 
   <!-- ══ SLOT 5 BENCH ══ -->
-  <g id="slot5-before" class="slot-layer" opacity="${slotDone[4] ? '0' : '1'}">
-    <!-- Old broken bench -->
+  <g id="slot5-before" class="slot-layer" opacity="1">
     <rect x="278" y="255" width="50" height="6" fill="#8a5a3a" stroke="#3a2a1c" stroke-width="1.5" opacity="0.5"/>
     <rect x="283" y="261" width="6" height="10" fill="#8a5a3a" stroke="#3a2a1c" stroke-width="1.5" opacity="0.5"/>
     <rect x="316" y="261" width="6" height="10" fill="#8a5a3a" stroke="#3a2a1c" stroke-width="1.5" opacity="0.5"/>
   </g>
-  <g id="slot5-after" class="slot-layer" opacity="${slotDone[4] ? '1' : '0'}">
-    <!-- Cozy bench done -->
+  <g id="slot5-after" class="slot-layer" opacity="0">
     <rect x="276" y="252" width="56" height="8" fill="#8a5a3a" stroke="#3a2a1c" stroke-width="2" rx="3"/>
     <rect x="276" y="244" width="56" height="10" fill="#a87050" stroke="#3a2a1c" stroke-width="2" rx="3"/>
     <rect x="282" y="260" width="7" height="14" fill="#8a5a3a" stroke="#3a2a1c" stroke-width="1.5"/>
     <rect x="317" y="260" width="7" height="14" fill="#8a5a3a" stroke="#3a2a1c" stroke-width="1.5"/>
-    ${slotProg[4]>=3?`<rect x="276" y="250" width="56" height="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5" rx="2" opacity="0.8"/>`:``}
-    ${slotProg[4]>=5?[[280,255],[300,252],[320,255]].map(([cx,cy])=>
-      `<circle cx="${cx}" cy="${cy}" r="4" fill="#8aa872" stroke="#3a2a1c" stroke-width="1.5"/>`).join(''):``}
+    <g id="gd-bench-cushion" class="slot-layer" opacity="0">
+      <rect x="276" y="250" width="56" height="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5" rx="2" opacity="0.8"/>
+    </g>
+    <g id="gd-bench-flowers" class="slot-layer" opacity="0">
+      ${[[280,255],[300,252],[320,255]].map(([cx,cy])=>
+        `<circle cx="${cx}" cy="${cy}" r="4" fill="#8aa872" stroke="#3a2a1c" stroke-width="1.5"/>`).join('')}
+    </g>
   </g>
 
   <!-- ══ RIGHT HEDGE ══ -->
-  <g id="slot2r-before" class="slot-layer" opacity="${slotDone[1] ? '0' : '1'}">
+  <g id="slot2r-before" class="slot-layer" opacity="1">
     <ellipse cx="308" cy="258" rx="16" ry="11" fill="#6e8a52" opacity="0.65" stroke="#3a2a1c" stroke-width="1.5"/>
     <ellipse cx="325" cy="254" rx="14" ry="10" fill="#6e8a52" opacity="0.6" stroke="#3a2a1c" stroke-width="1.5"/>
   </g>
-  <g id="slot2r-after" class="slot-layer" opacity="${slotDone[1] ? '1' : '0'}">
+  <g id="slot2r-after" class="slot-layer" opacity="0">
     ${[[284,255,15],[300,250,17],[318,255,15],[334,252,13]].map(([cx,cy,r])=>
       `<ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${Math.round(r*0.7)}" fill="url(#bushGrad)" stroke="#3a2a1c" stroke-width="2"/>`).join('')}
-    ${slotProg[1]>=4?[[290,244],[308,240],[326,244]].map(([cx,cy])=>
-      `<circle cx="${cx}" cy="${cy}" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>`).join(''):``}
+    <g id="gd-hedge-r-flowers" class="slot-layer" opacity="0">
+      ${[[290,244],[308,240],[326,244]].map(([cx,cy])=>
+        `<circle cx="${cx}" cy="${cy}" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>`).join('')}
+    </g>
   </g>
 
   <!-- ══ SPARKLE ACCENTS ══ -->
@@ -2453,8 +2453,36 @@ const Hub = (() => {
   <rect x="0" y="330" width="390" height="10" fill="#3a2a1c" opacity="0.08"/>
 </svg>`;
 
-    _gardenCache = { key: cacheKey, html: svg };
     containerEl.innerHTML = svg;
+  }
+
+  // Update slot visibility without rebuilding the SVG.
+  // Call after every task completion instead of re-running initGardenSVG.
+  function renderGardenSlots() {
+    const slotDone = [1,2,3,4,5].map(s => isSlotDone(s));
+    const slotProg = [1,2,3,4,5].map(s => slotProgress(s));
+    const op = (id, show) => {
+      const el = document.getElementById(id);
+      if (el) el.style.opacity = show ? '1' : '0';
+    };
+    // Slot before / after groups
+    op('slot1-before',  !slotDone[0]); op('slot1-after',  slotDone[0]);
+    op('slot2-before',  !slotDone[1]); op('slot2-after',  slotDone[1]);
+    op('slot2r-before', !slotDone[1]); op('slot2r-after', slotDone[1]);
+    op('slot3-before',  !slotDone[2]); op('slot3-after',  slotDone[2]);
+    op('slot4-before',  !slotDone[3]); op('slot4-after',  slotDone[3]);
+    op('slot5-before',  !slotDone[4]); op('slot5-after',  slotDone[4]);
+    // Progressive sub-elements (visible independently of their parent group)
+    op('gd-gate-lanterns',   slotProg[0] >= 3);
+    op('gd-gate-vines',      slotDone[0]);
+    op('gd-hedge-l-flowers', slotProg[1] >= 4);
+    op('gd-hedge-r-flowers', slotProg[1] >= 4);
+    op('gd-bed-sprout',      slotProg[2] >= 1);
+    op('gd-bed-pinks',       slotProg[2] >= 2);
+    op('gd-bed-yellows',     slotProg[2] >= 4);
+    op('gd-well-water',      slotProg[3] >= 4);
+    op('gd-bench-cushion',   slotProg[4] >= 3);
+    op('gd-bench-flowers',   slotDone[4]);
   }
 
   // Refresh top bar stars counter with pop animation.
@@ -2541,9 +2569,8 @@ const Hub = (() => {
 
     // Cinematic
     _playCinematic(task, () => {
-      // Rebuild garden
-      const gardenEl = document.getElementById('hub-garden-svg');
-      if (gardenEl) buildGardenSVG(gardenEl);
+      // Refresh garden slot visibility (SVG already in DOM)
+      renderGardenSlots();
 
       // Check story beat
       if (task.afterSlotDone) {
@@ -2568,8 +2595,7 @@ const Hub = (() => {
       done.push(taskId);
       Save.set('hub.decorTasksDone', done);
     }
-    const gardenEl = document.getElementById('hub-garden-svg');
-    if (gardenEl) buildGardenSVG(gardenEl);
+    renderGardenSlots();
     refreshTaskCard();
     refreshStarsUI();
   }
@@ -2755,7 +2781,8 @@ const Hub = (() => {
   return {
     getNextTask,
     isSlotDone,
-    buildGardenSVG,
+    initGardenSVG,
+    renderGardenSlots,
     buildTaskCardHTML,
     refreshTaskCard,
     refreshStarsUI,
@@ -3074,7 +3101,8 @@ const Scenes = {
       try {
         const gardenEl = document.getElementById('hub-garden-svg');
         if (gardenEl && !document.getElementById('garden-main-svg')) {
-          Hub.buildGardenSVG(gardenEl);
+          Hub.initGardenSVG(gardenEl);
+          Hub.renderGardenSlots();
         }
         const gardenArea = document.getElementById('hub-garden-area');
         if (gardenArea && !gardenArea.querySelector('.leaf-particle')) {
@@ -3870,8 +3898,7 @@ const Dev = (() => {
     },
     resetDecor() {
       Save.set('hub.decorTasksDone', []);
-      const gardenEl = document.getElementById('hub-garden-svg');
-      if (gardenEl) Hub.buildGardenSVG(gardenEl);
+      Hub.renderGardenSlots();
       Hub.refreshTaskCard();
       showToast('🔄 Decor reset');
       this.refresh();
