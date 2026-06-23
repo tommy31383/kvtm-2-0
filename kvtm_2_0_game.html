@@ -2391,13 +2391,14 @@ const Hub = (() => {
   <g id="slot3-after" class="slot-layer" opacity="${slotDone[2] ? '1' : '0'}">
     <!-- Flower bed blooming -->
     <ellipse cx="195" cy="266" rx="24" ry="9" fill="#8aa872" stroke="#3a2a1c" stroke-width="2"/>
+    ${slotProg[2]>=1?`<circle cx="195" cy="262" r="3" fill="#a8c888" stroke="#3a2a1c" stroke-width="1"/>`:``}
     ${slotProg[2]>=2?[[186,260],[195,257],[204,260]].map(([cx,cy])=>
       `<circle cx="${cx}" cy="${cy}" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>`).join(''):``}
     ${slotProg[2]>=4?[[190,254],[200,252]].map(([cx,cy])=>
       `<circle cx="${cx}" cy="${cy}" r="4" fill="#e3b25a" stroke="#3a2a1c" stroke-width="1.5"/>`).join(''):``}
   </g>
 
-  <!-- ══ SLOT 4 WELL ══ -->
+  <!-- ══ SLOT 4 PATH / WELL ══ -->
   <g id="slot4-before" class="slot-layer" opacity="${slotDone[3] ? '0' : '1'}">
     <!-- Old broken well post -->
     <rect x="310" y="248" width="10" height="22" fill="#8a5a3a" stroke="#3a2a1c" stroke-width="1.5" opacity="0.6"/>
@@ -2438,6 +2439,8 @@ const Hub = (() => {
   <g id="slot2r-after" class="slot-layer" opacity="${slotDone[1] ? '1' : '0'}">
     ${[[284,255,15],[300,250,17],[318,255,15],[334,252,13]].map(([cx,cy,r])=>
       `<ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${Math.round(r*0.7)}" fill="url(#bushGrad)" stroke="#3a2a1c" stroke-width="2"/>`).join('')}
+    ${slotProg[1]>=4?[[290,244],[308,240],[326,244]].map(([cx,cy])=>
+      `<circle cx="${cx}" cy="${cy}" r="5" fill="#d28464" stroke="#3a2a1c" stroke-width="1.5"/>`).join(''):``}
   </g>
 
   <!-- ══ SPARKLE ACCENTS ══ -->
